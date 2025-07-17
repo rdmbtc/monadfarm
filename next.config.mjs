@@ -14,10 +14,10 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false, // Disable strict mode to prevent double-mounting issues with Phaser
-  // Static export disabled since we're using Multisynq for real-time features
+  // Static export disabled for Vercel deployment with Multisynq
   // output: 'export',
-  // Add trailingSlash to improve compatibility with static hosting
-  trailingSlash: true,
+  // Remove trailingSlash for Vercel deployment
+  // trailingSlash: true,
   // Set standard page extensions
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   // Configure empty pages directory
@@ -72,10 +72,10 @@ const nextConfig = {
       exclude: ['error', 'warn'],
     },
   },
-  // Set basePath for GitHub Pages if needed
-  ...(process.env.GITHUB_ACTIONS ? {
-    basePath: '/nooter-s-farm',
-  } : {}),
+  // Remove basePath for Vercel deployment
+  // ...(process.env.GITHUB_ACTIONS ? {
+  //   basePath: '/nooter-s-farm',
+  // } : {}),
 };
 
 if (userConfig) {

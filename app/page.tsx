@@ -11,7 +11,7 @@ const Loader = () => {
     <StyledWrapper>
       <div className="loader-container">
         <div className="logo-container">
-          <div className="logo">N</div>
+          <div className="logo">M</div>
           <div className="glow-effect"></div>
         </div>
         
@@ -43,7 +43,7 @@ const Loader = () => {
             <div className="progress-glow"></div>
           </div>
           
-          <div className="status-text">NOOTER'S FARM</div>
+          <div className="status-text">MONFARM</div>
         </div>
         
         <div className="grid-background">

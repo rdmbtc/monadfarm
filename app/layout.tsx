@@ -8,8 +8,8 @@ import Script from "next/script"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "MonFarm",
-  description: "A fun farming game",
+  title: "MonFarm - Powered by Monad",
+  description: "The ultimate social farming experience on Monad blockchain",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
