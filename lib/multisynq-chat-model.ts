@@ -1,0 +1,477 @@
+// lib/multisynq-chat-model.ts
+
+import type { ChatMessage, MultisynqUser } from '../services/multisynq-service';
+
+declare global {
+  interface Window {
+    Multisynq: any;
+  }
+}
+
+export interface SocialPost {
+  id: string;
+  userId: string;
+  nickname: string;
+  content: string;
+  timestamp: number;
+  likes: number;
+  comments: number;
+  likedBy: Set<string>;
+  savedBy: Set<string>;
+  media?: string;
+  tags: string[];
+}
+
+export interface UserActivity {
+  userId: string;
+  nickname: string;
+  action: 'joined' | 'left' | 'posted' | 'liked' | 'commented';
+  target?: string;
+  timestamp: number;
+}
+
+export class MonFarmChatModel {
+  private model: any;
+
+  constructor() {
+    if (typeof window === 'undefined' || !window.Multisynq) {
+      throw new Error('Multisynq not loaded or not in browser environment');
+    }
+
+    // This will be initialized when the model is created
+    this.model = null;
+  }
+
+  createModel() {
+    const MultisynqModel = window.Multisynq.Model;
+    
+    return class extends MultisynqModel {
+      init() {
+        // Initialize data structures
+        this.users = new Map(); // viewId -> user info
+        this.messages = [];
+        this.socialPosts = [];
+        this.activities = [];
+        this.participants = 0;
+        
+        // Configuration
+        this.maxMessages = 500;
+        this.maxPosts = 100;
+        this.maxActivities = 200;
+        this.inactivityTimeout = 30 * 60 * 1000; // 30 minutes
+        this.lastActivityTime = null;
+        
+        // System event subscriptions
+        this.subscribe(this.sessionId, "view-join", this.handleUserJoin.bind(this));
+        this.subscribe(this.sessionId, "view-exit", this.handleUserExit.bind(this));
+        
+        // Chat event subscriptions
+        this.subscribe("chat", "sendMessage", this.handleSendMessage.bind(this));
+        this.subscribe("chat", "setNickname", this.handleSetNickname.bind(this));
+        
+        // Social event subscriptions
+        this.subscribe("social", "createPost", this.handleCreatePost.bind(this));
+        this.subscribe("social", "likePost", this.handleLikePost.bind(this));
+        this.subscribe("social", "savePost", this.handleSavePost.bind(this));
+        this.subscribe("social", "deletePost", this.handleDeletePost.bind(this));
+        
+        // Admin event subscriptions
+        this.subscribe("admin", "resetChat", this.handleResetChat.bind(this));
+        this.subscribe("admin", "clearInactive", this.handleClearInactive.bind(this));
+      }
+
+      // User Management
+      handleUserJoin(viewId) {
+        if (!this.users.has(viewId)) {
+          const nickname = this.generateRandomNickname();
+          const user = {
+            userId: viewId,
+            nickname,
+            joinedAt: this.now(),
+            lastActive: this.now(),
+            isOnline: true
+          };
+          
+          this.users.set(viewId, user);
+          
+          // Add join activity
+          this.addActivity({
+            userId: viewId,
+            nickname,
+            action: 'joined',
+            timestamp: this.now()
+          });
+        }
+        
+        this.participants++;
+        this.updateLastActivity();
+        
+        // Send recent data to new user
+        this.sendRecentDataToUser(viewId);
+        
+        // Notify all users
+        this.publish("users", "userJoined", {
+          user: this.users.get(viewId),
+          totalUsers: this.participants
+        });
+        
+        this.publishUserList();
+      }
+
+      handleUserExit(viewId) {
+        const user = this.users.get(viewId);
+        if (user) {
+          // Mark as offline but keep user data
+          user.isOnline = false;
+          user.lastActive = this.now();
+          
+          this.participants--;
+          
+          // Add leave activity
+          this.addActivity({
+            userId: viewId,
+            nickname: user.nickname,
+            action: 'left',
+            timestamp: this.now()
+          });
+          
+          // Notify all users
+          this.publish("users", "userLeft", {
+            user,
+            totalUsers: this.participants
+          });
+          
+          this.publishUserList();
+        }
+      }
+
+      handleSetNickname(data) {
+        const { userId, nickname } = data;
+        
+        if (!nickname || nickname.trim().length === 0 || nickname.length > 50) {
+          return;
+        }
+        
+        const user = this.users.get(userId);
+        if (user) {
+          const oldNickname = user.nickname;
+          user.nickname = nickname.trim();
+          user.lastActive = this.now();
+          
+          this.users.set(userId, user);
+          
+          // Notify nickname change
+          this.publish("users", "nicknameChanged", {
+            userId,
+            oldNickname,
+            newNickname: user.nickname
+          });
+          
+          this.publishUserList();
+        }
+      }
+
+      // Chat Management
+      handleSendMessage(data) {
+        const { userId, text, type = 'text' } = data;
+        
+        if (!text || text.trim().length === 0 || text.length > 1000) {
+          return;
+        }
+        
+        const user = this.users.get(userId);
+        if (!user) {
+          return;
+        }
+        
+        // Check for rate limiting
+        if (this.isRateLimited(userId)) {
+          this.publish(userId, "error", {
+            type: 'rate_limit',
+            message: 'Sending messages too quickly'
+          });
+          return;
+        }
+        
+        // Handle special commands
+        if (text.startsWith('/')) {
+          this.handleCommand(userId, text);
+          return;
+        }
+        
+        const message: ChatMessage = {
+          id: this.generateMessageId(),
+          userId,
+          nickname: user.nickname,
+          text: text.trim(),
+          timestamp: this.now(),
+          serverTime: this.now(),
+          type
+        };
+        
+        this.messages.push(message);
+        
+        // Trim old messages
+        if (this.messages.length > this.maxMessages) {
+          this.messages = this.messages.slice(-this.maxMessages);
+        }
+        
+        this.updateLastActivity();
+        user.lastActive = this.now();
+        
+        // Broadcast to all users
+        this.publish("chat", "newMessage", message);
+        
+        // Add activity
+        this.addActivity({
+          userId,
+          nickname: user.nickname,
+          action: 'posted',
+          target: 'chat',
+          timestamp: this.now()
+        });
+      }
+
+      // Social Features
+      handleCreatePost(data) {
+        const { userId, content, media, tags = [] } = data;
+        
+        if (!content || content.trim().length === 0 || content.length > 2000) {
+          return;
+        }
+        
+        const user = this.users.get(userId);
+        if (!user) {
+          return;
+        }
+        
+        const post: SocialPost = {
+          id: this.generatePostId(),
+          userId,
+          nickname: user.nickname,
+          content: content.trim(),
+          timestamp: this.now(),
+          likes: 0,
+          comments: 0,
+          likedBy: new Set(),
+          savedBy: new Set(),
+          media,
+          tags: Array.isArray(tags) ? tags.slice(0, 10) : []
+        };
+        
+        this.socialPosts.unshift(post); // Add to beginning
+        
+        // Trim old posts
+        if (this.socialPosts.length > this.maxPosts) {
+          this.socialPosts = this.socialPosts.slice(0, this.maxPosts);
+        }
+        
+        this.updateLastActivity();
+        user.lastActive = this.now();
+        
+        // Broadcast to all users
+        this.publish("social", "newPost", post);
+        
+        // Add activity
+        this.addActivity({
+          userId,
+          nickname: user.nickname,
+          action: 'posted',
+          target: 'social',
+          timestamp: this.now()
+        });
+      }
+
+      handleLikePost(data) {
+        const { userId, postId } = data;
+        
+        const user = this.users.get(userId);
+        const post = this.socialPosts.find(p => p.id === postId);
+        
+        if (!user || !post) {
+          return;
+        }
+        
+        const isLiked = post.likedBy.has(userId);
+        
+        if (isLiked) {
+          post.likedBy.delete(userId);
+          post.likes--;
+        } else {
+          post.likedBy.add(userId);
+          post.likes++;
+        }
+        
+        user.lastActive = this.now();
+        
+        // Broadcast update
+        this.publish("social", "postUpdated", {
+          postId,
+          likes: post.likes,
+          likedBy: Array.from(post.likedBy),
+          action: isLiked ? 'unliked' : 'liked',
+          userId
+        });
+        
+        if (!isLiked) {
+          this.addActivity({
+            userId,
+            nickname: user.nickname,
+            action: 'liked',
+            target: postId,
+            timestamp: this.now()
+          });
+        }
+      }
+
+      // Utility Methods
+      generateRandomNickname() {
+        const adjectives = [
+          'Swift', 'Bright', 'Happy', 'Cool', 'Smart', 'Kind', 'Brave', 'Calm',
+          'Clever', 'Eager', 'Gentle', 'Jolly', 'Keen', 'Lively', 'Merry', 'Noble'
+        ];
+        const animals = [
+          'Mon', 'Fox', 'Owl', 'Cat', 'Dog', 'Bear', 'Wolf', 'Eagle',
+          'Panda', 'Tiger', 'Lion', 'Deer', 'Rabbit', 'Squirrel', 'Hawk', 'Dove'
+        ];
+
+        const adj = adjectives[Math.floor(this.random() * adjectives.length)];
+        const animal = animals[Math.floor(this.random() * animals.length)];
+        return `${adj}${animal}`;
+      }
+
+      generateMessageId() {
+        return `msg_${this.now()}_${Math.floor(this.random() * 10000)}`;
+      }
+
+      generatePostId() {
+        return `post_${this.now()}_${Math.floor(this.random() * 10000)}`;
+      }
+
+      isRateLimited(userId) {
+        const now = this.now();
+        const recentMessages = this.messages.filter(m => 
+          m.userId === userId && now - m.timestamp < 10000 // 10 seconds
+        );
+        return recentMessages.length > 5; // Max 5 messages per 10 seconds
+      }
+
+      handleCommand(userId, command) {
+        const user = this.users.get(userId);
+        if (!user) return;
+        
+        const cmd = command.toLowerCase().trim();
+        
+        if (cmd === '/reset' || cmd === '/clear') {
+          this.handleResetChat({ userId });
+        } else if (cmd === '/help') {
+          this.publish(userId, "system", {
+            type: 'help',
+            message: 'Available commands: /reset, /clear, /help, /users'
+          });
+        } else if (cmd === '/users') {
+          this.publish(userId, "system", {
+            type: 'users',
+            message: `Online users: ${this.participants}`,
+            users: Array.from(this.users.values()).filter(u => u.isOnline)
+          });
+        }
+      }
+
+      handleResetChat(data) {
+        const { userId } = data;
+        
+        this.messages = [];
+        this.socialPosts = [];
+        this.activities = [];
+        this.lastActivityTime = this.now();
+        
+        const user = this.users.get(userId);
+        const nickname = user ? user.nickname : 'System';
+        
+        // Add system message
+        const systemMessage: ChatMessage = {
+          id: this.generateMessageId(),
+          userId: 'system',
+          nickname: 'System',
+          text: `Chat reset by ${nickname}`,
+          timestamp: this.now(),
+          serverTime: this.now(),
+          type: 'system'
+        };
+        
+        this.messages.push(systemMessage);
+        
+        // Broadcast reset
+        this.publish("chat", "chatReset", { by: nickname });
+        this.publish("social", "socialReset", { by: nickname });
+      }
+
+      addActivity(activity: UserActivity) {
+        this.activities.unshift(activity);
+        
+        if (this.activities.length > this.maxActivities) {
+          this.activities = this.activities.slice(0, this.maxActivities);
+        }
+        
+        this.publish("activity", "newActivity", activity);
+      }
+
+      updateLastActivity() {
+        this.lastActivityTime = this.now();
+        
+        // Schedule inactivity check
+        this.future(this.inactivityTimeout).checkInactivity();
+      }
+
+      checkInactivity() {
+        if (this.lastActivityTime !== this.now() - this.inactivityTimeout) {
+          return; // Activity occurred during timeout
+        }
+        
+        // Clear inactive session
+        this.handleClearInactive({ reason: 'inactivity' });
+      }
+
+      handleClearInactive(data) {
+        const { reason = 'inactivity' } = data;
+        
+        if (this.participants === 0) {
+          this.messages = [];
+          this.socialPosts = [];
+          this.activities = [];
+          
+          this.publish("system", "sessionCleared", { reason });
+        }
+      }
+
+      sendRecentDataToUser(viewId) {
+        // Send recent messages
+        const recentMessages = this.messages.slice(-50);
+        this.publish(viewId, "chat", "messageHistory", recentMessages);
+        
+        // Send recent posts
+        const recentPosts = this.socialPosts.slice(0, 20);
+        this.publish(viewId, "social", "postHistory", recentPosts);
+        
+        // Send recent activities
+        const recentActivities = this.activities.slice(0, 10);
+        this.publish(viewId, "activity", "activityHistory", recentActivities);
+      }
+
+      publishUserList() {
+        const userList = Array.from(this.users.values());
+        this.publish("users", "userListUpdated", {
+          users: userList,
+          onlineCount: this.participants,
+          totalCount: userList.length
+        });
+      }
+    };
+  }
+}
+
+export const createMonFarmChatModel = () => {
+  const monFarmChat = new MonFarmChatModel();
+  return monFarmChat.createModel();
+};

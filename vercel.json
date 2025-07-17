@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*": {
+      "memory": 512,
+      "maxDuration": 10
+    }
+  },
+  "buildCommand": "pnpm install && pnpm build",
+  "devCommand": null,
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/game-cycle",
+      "schedule": "0 0 * * *"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_DEMO_MODE": "false"
+  }
+} 
