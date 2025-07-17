@@ -92,14 +92,8 @@
     "postcss": "^8",
     "typescript": "^5"
   },
-  "resolutions": {
+  "overrides": {
     "@radix-ui/react-use-effect-event": "0.1.0",
     "@radix-ui/react-use-controllable-state": "1.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "@radix-ui/react-use-effect-event": "0.1.0",
-      "@radix-ui/react-use-controllable-state": "1.0.0"
-    }
   }
 }
