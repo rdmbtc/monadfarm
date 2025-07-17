@@ -21,7 +21,7 @@ import {
 import { AccessibilityMenu } from "./accessibility-menu";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AbstractLogo } from "@/components/abstract-logo";
+import { MonadLogo } from "@/components/abstract-logo";
 
 export interface NavbarProps {
   toggleSidebar: () => void;
