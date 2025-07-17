@@ -40,11 +40,11 @@ function ProfileContent() {
             {/* Profile Avatar & Stats */}
             <div className="md:w-1/3">
               <div className="bg-[#111] border border-[#333] p-6 text-center">
-                <div className="w-24 h-24 bg-[#222] border border-[#333] mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 bg-[#222] border border-[#333] mx-auto mb-4 flex items-center justify-center overflow-hidden p-3">
                   <img
-                    src="/images/mon.png"
-                    alt="Mon Avatar"
-                    className="w-full h-full object-cover"
+                    src="/images/logo mark/Monad Logo - Default - Logo Mark.png"
+                    alt="Monad Avatar"
+                    className="w-full h-full object-contain"
                   />
                 </div>
                 

@@ -99,7 +99,7 @@ export default function FriendSuggestions() {
                   <div className="flex items-center gap-3">
                     <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                       <Avatar>
-                        <AvatarImage src={friend.avatar || "/images/mon.png"} alt={friend.name} />
+                        <AvatarImage src={friend.avatar || "/images/logo mark/Monad Logo - Default - Logo Mark.png"} alt={friend.name} />
                         <AvatarFallback>{friend.name.substring(0, 2)}</AvatarFallback>
                       </Avatar>
                     </motion.div>

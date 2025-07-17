@@ -2,10 +2,10 @@
 
 import { AbstractWalletProvider } from "@/lib/wallet-adapters";
 
-// Define the Abstract Testnet chain object
+// Define the Abstract Testnet chain object (Monad compatible)
 const abstractTestnet = {
   id: 11124, // 0x2b74 in decimal
-  name: "Abstract Testnet",
+  name: "Abstract Testnet (Monad Compatible)",
   nativeCurrency: {
     name: "Abstract ETH",
     symbol: "ETH",

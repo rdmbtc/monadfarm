@@ -216,13 +216,13 @@ export const Sidebar = ({
         {/* Logo and game title */}
         <div className="p-4 border-b border-[#333] flex items-center justify-center">
           <div className="relative group">
-            <div className="w-12 h-12 rounded-none bg-black border border-[#333] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform overflow-hidden">
-              <img src="/images/mon.png" alt="Mon" className="w-full h-full object-cover" />
+            <div className="w-12 h-12 rounded-none bg-black border border-[#333] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform overflow-hidden p-2">
+              <img src="/images/logo mark/Monad Logo - Default - Logo Mark.png" alt="Monad" className="w-full h-full object-contain" />
             </div>
           </div>
           <div className="ml-3">
             <h1 className="font-bold text-xl text-white noot-title">MonFarm</h1>
-            <p className="text-xs text-white/60 noot-text">First Noot Noot Playground on Abstract</p>
+            <p className="text-xs text-white/60 noot-text">Powered by Monad Blockchain</p>
           </div>
         </div>
         

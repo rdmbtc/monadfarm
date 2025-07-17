@@ -25,12 +25,12 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 
-// Abstract Testnet constants
+// Monad Testnet constants (using Abstract for now until Monad mainnet)
 const ABSTRACT_CHAIN_ID = 11124;
-const ABSTRACT_CHAIN_NAME = "Abstract Testnet";
+const ABSTRACT_CHAIN_NAME = "Abstract Testnet (Monad Compatible)";
 const ABSTRACT_RPC_URL = "https://api.testnet.abs.xyz";
 const ABSTRACT_BLOCK_EXPLORER = "https://scan.testnet.abs.xyz";
-const ABSTRACT_CURRENCY_SYMBOL = "ABS"; 
+const ABSTRACT_CURRENCY_SYMBOL = "ABS";
 
 // NOOT Token Details
 const NOOT_TOKEN_ADDRESS = "0xBe4A56850cb822dD322190C15Bd2c66781007CBc"; 

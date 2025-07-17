@@ -65,10 +65,10 @@ export function Navbar({
             <Menu className="h-5 w-5" />
           </Button>
           
-          {/* Abstract Logo */}
+          {/* Monad Logo */}
           <div className="ml-2 md:ml-0 flex items-center gap-2">
-            <AbstractLogo />
-            <span className="hidden md:inline text-white font-mono text-sm noot-text">Abstract Testnet</span>
+            <MonadLogo />
+            <span className="hidden md:inline text-white font-mono text-sm noot-text">Powered by Monad</span>
           </div>
         </div>
         
