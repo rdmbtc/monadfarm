@@ -1,22 +1,18 @@
 {
   "version": 2,
-  "functions": {
-    "api/**/*": {
-      "memory": 512,
-      "maxDuration": 10
-    }
-  },
-  "buildCommand": "pnpm install && pnpm build",
-  "devCommand": null,
-  "installCommand": "pnpm install",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/cron/game-cycle",
-      "schedule": "0 0 * * *"
-    }
-  ],
   "env": {
-    "NEXT_PUBLIC_DEMO_MODE": "false"
+    "NEXT_PUBLIC_DEMO_MODE": "false",
+    "NEXT_PUBLIC_MULTISYNQ_API_KEY": "@multisynq_api_key",
+    "NEXT_PUBLIC_APP_ID": "com.monfarm.social",
+    "NEXT_PUBLIC_APP_NAME": "MonFarm Social Hub"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_MULTISYNQ_API_KEY": "@multisynq_api_key"
+    }
   }
-} 
+}
