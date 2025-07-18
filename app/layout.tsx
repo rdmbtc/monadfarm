@@ -4,6 +4,9 @@ import { Toaster } from "react-hot-toast"
 import { Inter } from "next/font/google"
 import { Providers } from "./providers"
 import Script from "next/script"
+import { MonFarmDevToolbar } from "../components/monfarm-dev-toolbar"
+import { StagewiseToolbar } from '@stagewise/toolbar-next'
+import "../lib/dev-utils" // Initialize development utilities
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -71,6 +74,50 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className={`${inter.className} bg-black text-white`} suppressHydrationWarning>
+        {/* Stagewise Toolbar for Development */}
+        <StagewiseToolbar
+          config={{
+            plugins: [], // Add custom plugins here
+            theme: 'dark', // Match MonFarm's dark theme
+            position: 'bottom-right',
+            branding: {
+              name: 'MonFarm Dev Tools',
+              logo: '/images/mon.png',
+            },
+            environment: {
+              name: 'Development',
+              color: '#8B5CF6', // Purple to match MonFarm theme
+            },
+            quickActions: [
+              {
+                name: 'Enhanced Social Hub',
+                url: '/enhanced-social-hub',
+                icon: '👥',
+              },
+              {
+                name: 'Amazing Social Hub',
+                url: '/amazing-social-hub',
+                icon: '🚀',
+              },
+              {
+                name: 'Multisynq Test',
+                url: '/multisynq-test',
+                icon: '🔧',
+              },
+              {
+                name: 'Farm Cases',
+                url: '/farm-cases',
+                icon: '📦',
+              },
+              {
+                name: 'Slot Machine',
+                url: '/slot-machine/app',
+                icon: '🎰',
+              },
+            ],
+          }}
+        />
+
         <Providers>
           {children}
         </Providers>
