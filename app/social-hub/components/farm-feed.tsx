@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Heart, MessageCircle, Share2, MoreHorizontal, Award } from "lucide-react"
+import { Heart, MessageCircle, Share2, MoreHorizontal, Award, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar } from "@/components/ui/avatar"
@@ -17,6 +17,7 @@ import { AnimatedCard } from "@/components/ui/animated-card"
 import { AnimatedBadge } from "@/components/ui/animated-badge"
 import { ShimmerButton } from "@/components/ui/shimmer-button"
 import { Confetti } from "@/components/ui/confetti"
+import { useMultisynq } from "@/hooks/useMultisynq"
 
 // Sample feed data
 const feedItems = [
@@ -24,7 +25,7 @@ const feedItems = [
     id: 1,
     user: {
       name: "CropMaster99",
-      avatar: "/images/mon.png",
+      avatar: "/images/nooter.png",
       level: 78,
       isPremium: true,
     },
@@ -40,7 +41,7 @@ const feedItems = [
     id: 2,
     user: {
       name: "FarmQueen",
-      avatar: "/images/mon.png",
+      avatar: "/images/nooter.png",
       level: 65,
       isPremium: false,
     },
@@ -77,11 +78,34 @@ export default function FarmFeed() {
   const [posts, setPosts] = useState(feedItems)
   const { toast } = useToast()
 
+  // Integrate Multisynq for real-time functionality
+  const {
+    isConnected,
+    isLoading,
+    error,
+    currentUser,
+    users,
+    onlineCount,
+    posts: multisynqPosts,
+    createPost,
+    likePost,
+    connect
+  } = useMultisynq({
+    autoConnect: true,
+    sessionName: 'monfarm-social-hub-feed'
+  })
+
   const handleLike = (postId: number) => {
     if (likedPosts.includes(postId)) {
       setLikedPosts(likedPosts.filter((id) => id !== postId))
     } else {
       setLikedPosts([...likedPosts, postId])
+
+      // Try to like via Multisynq if connected
+      if (isConnected && likePost) {
+        likePost(postId.toString())
+      }
+
       // Show confetti for the first like
       if (likedPosts.length === 0) {
         setShowConfetti(true)
@@ -96,37 +120,82 @@ export default function FarmFeed() {
     }
   }
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (postText.trim()) {
-      const newPost = {
-        id: Date.now(),
+      try {
+        // Use Multisynq createPost if connected, otherwise fallback to local
+        if (isConnected && createPost) {
+          createPost(postText.trim(), "", ["farm", "social"])
+        } else {
+          // Fallback to local posting
+          const newPost = {
+            id: Date.now(),
+            user: {
+              name: currentUser?.nickname || "FarmerJoe123",
+              avatar: "/images/nooter.png",
+              level: 42,
+              isPremium: false,
+            },
+            time: "Just now",
+            content: postText,
+            image: "",
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            isNew: true,
+          }
+          setPosts([newPost, ...posts])
+        }
+
+        setPostText("")
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 3000)
+
+        toast({
+          title: "Post shared!",
+          description: "Your farm update has been shared with the community!",
+          variant: "default",
+        })
+      } catch (error) {
+        console.error('Error creating post:', error)
+        toast({
+          title: "Error",
+          description: "Failed to share your post. Please try again.",
+          variant: "destructive"
+        })
+      }
+    }
+  }
+
+  // Merge Multisynq posts with local posts
+  useEffect(() => {
+    if (multisynqPosts && multisynqPosts.length > 0) {
+      // Convert Multisynq posts to local format
+      const convertedPosts = multisynqPosts.map(post => ({
+        id: parseInt(post.id) || Date.now(), // Convert string ID to number
         user: {
-          name: "FarmerJoe123",
+          name: post.nickname || post.userId,
           avatar: "/images/nooter.png",
           level: 42,
           isPremium: false,
         },
-        time: "Just now",
-        content: postText,
-        image: "",
-        likes: 0,
+        time: new Date(post.timestamp).toLocaleString(),
+        content: post.content,
+        image: post.media || "",
+        likes: post.likes || 0,
         comments: 0,
         shares: 0,
         isNew: true,
-      }
+      }))
 
-      setPosts([newPost, ...posts])
-      setPostText("")
-      setShowConfetti(true)
-      setTimeout(() => setShowConfetti(false), 3000)
-
-      toast({
-        title: "Post shared!",
-        description: "Your farm update has been shared with the community!",
-        variant: "default",
+      // Merge with existing local posts, avoiding duplicates
+      setPosts(prevPosts => {
+        const existingIds = new Set(prevPosts.map(p => p.id))
+        const newPosts = convertedPosts.filter(p => !existingIds.has(p.id))
+        return [...newPosts, ...prevPosts]
       })
     }
-  }
+  }, [multisynqPosts])
 
   // Mark posts as not new after they've been viewed
   useEffect(() => {
@@ -146,6 +215,25 @@ export default function FarmFeed() {
     <div className="space-y-6">
       {showConfetti && <Confetti />}
 
+      {/* Online Users Indicator */}
+      <AnimatedCard>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="h-4 w-4 text-green-500" />
+            <span>
+              {isConnected ? (
+                <>
+                  <span className="text-green-500 font-medium">{onlineCount}</span> farmers online
+                  {error && <span className="text-red-500 ml-2">• Connection issues</span>}
+                </>
+              ) : (
+                <span className="text-yellow-500">Connecting to farm community...</span>
+              )}
+            </span>
+          </div>
+        </CardContent>
+      </AnimatedCard>
+
       {/* Create Post */}
       <AnimatedCard>
         <CardHeader className="pb-3">
@@ -154,7 +242,7 @@ export default function FarmFeed() {
         <CardContent>
           <div className="flex gap-3">
             <Avatar>
-              <AvatarImage src="/images/mon.png" alt="Your avatar" />
+              <AvatarImage src="/images/nooter.png" alt="Your avatar" />
               <AvatarFallback>YA</AvatarFallback>
             </Avatar>
             <Textarea

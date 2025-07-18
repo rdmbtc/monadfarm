@@ -190,7 +190,7 @@ export function Farm() {
   // --- End Guide State ---
 
   // --- Restore Local Profile State & Loading ---
-  const [nickname, setNickname] = useState<string>("Nooter");
+  const [nickname, setNickname] = useState<string>("MONAD");
   const [bio, setBio] = useState<string>("I love farming!");
 
   useEffect(() => {
@@ -280,7 +280,7 @@ export function Farm() {
     console.log("All seeds:", seeds);
   }, [currentSeason, seeds]);
   
-  // Use the ActiveTab type here
+  // Use the ActiveTab type here - prevent hydration mismatch
   const [activeTab, setActiveTab] = useState<ActiveTab>("farm");
   const [showParticles, setShowParticles] = useState(false);
   const [harvestAnimation, setHarvestAnimation] = useState<{
@@ -294,11 +294,11 @@ export function Farm() {
   const [editNickname, setEditNickname] = useState(nickname);
   const [editBio, setEditBio] = useState(bio);
 
-  // State for Noot Gamble dropdown visibility
+  // State for Noot Gamble dropdown visibility - prevent hydration mismatch
   const [showNootGambleDropdown, setShowNootGambleDropdown] = useState(false);
   const gambleDropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
 
-  // State for Noot Farm dropdown visibility
+  // State for Noot Farm dropdown visibility - prevent hydration mismatch
   const [showNootFarmDropdown, setShowNootFarmDropdown] = useState(false);
   const farmDropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
 
@@ -1975,6 +1975,9 @@ export function Farm() {
   useEffect(() => {
     // This runs only on the client, after hydration
     setIsClient(true);
+    // Reset dropdown states to prevent hydration mismatches
+    setShowNootFarmDropdown(false);
+    setShowNootGambleDropdown(false);
   }, []);
   
   // Add client-side state for player level to prevent hydration mismatch
@@ -2092,7 +2095,7 @@ export function Farm() {
   {showProfileGuide && (
     <GuideModal
       imagePath="/images/guide/profile.jpg"
-      title="Your Nooter Profile"
+      title="Your MonFarm Profile"
       content={<EnhancedGuideContent guideType="profile" imagePath="/images/guide/profile.jpg" />}
       onClose={handleCloseProfileGuide}
       isMonPro={isMonPro}
@@ -2190,7 +2193,7 @@ export function Farm() {
               <div className="w-8 h-8 border border-[#333] overflow-hidden">
                 <img src="/images/mon.png" alt="Mon" className="w-full h-full object-cover" />
               </div>
-              <h1 className="text-xl font-bold text-white noot-title">Nooter's Farm</h1>
+              <h1 className="text-xl font-bold text-white noot-title">MonFarm</h1>
             </div>
             
             <div className="flex items-center gap-2">
@@ -2260,10 +2263,10 @@ export function Farm() {
               } transition-all duration-200`}
             >
               <Sprout className="h-3 w-3 sm:h-4 sm:w-4" />
-              Noot Farm
+              Mon Farm
               <ChevronDown className={`h-3 w-3 transition-transform ${showNootFarmDropdown ? 'rotate-180' : ''}`} />
             </button>
-            {showNootFarmDropdown && (
+            {isClient && showNootFarmDropdown && (
               <div className="absolute top-full left-0 mt-1 w-48 bg-[#111] border border-[#333] shadow-lg z-20">
                 {/* Farm Button */}
                 <button 
@@ -2402,10 +2405,10 @@ export function Farm() {
               } transition-all duration-200`}
             >
               <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
-              Noot Gamble
+              Mon Gamble
               <ChevronDown className={`h-3 w-3 transition-transform ${showNootGambleDropdown ? 'rotate-180' : ''}`} />
             </button>
-            {showNootGambleDropdown && (
+            {isClient && showNootGambleDropdown && (
               <div className="absolute top-full left-0 mt-1 w-48 bg-[#111] border border-[#333] shadow-lg z-20">
                 {/* Crashout Button */}
                 <button 
@@ -2442,7 +2445,7 @@ export function Farm() {
                   className={`w-full text-left px-3 py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-white/80 hover:bg-[#222] hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-200`}
                 >
                   <Leaf className="h-3 w-3 sm:h-4 sm:w-4" />
-                  Noot Case
+                  Mon Case
                 </button>
                 {/* Sport Betting Button */}
                 <button
@@ -2477,7 +2480,7 @@ export function Farm() {
               } transition-all duration-200`}
             >
               <Gamepad2 className="h-3 w-3 sm:h-4 sm:w-4" />
-              Noot Games
+              Mon Games
               <ChevronDown className={`h-3 w-3 transition-transform ${showNootGamesDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showNootGamesDropdown && (
@@ -3331,7 +3334,7 @@ export function Farm() {
                   Token Swap
                 </h2>
                 <p className="text-white/60 text-sm noot-text">
-                  Swap your Farm Coins for $NOOT tokens
+                  Swap your Farm Coins for $MON tokens
                 </p>
               </div>
               <div className="p-4">
@@ -3958,7 +3961,7 @@ export function Farm() {
         {/* Remove key={`footer-${profileVersion}`} */}
         <div className="container mx-auto flex justify-between items-center">
           <div className="text-sm text-white/60">
-            Nooter's Farm - First Noot Noot Playground on Abstract
+            MonFarm - First Monad farming Playground on Monad Testnet
           </div>
           
           <div className="flex items-center gap-2">
@@ -3991,7 +3994,7 @@ export function Farm() {
       {showFarmGuide && (
         <GuideModal
           imagePath="/images/guide/farm.jpg"
-          title="Welcome to Nooter's Farm!"
+          title="Welcome to MonFarm!"
           content={<EnhancedGuideContent guideType="farm" imagePath="/images/guide/farm.jpg" />}
           onClose={handleCloseGuide}
           isMonPro={isMonPro}
@@ -4014,7 +4017,7 @@ export function Farm() {
       {showProfileGuide && (
         <GuideModal
           imagePath="/images/guide/profile.jpg"
-          title="Your Nooter Profile"
+          title="Your MonFarm Profile"
           content={<EnhancedGuideContent guideType="profile" imagePath="/images/guide/profile.jpg" />}
           onClose={handleCloseProfileGuide}
           isMonPro={isMonPro}
