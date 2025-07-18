@@ -2188,7 +2188,7 @@ export function Farm() {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 border border-[#333] overflow-hidden">
-                <img src="/images/nooter.png" alt="Nooter" className="w-full h-full object-cover" />
+                <img src="/images/mon.png" alt="Mon" className="w-full h-full object-cover" />
               </div>
               <h1 className="text-xl font-bold text-white noot-title">Nooter's Farm</h1>
             </div>

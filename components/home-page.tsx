@@ -41,9 +41,9 @@ function ProfileContent() {
             <div className="md:w-1/3">
               <div className="bg-[#111] border border-[#333] p-6 text-center">
                 <div className="w-24 h-24 bg-[#222] border border-[#333] mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                  <img 
-                    src="/images/nooter.png" 
-                    alt="Nooter Avatar" 
+                  <img
+                    src="/images/mon.png"
+                    alt="Mon Avatar"
                     className="w-full h-full object-cover"
                   />
                 </div>

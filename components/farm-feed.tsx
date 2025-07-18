@@ -7,15 +7,11 @@ import { Textarea } from "./ui/textarea"
 import { Avatar } from "./ui/avatar"
 import { AvatarImage } from "./ui/avatar"
 import { AvatarFallback } from "./ui/avatar"
-import { CardContent } from "./ui/card"
-import { CardFooter } from "./ui/card"
-import { CardHeader } from "./ui/card"
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { useToast } from "../hooks/use-toast"
-import { AnimatedCard } from "./ui/animated-card"
 import { AnimatedBadge } from "./ui/animated-badge"
-import { ShimmerButton } from "./ui/shimmer-button"
 import { Confetti } from "./ui/confetti"
 
 // Sample feed data
@@ -123,7 +119,6 @@ export default function FarmFeed() {
       toast({
         title: "Post shared!",
         description: "Your farm update has been shared with the community!",
-        variant: "success",
       })
     }
   }
@@ -185,7 +180,7 @@ export default function FarmFeed() {
       </div>
 
       {/* Feed Items */}
-      {posts.map((item, index) => (
+      {posts.map((item) => (
         <div key={item.id} className="bg-[#171717] border border-[#333] overflow-hidden rounded-none shadow-md">
           <div className="border-b border-[#333] p-4">
             <div className="flex justify-between items-center">

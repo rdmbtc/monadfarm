@@ -15,7 +15,7 @@ export function SocialFeed() {
       id: 1,
       author: {
         name: "NootExplorer",
-        avatar: "/images/nooter.png",
+        avatar: "/images/mon.png",
         verified: true,
       },
       content: "Just completed the Ancient Ruins quest! Found some rare artifacts and earned 500 XP. Who wants to join me for the Forest Expedition next?",
@@ -31,7 +31,7 @@ export function SocialFeed() {
       id: 2,
       author: {
         name: "NootMaster99",
-        avatar: "/images/nooter.png",
+        avatar: "/images/mon.png",
         verified: false,
       },
       content: "Trading rare items at the marketplace tomorrow. Looking for enchanted boots and magical scrolls. I have plenty of healing potions to offer!",
@@ -47,7 +47,7 @@ export function SocialFeed() {
       id: 3,
       author: {
         name: "AdventureNoot",
-        avatar: "/images/nooter.png",
+        avatar: "/images/mon.png",
         verified: true,
       },
       content: "Reached level 50 today! The journey has been incredible. Thanks to everyone who helped along the way. Special shoutout to the Noot Guild!",

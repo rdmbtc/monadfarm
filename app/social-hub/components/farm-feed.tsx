@@ -24,7 +24,7 @@ const feedItems = [
     id: 1,
     user: {
       name: "CropMaster99",
-      avatar: "/images/nooter.png",
+      avatar: "/images/mon.png",
       level: 78,
       isPremium: true,
     },
@@ -40,7 +40,7 @@ const feedItems = [
     id: 2,
     user: {
       name: "FarmQueen",
-      avatar: "/images/nooter.png",
+      avatar: "/images/mon.png",
       level: 65,
       isPremium: false,
     },
@@ -154,7 +154,7 @@ export default function FarmFeed() {
         <CardContent>
           <div className="flex gap-3">
             <Avatar>
-              <AvatarImage src="/images/nooter.png" alt="Your avatar" />
+              <AvatarImage src="/images/mon.png" alt="Your avatar" />
               <AvatarFallback>YA</AvatarFallback>
             </Avatar>
             <Textarea
