@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useEffect } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import { GameProvider } from "@/context/game-context"
 import { GuideProvider } from "@/context/guide-context"
 import { PrivyProvider } from '@privy-io/react-auth'
@@ -32,13 +32,26 @@ const monadTestnet = defineChain({
 })
 
 export function Providers({ children }: { children: ReactNode }) {
+  const [isClient, setIsClient] = useState(false)
+
   // Add debug logging for context initialization
   useEffect(() => {
+    setIsClient(true)
     console.log("[Providers] Client-side providers initialized");
   }, []);
 
-  // Always provide the context providers, even during SSR
-  // This prevents "hook called outside of provider" errors during static generation
+  // During SSR, only provide basic context providers that don't access browser APIs
+  if (!isClient) {
+    return (
+      <GameProvider>
+        <GuideProvider>
+          {children}
+        </GuideProvider>
+      </GameProvider>
+    )
+  }
+
+  // On client side, provide all providers including those that need browser APIs
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
