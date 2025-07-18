@@ -724,53 +724,53 @@ body {
   rounded-full flex items-center justify-center;
 }
 
-/* Add Noot-inspired theme at the end of the file */
+/* Add Mon-inspired theme at the end of the file */
 
-/* Noot theme elements */
+/* Mon theme elements */
 :root {
-  --noot-bg: #000000;
-  --noot-text: #ffffff;
-  --noot-accent: #222222;
-  --noot-highlight: #ffffff;
-  --noot-muted: #666666;
-  --noot-border: #333333;
+  --mon-bg: #000000;
+  --mon-text: #ffffff;
+  --mon-accent: #222222;
+  --mon-highlight: #ffffff;
+  --mon-muted: #666666;
+  --mon-border: #333333;
 }
 
-.noot-theme {
+.mon-theme {
   background-color: #000000;
-  color: var(--noot-text);
+  color: var(--mon-text);
   font-family: 'Space Mono', monospace;
   min-height: 100vh;
 }
 
-.noot-theme h1,
-.noot-theme h2,
-.noot-theme h3,
-.noot-theme h4,
-.noot-theme button,
-.noot-theme .noot-header,
-.noot-theme .noot-subheader {
+.mon-theme h1,
+.mon-theme h2,
+.mon-theme h3,
+.mon-theme h4,
+.mon-theme button,
+.mon-theme .mon-header,
+.mon-theme .mon-subheader {
   font-family: 'Space Mono', monospace;
   letter-spacing: -0.03em;
 }
 
-/* Akaya Kanadaka headers for noot theme */
-.noot-theme .akaya-header {
+/* Akaya Kanadaka headers for mon theme */
+.mon-theme .akaya-header {
   font-family: var(--font-akaya);
   letter-spacing: 0.02em;
 }
 
 .noot-card {
   background-color: #111111;
-  border: 2px solid var(--noot-border);
+  border: 2px solid var(--mon-border);
   border-radius: 0;
   overflow: hidden;
 }
 
 .noot-button {
   background-color: #000000;
-  color: var(--noot-text);
-  border: 2px solid var(--noot-border);
+  color: var(--mon-text);
+  border: 2px solid var(--mon-border);
   border-radius: 0;
   padding: 0.5rem 1rem;
   font-weight: 600;
@@ -778,15 +778,15 @@ body {
 }
 
 .noot-button:hover {
-  background-color: var(--noot-accent);
-  color: var(--noot-text);
-  border-color: var(--noot-highlight);
+  background-color: var(--mon-accent);
+  color: var(--mon-text);
+  border-color: var(--mon-highlight);
 }
 
 .noot-input {
-  background-color: var(--noot-accent);
-  color: var(--noot-text);
-  border: 1px solid var(--noot-border);
+  background-color: var(--mon-accent);
+  color: var(--mon-text);
+  border: 1px solid var(--mon-border);
   border-radius: 0;
   padding: 0.5rem;
 }
@@ -938,12 +938,12 @@ body {
   text-align: center;
 }
 
-/* Add noot font class */
+/* Add mon font class */
 .noot-font {
   font-family: 'Space Mono', monospace;
 }
 
-/* Additional noot typography styling */
+/* Additional mon typography styling */
 .noot-title {
   font-family: 'Space Mono', monospace;
   font-weight: 700;

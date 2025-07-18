@@ -2,12 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-interface NootIoWrapperProps {
+interface MonIoWrapperProps {
   farmCoins: number;
   addFarmCoins: (amount: number) => void;
 }
 
-const NootIoWrapper: React.FC<NootIoWrapperProps> = ({ farmCoins, addFarmCoins }) => {
+const MonIoWrapper: React.FC<MonIoWrapperProps> = ({ farmCoins, addFarmCoins }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isInitialRender = useRef(true);
   const [gameMode, setGameMode] = useState<'offline' | 'online' | null>(null);
@@ -108,10 +108,10 @@ const NootIoWrapper: React.FC<NootIoWrapperProps> = ({ farmCoins, addFarmCoins }
       
       <iframe
         ref={iframeRef}
-        src="/noot-io/client/index.html"
+        src="/mon-io/client/index.html"
         className="w-full h-full border-none"
         style={{ flex: 1, minHeight: '600px', position: 'relative', zIndex: 10 }}
-        title="Noot.io Game"
+        title="Mon.io Game"
         allowFullScreen
         sandbox="allow-scripts allow-same-origin"
         onLoad={handleIframeLoad}
@@ -127,4 +127,4 @@ const NootIoWrapper: React.FC<NootIoWrapperProps> = ({ farmCoins, addFarmCoins }
   );
 };
 
-export default NootIoWrapper; 
+export default MonIoWrapper;

@@ -100,7 +100,7 @@ export default function GuidePage() {
               Return to Farm
             </Button>
           </Link>
-          <h1 className="text-2xl font-fantasy text-white noot-title">Nooter's Farm Guide</h1>
+          <h1 className="text-2xl font-fantasy text-white noot-title">MonFarm Guide</h1>
         </div>
 
         {/* Main content - use dark card style */}
@@ -108,7 +108,7 @@ export default function GuidePage() {
           <div className="flex flex-wrap items-center gap-4 mb-6 border-b border-gray-700 pb-4">
             <BookOpen className="w-8 h-8 text-white" />
             <h2 className="font-fantasy text-xl text-white noot-title">
-              🌾 Welcome to Nooter's Farm! 🚜
+              🌾 Welcome to MonFarm! 🚜
             </h2>
           </div>
 
@@ -168,7 +168,7 @@ export default function GuidePage() {
               🌱 1. Farming Basics & Strategy
             </h3>
             <div className="bg-gray-900/50 p-4 rounded-lg mb-4 border border-gray-700">
-              <p className="mb-3 text-gray-300">Farming is the core of Nooter's Farm. Here's the cycle:</p>
+              <p className="mb-3 text-gray-300">Farming is the core of MonFarm. Here's the cycle:</p>
               <ol className="list-decimal list-inside space-y-2 mb-3 text-gray-300">
                 <li><span className="font-medium text-white">Buy Seeds:</span> Purchase seeds from the Market tab.</li>
                 <li><span className="font-medium text-white">Select & Plant:</span> Choose a seed from the 'Seed Selector' panel and click an empty plot on your farm. Coins are deducted upon planting.</li>
@@ -539,11 +539,11 @@ export default function GuidePage() {
                     <p className="text-sm text-gray-300">Bet on virtual farmyard sports events. Predict winners correctly to multiply your wager. Different events offer varying odds and potential payouts.</p>
                  </div>
                  <div className="bg-gray-800/60 p-3 rounded-md border border-gray-700">
-                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Star className="inline h-4 w-4 mr-1 text-white"/> Noot Case</h4>
+                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Star className="inline h-4 w-4 mr-1 text-white"/> Mon Case</h4>
                     <p className="text-sm text-gray-300">Open special cases containing random rewards. Each case has different tiers of possible items and coin amounts. Higher-tier cases cost more but offer better rewards.</p>
                  </div>
                  <div className="bg-gray-800/60 p-3 rounded-md border border-gray-700">
-                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Users className="inline h-4 w-4 mr-1 text-white"/> Noot.io</h4>
+                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Users className="inline h-4 w-4 mr-1 text-white"/> Mon.io</h4>
                     <p className="text-sm text-gray-300">A multiplayer arena where you control your farmer character. Grow by collecting resources and outsmarting other players. Earn rewards based on your final size and survival time.</p>
                  </div>
                </div>
@@ -563,14 +563,14 @@ export default function GuidePage() {
                🔄 10. Token Swap
             </h3>
             <div className="bg-gray-900/50 p-4 rounded-lg mb-4 border border-gray-700 text-gray-300">
-               <p className="mb-3">Convert your hard-earned Farm Coins into $NOOT tokens:</p>
+               <p className="mb-3">Convert your hard-earned Farm Coins into $MON tokens:</p>
                 <ul className="list-disc list-inside space-y-2 mb-3">
                   <li>Navigate to the 'Swap' tab.</li>
                   <li>Enter the amount of Farm Coins <Coins className="inline h-4 w-4 text-white"/> you wish to swap.</li>
-                  <li>See the estimated amount of $NOOT you will receive (exchange rate may apply).</li>
+                  <li>See the estimated amount of $MON you will receive (exchange rate may apply).</li>
                   <li>Connect your wallet and confirm the transaction.</li>
                 </ul>
-                 <p className="mt-4 text-sm italic text-gray-500">This feature connects the in-game economy to the broader $NOOT ecosystem.</p>
+                 <p className="mt-4 text-sm italic text-gray-500">This feature connects the in-game economy to the broader $MON ecosystem.</p>
             </div>
           </section>
 

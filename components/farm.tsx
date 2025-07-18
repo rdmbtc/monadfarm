@@ -2187,8 +2187,8 @@ export function Farm() {
         <div className="container mx-auto py-3 px-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 border border-[#333] overflow-hidden p-1">
-                <img src="/images/logo mark/Monad Logo - Default - Logo Mark.png" alt="Monad" className="w-full h-full object-contain" />
+              <div className="w-8 h-8 border border-[#333] overflow-hidden">
+                <img src="/images/monad-logo.png" alt="MonFarm" className="w-full h-full object-cover" />
               </div>
               <h1 className="text-xl font-bold text-white noot-title">MonFarm</h1>
             </div>
@@ -3331,7 +3331,7 @@ export function Farm() {
                   Token Swap
                 </h2>
                 <p className="text-white/60 text-sm noot-text">
-                  Swap your Farm Coins for $NOOT tokens
+                  Swap your Farm Coins for $MON tokens
                 </p>
               </div>
               <div className="p-4">
