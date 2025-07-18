@@ -30,16 +30,86 @@ export function SocialHubPage({
   playerLevel = 42
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
+  const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [walletAddress, setWalletAddress] = useState("")
+  const [userNickname, setUserNickname] = useState(nickname)
+  const [showNicknameSetup, setShowNicknameSetup] = useState(false)
+  const [activeTab, setActiveTab] = useState<'combined' | 'feed' | 'chat'>('combined')
   const { toast } = useToast()
 
-  // Show daily reward popup after a short delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowDailyReward(true)
-    }, 3000)
+  // React Together integration
+  const {
+    isConnected: isReactTogetherConnected,
+    currentUser,
+    users,
+    onlineCount,
+    setNickname: setReactTogetherNickname
+  } = useReactTogether({
+    chatKey: 'monfarm-social-hub'
+  })
 
-    return () => clearTimeout(timer)
-  }, [])
+  // Handle wallet connection
+  const handleWalletConnected = (address: string) => {
+    setIsWalletConnected(true)
+    setWalletAddress(address)
+
+    // Show nickname setup if user doesn't have one set
+    if (!userNickname || userNickname === "FarmerJoe123") {
+      setShowNicknameSetup(true)
+    } else {
+      // Set nickname in React Together
+      setReactTogetherNickname(userNickname)
+
+      toast({
+        title: "Welcome back to Social Hub!",
+        description: "Your wallet is connected. You can now interact with other farmers!",
+      })
+    }
+  }
+
+  // Handle wallet disconnection
+  const handleWalletDisconnected = () => {
+    setIsWalletConnected(false)
+    setWalletAddress("")
+  }
+
+  // Handle nickname setup
+  const handleNicknameSet = (newNickname: string) => {
+    setUserNickname(newNickname)
+    setShowNicknameSetup(false)
+
+    // Set nickname in React Together
+    setReactTogetherNickname(newNickname)
+
+    toast({
+      title: "Welcome to Social Hub!",
+      description: `Your wallet is connected and you're ready to interact with other farmers!`,
+    })
+  }
+
+  // Handle nickname setup skip
+  const handleNicknameSkip = () => {
+    setShowNicknameSetup(false)
+
+    // Set default nickname in React Together
+    setReactTogetherNickname(userNickname)
+
+    toast({
+      title: "Welcome to Social Hub!",
+      description: "You can set your nickname later in profile settings.",
+    })
+  }
+
+  // Show daily reward popup after a short delay (only if wallet connected)
+  useEffect(() => {
+    if (isWalletConnected) {
+      const timer = setTimeout(() => {
+        setShowDailyReward(true)
+      }, 3000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [isWalletConnected])
 
   const handleClaimDailyReward = () => {
     // Add coins when claiming reward
@@ -189,26 +259,14 @@ export function SocialHubPage({
               <EventsCarousel />
             </motion.div>
 
-            <ReactTogetherSocialFeed sessionName="monfarm-social-hub" />
-                  </motion.div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="feed" className="space-y-6">
-                <ReactTogetherSocialFeed sessionName="monfarm-social-hub" showUserPresence={true} />
-              </TabsContent>
-
-              <TabsContent value="chat" className="space-y-6">
-                <ReactTogetherChat sessionName="monfarm-social-hub" />
-              </TabsContent>
-            </Tabs>
+            <SocialFeed />
           </motion.div>
-        )}
+        </motion.div>
       </main>
 
       {/* Footer */}
       <footer className="mt-8 py-4 px-4 border-t border-[#333] bg-[#111] text-white/60 text-center text-sm">
-        <p>© {new Date().getFullYear()} MonFarm Social Hub - Powered by Monad Testnet & Privy</p>
+        <p>© {new Date().getFullYear()} Noot Quest - All rights reserved</p>
       </footer>
     </div>
   )
