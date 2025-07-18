@@ -37,7 +37,11 @@ export function createSimpleModel() {
     throw new Error('Multisynq not loaded');
   }
 
-  class MonFarmModel extends window.Multisynq.Model {
+  // Create a properly named model class
+  const MonFarmModel = class extends window.Multisynq.Model {
+    static get modelName() {
+      return 'MonFarmModel';
+    }
     init() {
       console.log('MonFarmModel.init() called');
       
@@ -137,6 +141,25 @@ export function createSimpleModel() {
     }
   }
 
+  // Explicitly set the class name for Multisynq registration
+  Object.defineProperty(MonFarmModel, 'name', {
+    value: 'MonFarmModel',
+    configurable: false
+  });
+
+  // Register the model class with Multisynq
+  try {
+    if (MonFarmModel.register && typeof MonFarmModel.register === 'function') {
+      MonFarmModel.register('MonFarmModel');
+      console.log('MonFarmModel registered successfully');
+    } else if (window.Multisynq.Model.register) {
+      window.Multisynq.Model.register('MonFarmModel', MonFarmModel);
+      console.log('MonFarmModel registered via Multisynq.Model.register');
+    }
+  } catch (error) {
+    console.warn('Model registration failed, but continuing:', error);
+  }
+
   return MonFarmModel;
 }
 
@@ -146,7 +169,11 @@ export function createSimpleView(callbacks: any = {}) {
     throw new Error('Multisynq not loaded');
   }
 
-  class MonFarmView extends window.Multisynq.View {
+  // Create a properly named view class
+  const MonFarmView = class extends window.Multisynq.View {
+    static get viewName() {
+      return 'MonFarmView';
+    }
     constructor(model: any) {
       super(model);
       console.log('MonFarmView constructor called');
@@ -226,6 +253,25 @@ export function createSimpleView(callbacks: any = {}) {
     isCurrentUser(userId: string) {
       return userId === this.viewId;
     }
+  }
+
+  // Explicitly set the class name for Multisynq registration
+  Object.defineProperty(MonFarmView, 'name', {
+    value: 'MonFarmView',
+    configurable: false
+  });
+
+  // Register the view class with Multisynq if needed
+  try {
+    if (MonFarmView.register && typeof MonFarmView.register === 'function') {
+      MonFarmView.register('MonFarmView');
+      console.log('MonFarmView registered successfully');
+    } else if (window.Multisynq.View && window.Multisynq.View.register) {
+      window.Multisynq.View.register('MonFarmView', MonFarmView);
+      console.log('MonFarmView registered via Multisynq.View.register');
+    }
+  } catch (error) {
+    console.warn('View registration failed, but continuing:', error);
   }
 
   return MonFarmView;

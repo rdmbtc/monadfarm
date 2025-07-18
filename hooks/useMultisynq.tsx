@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { multisynqService, getMultisynqConfig } from '../services/multisynq-service';
+import { multisynqService, getMultisynqConfig, validateMultisynqConfig, logConfigurationStatus } from '../services/multisynq-service';
 import { createSimpleModel, createSimpleView } from '../lib/multisynq-simple-classes';
 import type { ChatMessage, MultisynqUser, MultisynqSession } from '../services/multisynq-service';
 import type { SocialPost, UserActivity } from '../lib/multisynq-simple-classes';
@@ -81,10 +81,22 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
     const initializeMultisynq = async () => {
       try {
         setIsLoading(true);
+
+        // Validate configuration first
+        const validation = validateMultisynqConfig();
+        if (!validation.isValid) {
+          const errorMessage = [
+            'Multisynq configuration is invalid:',
+            ...validation.errors
+          ].join('\n- ');
+          throw new Error(errorMessage);
+        }
+
         const config = getMultisynqConfig();
-        
-        if (!config.apiKey) {
-          throw new Error('Multisynq API key not found. Please check your .env file.');
+
+        // Log configuration status in development
+        if (config.debug) {
+          logConfigurationStatus();
         }
         
         await multisynqService.initialize(config);
@@ -268,34 +280,99 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
     multisynqService.disconnect();
   }, []);
   
-  // Action methods
+  // Action methods with error handling
   const sendMessage = useCallback((text: string, type: string = 'text') => {
-    if (viewRef.current && isConnected) {
-      viewRef.current.sendMessage(text, type);
+    try {
+      if (!isConnected) {
+        throw new Error('Not connected to session');
+      }
+      if (!viewRef.current) {
+        throw new Error('View not available');
+      }
+      if (!text?.trim()) {
+        throw new Error('Message cannot be empty');
+      }
+
+      viewRef.current.sendMessage(text.trim(), type);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setError(`Failed to send message: ${error.message}`);
     }
   }, [isConnected]);
-  
+
   const setNickname = useCallback((nickname: string) => {
-    if (viewRef.current && isConnected) {
-      viewRef.current.setNickname(nickname);
+    try {
+      if (!isConnected) {
+        throw new Error('Not connected to session');
+      }
+      if (!viewRef.current) {
+        throw new Error('View not available');
+      }
+      if (!nickname?.trim()) {
+        throw new Error('Nickname cannot be empty');
+      }
+
+      viewRef.current.setNickname(nickname.trim());
+    } catch (error) {
+      console.error('Error setting nickname:', error);
+      setError(`Failed to set nickname: ${error.message}`);
     }
   }, [isConnected]);
-  
+
   const createPost = useCallback((content: string, media?: string, tags: string[] = []) => {
-    if (viewRef.current && isConnected) {
-      viewRef.current.createPost(content, media, tags);
+    try {
+      if (!isConnected) {
+        throw new Error('Not connected to session');
+      }
+      if (!viewRef.current) {
+        throw new Error('View not available');
+      }
+      if (!content?.trim()) {
+        throw new Error('Post content cannot be empty');
+      }
+
+      viewRef.current.createPost(content.trim(), media, tags);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      setError(`Failed to create post: ${error.message}`);
     }
   }, [isConnected]);
-  
+
   const likePost = useCallback((postId: string) => {
-    if (viewRef.current && isConnected) {
+    try {
+      if (!isConnected) {
+        throw new Error('Not connected to session');
+      }
+      if (!viewRef.current) {
+        throw new Error('View not available');
+      }
+      if (!postId?.trim()) {
+        throw new Error('Post ID cannot be empty');
+      }
+
       viewRef.current.likePost(postId);
+    } catch (error) {
+      console.error('Error liking post:', error);
+      setError(`Failed to like post: ${error.message}`);
     }
   }, [isConnected]);
-  
+
   const savePost = useCallback((postId: string) => {
-    if (viewRef.current && isConnected) {
+    try {
+      if (!isConnected) {
+        throw new Error('Not connected to session');
+      }
+      if (!viewRef.current) {
+        throw new Error('View not available');
+      }
+      if (!postId?.trim()) {
+        throw new Error('Post ID cannot be empty');
+      }
+
       viewRef.current.savePost(postId);
+    } catch (error) {
+      console.error('Error saving post:', error);
+      setError(`Failed to save post: ${error.message}`);
     }
   }, [isConnected]);
   

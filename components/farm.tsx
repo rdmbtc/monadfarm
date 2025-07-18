@@ -3945,7 +3945,7 @@ export function Farm() {
         {activeTab === "noot-io" && (
           <div className="animate-fadeIn">
             <h2 className="text-xl font-semibold text-white border-b border-white/10 pb-2 mb-4 flex items-center">
-              <CircleDollarSign className="h-5 w-5 mr-2 text-cyan-400"/> Noot.io
+              <CircleDollarSign className="h-5 w-5 mr-2 text-cyan-400"/> Mon.io
             </h2>
             <div className="noot-card p-1 overflow-hidden">
               <MonIoWrapper farmCoins={farmCoins} addFarmCoins={addFarmCoins} />
