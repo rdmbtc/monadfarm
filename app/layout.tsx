@@ -4,9 +4,6 @@ import { Toaster } from "react-hot-toast"
 import { Inter } from "next/font/google"
 import { Providers } from "./providers"
 import Script from "next/script"
-import { MonFarmDevToolbar } from "../components/monfarm-dev-toolbar"
-import { StagewiseToolbar } from '@stagewise/toolbar-next'
-import "../lib/dev-utils" // Initialize development utilities
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -74,18 +71,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className={`${inter.className} bg-black text-white`} suppressHydrationWarning>
-        {/* Stagewise Toolbar for Development */}
+        {/* Stagewise Toolbar for Development & Production Testing */}
         <StagewiseToolbar
           config={{
             plugins: [], // Add custom plugins here
             theme: 'dark', // Match MonFarm's dark theme
             position: 'bottom-right',
+            showInProduction: true, // Enable in production for Vercel testing
             branding: {
               name: 'MonFarm Dev Tools',
               logo: '/images/mon.png',
             },
             environment: {
-              name: 'Development',
+              name: process.env.NODE_ENV === 'production' ? 'Production (Vercel)' : 'Development',
               color: '#8B5CF6', // Purple to match MonFarm theme
             },
             quickActions: [
@@ -113,6 +111,43 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 name: 'Slot Machine',
                 url: '/slot-machine/app',
                 icon: '🎰',
+              },
+              {
+                name: 'Sport Betting',
+                url: '/sport-betting/app',
+                icon: '⚽',
+              },
+              {
+                name: 'Social Hub',
+                url: '/social-hub/app',
+                icon: '🌐',
+              },
+            ],
+            tools: [
+              {
+                name: 'Reload Page',
+                action: () => window.location.reload(),
+                icon: '🔄',
+              },
+              {
+                name: 'Clear Storage',
+                action: () => {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.reload();
+                },
+                icon: '🧹',
+              },
+              {
+                name: 'Console Info',
+                action: () => {
+                  console.log('🚀 MonFarm App Info:', {
+                    url: window.location.href,
+                    environment: process.env.NODE_ENV,
+                    timestamp: new Date().toISOString(),
+                  });
+                },
+                icon: '📝',
               },
             ],
           }}
@@ -168,6 +203,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             border: '1px solid #333',
           }
         }} />
+
+        {/* MonFarm Custom Development Toolbar */}
+        <MonFarmDevToolbar />
       </body>
     </html>
   )
