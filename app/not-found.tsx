@@ -5,11 +5,14 @@ import Link from 'next/link';
 
 export default function NotFound() {
   useEffect(() => {
-    // Check if we're trying to access the case simulator
-    const path = window.location.pathname;
-    if (path.includes('/case-simulator')) {
-      // If it's a case simulator page, redirect to the main simulator page
-      window.location.href = '/case-simulator';
+    // Only run on client side to avoid SSR issues
+    if (typeof window !== 'undefined') {
+      // Check if we're trying to access the case simulator
+      const path = window.location.pathname;
+      if (path.includes('/case-simulator')) {
+        // If it's a case simulator page, redirect to the main simulator page
+        window.location.href = '/case-simulator';
+      }
     }
   }, []);
 

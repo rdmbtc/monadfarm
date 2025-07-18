@@ -214,13 +214,18 @@ export class MultisynqService {
       return '';
     }
 
+    // Only access window.location on client side
+    if (typeof window === 'undefined') {
+      return '';
+    }
+
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams();
     params.set('session', currentSession.name);
     if (currentSession.password) {
       params.set('password', currentSession.password);
     }
-    
+
     return `${baseUrl}?${params.toString()}`;
   }
 
@@ -260,5 +265,9 @@ export class MultisynqService {
 // Export singleton instance
 export const multisynqService = MultisynqService.getInstance();
 
-// Export configuration from the new config module
-export { getMultisynqConfig, validateMultisynqConfig, isMultisynqConfigured, logConfigurationStatus } from '../lib/multisynq-config';
+// Export default configuration
+export const getMultisynqConfig = (): MultisynqConfig => ({
+  apiKey: process.env.NEXT_PUBLIC_MULTISYNQ_API_KEY || '',
+  appId: process.env.NEXT_PUBLIC_APP_ID || 'com.monfarm.social',
+  appName: process.env.NEXT_PUBLIC_APP_NAME || 'MonFarm Social Hub',
+});

@@ -56,14 +56,40 @@ export interface UseReactTogetherReturn {
 
 export function useReactTogether(options: UseReactTogetherOptions = {}): UseReactTogetherReturn {
   const { chatKey = 'monfarm-chat' } = options
-  
-  // Core React Together hooks
+  const [isClient, setIsClient] = useState(false)
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Default values for SSR
+  const defaultReturn: UseReactTogetherReturn = {
+    isConnected: false,
+    currentUser: null,
+    users: [],
+    onlineCount: 0,
+    messages: [],
+    sendMessage: () => {},
+    posts: [],
+    createPost: () => {},
+    likePost: () => {},
+    setNickname: () => {},
+    allNicknames: {}
+  }
+
+  // Only use React Together hooks on client side
+  if (!isClient) {
+    return defaultReturn
+  }
+
+  // Core React Together hooks (only on client side)
   const isConnected = useIsTogether()
   const myId = useMyId()
   const connectedUsers = useConnectedUsers()
   const [myNickname, setMyNickname, allNicknames] = useNicknames()
   const { messages, sendMessage } = useChat(chatKey)
-  
+
   // Social posts state using useStateTogether for real-time sync
   const [posts, setPosts] = useStateTogether<SocialPost[]>('social-posts', [])
   
