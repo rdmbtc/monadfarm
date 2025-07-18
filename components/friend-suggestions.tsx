@@ -1,6 +1,6 @@
 "use client"
 
-import { UserPlus, Users, X, Clock, Zap } from "lucide-react"
+import { UserPlus, Users, X } from "lucide-react"
 import { Button } from "./ui/button"
 import { Card } from "./ui/card"
 import { CardContent } from "./ui/card"
@@ -9,11 +9,13 @@ import { Avatar } from "./ui/avatar"
 import { AvatarImage } from "./ui/avatar"
 import { AvatarFallback } from "./ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useToast } from "../hooks/use-toast"
 import { ShimmerButton } from "./ui/shimmer-button"
-import { useMultisynq } from "../hooks/useMultisynq"
+import { useReactTogether } from "../hooks/useReactTogether"
 import { Badge } from "./ui/badge"
+import { Clock, Zap } from "lucide-react"
+import { useEffect } from "react"
 
 // Sample friend suggestions data
 const friendSuggestionsData = [
@@ -61,33 +63,31 @@ export default function FriendSuggestions() {
   const [recentUsers, setRecentUsers] = useState<any[]>([])
   const { toast } = useToast()
 
-  // Get real-time users from Multisynq
+  // Get real-time users from React Together
   const {
     isConnected,
     currentUser,
     users,
     onlineCount
-  } = useMultisynq({
-    autoConnect: false,
-    sessionName: 'monfarm-social-hub'
+  } = useReactTogether({
+    chatKey: 'monfarm-friend-suggestions'
   })
 
-  // Update recent users when Multisynq users change
+  // Update recent users when React Together users change
   useEffect(() => {
     if (isConnected && users.length > 0) {
       // Filter out current user and create suggestions from recent users
       const recentlyJoined = users
         .filter(user => user.userId !== currentUser?.userId)
-        .sort((a, b) => b.joinedAt - a.joinedAt) // Sort by most recent
         .slice(0, 5) // Take top 5 recent users
         .map((user, index) => ({
           id: `recent-${user.userId}`,
-          name: user.nickname,
+          name: user.nickname || `Farmer${user.userId.slice(0, 6)}`,
           avatar: "/images/nooter.png",
           level: Math.floor(Math.random() * 50) + 20, // Random level for demo
           mutualFriends: Math.floor(Math.random() * 10),
           isOnline: user.isOnline,
-          joinedAt: user.joinedAt,
+          joinedAt: Date.now() - Math.random() * 3600000, // Random recent time
           isRecent: true
         }))
 
@@ -95,60 +95,29 @@ export default function FriendSuggestions() {
     }
   }, [users, currentUser, isConnected])
 
-  const handleAddFriend = (id: string | number) => {
-    setAddedFriends([...addedFriends, typeof id === 'string' ? parseInt(id.split('-')[1]) || 0 : id])
-
-    // Find the user in either static suggestions or recent users
-    const user = [...friendSuggestions, ...recentUsers].find((f) => f.id === id)
-
+  const handleAddFriend = (id: number) => {
+    setAddedFriends([...addedFriends, id])
     toast({
       title: "Friend Request Sent!",
-      description: `You sent a friend request to ${user?.name}!`,
-      variant: "default",
+      description: `You sent a friend request to ${friendSuggestions.find((f) => f.id === id)?.name}!`,
+      variant: "success",
     })
   }
 
-  const handleDismiss = (id: string | number) => {
-    const numericId = typeof id === 'string' ? parseInt(id.split('-')[1]) || 0 : id
-    setDismissedFriends([...dismissedFriends, numericId])
+  const handleDismiss = (id: number) => {
+    setDismissedFriends([...dismissedFriends, id])
   }
 
-  // Format time for recent users
-  const formatTimeAgo = (timestamp: number) => {
-    const now = Date.now()
-    const diff = now - timestamp
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-
-    if (minutes < 1) return 'Just now'
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    return 'Recently'
-  }
-
-  // Combine recent users and static suggestions, prioritizing recent users
-  const allSuggestions = [...recentUsers, ...friendSuggestions]
-  const visibleSuggestions = allSuggestions.filter(
-    (friend) => {
-      const friendId = typeof friend.id === 'string' ? parseInt(friend.id.split('-')[1]) || 0 : friend.id
-      return !addedFriends.includes(friendId) && !dismissedFriends.includes(friendId)
-    }
+  const visibleSuggestions = friendSuggestions.filter(
+    (friend) => !addedFriends.includes(friend.id) && !dismissedFriends.includes(friend.id),
   )
 
   return (
     <Card className="bg-[#171717] border border-[#333] rounded-none">
       <CardHeader className="pb-3 flex items-center border-b border-[#333]">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center">
-            <Users className="h-5 w-5 text-white mr-2" />
-            <h3 className="text-lg font-semibold text-white">Friend Suggestions</h3>
-          </div>
-          {isConnected && onlineCount > 1 && (
-            <div className="flex items-center gap-1 text-xs text-green-400">
-              <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span>{onlineCount} online</span>
-            </div>
-          )}
+        <div className="flex items-center">
+          <Users className="h-5 w-5 text-white mr-2" />
+          <h3 className="text-lg font-semibold text-white">Friend Suggestions</h3>
         </div>
       </CardHeader>
       <CardContent className="p-4">
@@ -166,15 +135,10 @@ export default function FriendSuggestions() {
                 >
                   <div className="flex items-center gap-3">
                     <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                      <div className="relative">
-                        <Avatar className="border border-[#333]">
-                          <AvatarImage src={friend.avatar || "/images/nooter.png"} alt={friend.name} />
-                          <AvatarFallback>{friend.name.substring(0, 2)}</AvatarFallback>
-                        </Avatar>
-                        {friend.isOnline && (
-                          <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 border-2 border-[#171717] rounded-full"></div>
-                        )}
-                      </div>
+                      <Avatar className="border border-[#333]">
+                        <AvatarImage src={friend.avatar || "/placeholder.svg"} alt={friend.name} />
+                        <AvatarFallback>{friend.name.substring(0, 2)}</AvatarFallback>
+                      </Avatar>
                     </motion.div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -182,26 +146,8 @@ export default function FriendSuggestions() {
                         <span className="text-xs bg-black border border-[#333] px-1.5 py-0.5 text-white">
                           Lvl {friend.level}
                         </span>
-                        {friend.isRecent && (
-                          <Badge variant="outline" className="text-xs px-1 py-0 border-green-500 text-green-400">
-                            <Zap className="h-3 w-3 mr-1" />
-                            New
-                          </Badge>
-                        )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-white/60">
-                        {friend.isRecent ? (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>Joined {formatTimeAgo(friend.joinedAt)}</span>
-                          </div>
-                        ) : (
-                          <span>{friend.mutualFriends} mutual friends</span>
-                        )}
-                        {friend.isOnline && (
-                          <span className="text-green-400">• Online</span>
-                        )}
-                      </div>
+                      <p className="text-xs text-white/60">{friend.mutualFriends} mutual friends</p>
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -230,17 +176,8 @@ export default function FriendSuggestions() {
               animate={{ opacity: 1 }}
               className="py-4 text-center text-white/60"
             >
-              {isConnected ? (
-                <div>
-                  <p>No new farmers to suggest right now.</p>
-                  <p className="text-sm">Invite friends to join the Social Hub!</p>
-                </div>
-              ) : (
-                <div>
-                  <p>Connect your wallet to see recent farmers.</p>
-                  <p className="text-sm">Join the live farming community!</p>
-                </div>
-              )}
+              <p>No more suggestions right now.</p>
+              <p className="text-sm">Check back later!</p>
             </motion.div>
           )}
         </AnimatePresence>

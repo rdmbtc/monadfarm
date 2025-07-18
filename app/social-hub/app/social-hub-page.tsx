@@ -15,14 +15,6 @@ import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import { SocialFeed } from "../../../components/social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
-import { WalletConnect } from "../../../components/wallet-connect"
-import { useReactTogether } from "../../../hooks/useReactTogether"
-import { ReactTogetherChat } from "../../../components/react-together-chat"
-import { ReactTogetherSocialFeed } from "../../../components/react-together-social-feed"
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
-import { NicknameSetup } from "../../../components/nickname-setup"
-import { Wallet, Users, MessageCircle, Activity } from "lucide-react"
 
 interface SocialHubPageProps {
   farmCoins?: number;
@@ -40,14 +32,68 @@ export function SocialHubPage({
   const [showDailyReward, setShowDailyReward] = useState(false)
   const { toast } = useToast()
 
-  // Show daily reward popup after a short delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowDailyReward(true)
-    }, 3000)
+  // Handle wallet connection
+  const handleWalletConnected = (address: string) => {
+    setIsWalletConnected(true)
+    setWalletAddress(address)
 
-    return () => clearTimeout(timer)
-  }, [])
+    // Show nickname setup if user doesn't have one set
+    if (!userNickname || userNickname === "FarmerJoe123") {
+      setShowNicknameSetup(true)
+    } else {
+      // Set nickname in React Together
+      setReactTogetherNickname(userNickname)
+
+      toast({
+        title: "Welcome back to Social Hub!",
+        description: "Your wallet is connected. You can now interact with other farmers!",
+      })
+    }
+  }
+
+  // Handle wallet disconnection
+  const handleWalletDisconnected = () => {
+    setIsWalletConnected(false)
+    setWalletAddress("")
+  }
+
+  // Handle nickname setup
+  const handleNicknameSet = (newNickname: string) => {
+    setUserNickname(newNickname)
+    setShowNicknameSetup(false)
+
+    // Set nickname in React Together
+    setReactTogetherNickname(newNickname)
+
+    toast({
+      title: "Welcome to Social Hub!",
+      description: `Your wallet is connected and you're ready to interact with other farmers!`,
+    })
+  }
+
+  // Handle nickname setup skip
+  const handleNicknameSkip = () => {
+    setShowNicknameSetup(false)
+
+    // Set default nickname in React Together
+    setReactTogetherNickname(userNickname)
+
+    toast({
+      title: "Welcome to Social Hub!",
+      description: "You can set your nickname later in profile settings.",
+    })
+  }
+
+  // Show daily reward popup after a short delay (only if wallet connected)
+  useEffect(() => {
+    if (isWalletConnected) {
+      const timer = setTimeout(() => {
+        setShowDailyReward(true)
+      }, 3000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [isWalletConnected])
 
   const handleClaimDailyReward = () => {
     // Add coins when claiming reward
@@ -90,6 +136,15 @@ export function SocialHubPage({
         />
       )}
 
+      {showNicknameSetup && (
+        <NicknameSetup
+          onNicknameSet={handleNicknameSet}
+          onSkip={handleNicknameSkip}
+          defaultNickname={userNickname}
+          isRequired={false}
+        />
+      )}
+
       {/* Header */}
       <header className="border-b border-[#333] py-3 px-4 flex justify-between items-center bg-[#111]">
         <div className="flex items-center gap-3">
@@ -115,97 +170,197 @@ export function SocialHubPage({
 
       {/* Main Content */}
       <main className="px-4 py-6">
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-        >
-          {/* Left Sidebar */}
-          <motion.div variants={item} className="lg:col-span-1 space-y-6">
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-[#171717] rounded-none shadow-md overflow-hidden border border-[#333]"
-            >
-              <div className="p-4 border-b border-[#333]">
-                <h2 className="text-xl font-bold text-white">Your Profile</h2>
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-4 mb-4">
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="h-16 w-16 rounded-full bg-[#111] overflow-hidden border border-[#333]"
-                  >
-                    <img
-                      src="/images/nooter.png"
-                      alt="User Avatar"
-                      className="h-full w-full object-cover"
-                    />
-                  </motion.div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{nickname}</h3>
-                    <p className="text-sm text-white/60">Level {playerLevel} • Premium Farmer</p>
+        {!isWalletConnected ? (
+          // Wallet Connection Required Screen
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+          >
+            <Card className="bg-[#171717] border border-[#333] rounded-none max-w-md mx-auto">
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 p-4 bg-[#111] border border-[#333] rounded-full w-20 h-20 flex items-center justify-center">
+                  <Wallet className="h-10 w-10 text-white" />
+                </div>
+                <CardTitle className="text-2xl text-white">Connect Your Wallet</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-white/70">
+                  Connect your wallet to access the Social Hub and interact with other farmers on Monad Testnet.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Users className="h-4 w-4" />
+                    <span>Chat with other farmers</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <MessageCircle className="h-4 w-4" />
+                    <span>Share posts and updates</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Activity className="h-4 w-4" />
+                    <span>Real-time social features</span>
                   </div>
                 </div>
+                <WalletConnect
+                  onConnect={handleWalletConnected}
+                  onDisconnect={handleWalletDisconnected}
+                />
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          // Connected Social Hub Content
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="space-y-6"
+          >
+            {/* Connection Status */}
+            <Card className="bg-[#171717] border border-[#333] rounded-none">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-white">Connected to Monad Testnet</span>
+                    <span className="text-white/60 text-sm">({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)})</span>
+                  </div>
+                  {isReactTogetherConnected && (
+                    <div className="flex items-center gap-2 text-green-400 text-sm">
+                      <div className="h-2 w-2 bg-green-400 rounded-full"></div>
+                      <span>{onlineCount} farmers online</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="bg-[#111] p-2 border border-[#333] rounded-none"
-                  >
-                    <p className="text-sm text-white/60">Crops</p>
-                    <p className="text-lg font-bold text-white">128</p>
+            {/* Social Hub Tabs */}
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-[#222] border border-[#333] mb-6">
+                <TabsTrigger
+                  value="combined"
+                  className="data-[state=active]:bg-[#333] data-[state=active]:text-white"
+                >
+                  <Activity className="h-4 w-4 mr-2" />
+                  Live Hub
+                </TabsTrigger>
+                <TabsTrigger
+                  value="feed"
+                  className="data-[state=active]:bg-[#333] data-[state=active]:text-white"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Social Feed
+                </TabsTrigger>
+                <TabsTrigger
+                  value="chat"
+                  className="data-[state=active]:bg-[#333] data-[state=active]:text-white"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Live Chat
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="combined" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Sidebar */}
+                  <motion.div variants={item} className="lg:col-span-1 space-y-6">
+                    <motion.div
+                      whileHover={{ y: -5 }}
+                      className="bg-[#171717] rounded-none shadow-md overflow-hidden border border-[#333]"
+                    >
+                      <div className="p-4 border-b border-[#333]">
+                        <h2 className="text-xl font-bold text-white">Your Profile</h2>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center gap-4 mb-4">
+                          <motion.div
+                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            className="h-16 w-16 rounded-full bg-[#111] overflow-hidden border border-[#333]"
+                          >
+                            <img
+                              src="/images/nooter.png"
+                              alt="User Avatar"
+                              className="h-full w-full object-cover"
+                            />
+                          </motion.div>
+                          <div>
+                            <h3 className="text-lg font-bold text-white">{currentUser?.nickname || userNickname}</h3>
+                            <p className="text-sm text-white/60">Level {playerLevel} • Premium Farmer</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            className="bg-[#111] p-2 border border-[#333] rounded-none"
+                          >
+                            <p className="text-sm text-white/60">Crops</p>
+                            <p className="text-lg font-bold text-white">128</p>
+                          </motion.div>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            className="bg-[#111] p-2 border border-[#333] rounded-none"
+                          >
+                            <p className="text-sm text-white/60">Animals</p>
+                            <p className="text-lg font-bold text-white">64</p>
+                          </motion.div>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            className="bg-[#111] p-2 border border-[#333] rounded-none"
+                          >
+                            <p className="text-sm text-white/60">Friends</p>
+                            <p className="text-lg font-bold text-white">{users.length}</p>
+                          </motion.div>
+                        </div>
+
+                        <motion.button
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full p-2 bg-white text-black hover:bg-white/90 rounded-none font-medium"
+                        >
+                          Edit Profile
+                        </motion.button>
+                      </div>
+                    </motion.div>
+
+                    <AchievementShowcase />
+                    <FriendSuggestions />
                   </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="bg-[#111] p-2 border border-[#333] rounded-none"
-                  >
-                    <p className="text-sm text-white/60">Animals</p>
-                    <p className="text-lg font-bold text-white">64</p>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="bg-[#111] p-2 border border-[#333] rounded-none"
-                  >
-                    <p className="text-sm text-white/60">Friends</p>
-                    <p className="text-lg font-bold text-white">12</p>
+
+                  {/* Middle - Content Feed */}
+                  <motion.div variants={item} className="lg:col-span-2 space-y-6">
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="mb-4"
+                    >
+                      <EventsCarousel />
+                    </motion.div>
+
+                    <ReactTogetherSocialFeed sessionName="monfarm-social-hub" />
                   </motion.div>
                 </div>
-                
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full p-2 bg-white text-black hover:bg-white/90 rounded-none font-medium"
-                >
-                  Edit Profile
-                </motion.button>
-              </div>
-            </motion.div>
+              </TabsContent>
 
-            <AchievementShowcase />
-            <FriendSuggestions />
+              <TabsContent value="feed" className="space-y-6">
+                <ReactTogetherSocialFeed sessionName="monfarm-social-hub" showUserPresence={true} />
+              </TabsContent>
+
+              <TabsContent value="chat" className="space-y-6">
+                <ReactTogetherChat sessionName="monfarm-social-hub" />
+              </TabsContent>
+            </Tabs>
           </motion.div>
-
-          {/* Middle - Content Feed */}
-          <motion.div variants={item} className="lg:col-span-2 space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-4"
-            >
-              <EventsCarousel />
-            </motion.div>
-
-            <SocialFeed />
-          </motion.div>
-        </motion.div>
+        )}
       </main>
 
       {/* Footer */}
       <footer className="mt-8 py-4 px-4 border-t border-[#333] bg-[#111] text-white/60 text-center text-sm">
-        <p>© {new Date().getFullYear()} Noot Quest - All rights reserved</p>
+        <p>© {new Date().getFullYear()} MonFarm Social Hub - Powered by Monad Testnet & React Together</p>
       </footer>
     </div>
   )
-} 
+}
