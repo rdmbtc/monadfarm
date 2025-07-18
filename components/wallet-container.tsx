@@ -2,27 +2,27 @@
 
 import { AbstractWalletProvider } from "@/lib/wallet-adapters";
 
-// Define the Abstract Testnet chain object (Monad compatible)
-const abstractTestnet = {
-  id: 11124, // 0x2b74 in decimal
-  name: "Abstract Testnet (Monad Compatible)",
+// Define the Monad Testnet chain object
+const monadTestnet = {
+  id: 10143, // Monad Testnet Chain ID
+  name: "Monad Testnet",
   nativeCurrency: {
-    name: "Abstract ETH",
-    symbol: "ETH",
+    name: "Monad",
+    symbol: "MON",
     decimals: 18
   },
   rpcUrls: {
-    default: { http: ["https://api.testnet.abs.xyz"] }
+    default: { http: ["https://testnet-rpc.monad.xyz"] }
   },
   blockExplorers: {
-    default: { url: "https://explorer.testnet.abs.xyz" }
+    default: { url: "https://testnet.monadexplorer.com" }
   }
 };
 
 export const WalletContainer = ({ children }: { children: React.ReactNode }) => {
   return (
-    <AbstractWalletProvider chain={abstractTestnet}>
+    <AbstractWalletProvider chain={monadTestnet}>
       {children}
     </AbstractWalletProvider>
   );
-}; 
+};

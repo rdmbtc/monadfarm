@@ -15,6 +15,14 @@ import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import { SocialFeed } from "../../../components/social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
+import { WalletConnect } from "../../../components/wallet-connect"
+import { useReactTogether } from "../../../hooks/useReactTogether"
+import { ReactTogetherChat } from "../../../components/react-together-chat"
+import { ReactTogetherSocialFeed } from "../../../components/react-together-social-feed"
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { NicknameSetup } from "../../../components/nickname-setup"
+import { Wallet, Users, MessageCircle, Activity } from "lucide-react"
 
 interface SocialHubPageProps {
   farmCoins?: number;
@@ -92,7 +100,7 @@ export function SocialHubPage({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold text-white">Mon Quest Social Hub</h1>
+          <h1 className="text-xl font-bold text-white">Noot Quest Social Hub</h1>
         </div>
         <div className="flex items-center gap-2">
           <NotificationDropdown />

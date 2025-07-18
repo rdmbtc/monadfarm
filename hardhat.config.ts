@@ -12,10 +12,10 @@ const config: HardhatUserConfig = {
   solidity: "0.8.18",
   networks: {
     hardhat: {}, // Default local network
-    abstractTestnet: {
-      url: ABSTRACT_TESTNET_RPC_URL,
+    monadTestnet: {
+      url: "https://testnet-rpc.monad.xyz",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
-      chainId: 11124, // Abstract Testnet Chain ID 0x2b74
+      chainId: 10143, // Monad Testnet Chain ID
     },
     // Add other networks like mainnet if needed
   },

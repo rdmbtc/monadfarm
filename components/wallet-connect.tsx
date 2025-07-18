@@ -25,12 +25,12 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 
-// Monad Testnet constants (using Abstract for now until Monad mainnet)
-const ABSTRACT_CHAIN_ID = 11124;
-const ABSTRACT_CHAIN_NAME = "Abstract Testnet (Monad Compatible)";
-const ABSTRACT_RPC_URL = "https://api.testnet.abs.xyz";
-const ABSTRACT_BLOCK_EXPLORER = "https://scan.testnet.abs.xyz";
-const ABSTRACT_CURRENCY_SYMBOL = "ABS";
+// Monad Testnet constants
+const MONAD_CHAIN_ID = 10143;
+const MONAD_CHAIN_NAME = "Monad Testnet";
+const MONAD_RPC_URL = "https://testnet-rpc.monad.xyz";
+const MONAD_BLOCK_EXPLORER = "https://testnet.monadexplorer.com";
+const MONAD_CURRENCY_SYMBOL = "MON";
 
 // NOOT Token Details
 const NOOT_TOKEN_ADDRESS = "0xBe4A56850cb822dD322190C15Bd2c66781007CBc"; 
@@ -93,7 +93,7 @@ export function WalletConnect() {
     if (window.ethereum) {
       try {
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        setIsOnCorrectNetwork(Number(chainId) === ABSTRACT_CHAIN_ID);
+        setIsOnCorrectNetwork(Number(chainId) === MONAD_CHAIN_ID);
       } catch (error) {
         console.error("Error checking network:", error);
         setIsOnCorrectNetwork(false);
@@ -124,8 +124,8 @@ export function WalletConnect() {
       });
       
       if (!isOnCorrectNetwork) {
-        // Prompt to switch network if not on Abstract Testnet
-        switchToAbstractNetwork();
+        // Prompt to switch network if not on Monad Testnet
+        switchToMonadNetwork();
       }
     } catch (error) {
       console.error("Error connecting wallet:", error);
@@ -139,25 +139,25 @@ export function WalletConnect() {
     }
   };
   
-  const switchToAbstractNetwork = async () => {
+  const switchToMonadNetwork = async () => {
     if (!window.ethereum) return;
-    
+
     setIsNetworkSwitching(true);
-    
+
     try {
-      // Try to switch to the Abstract Testnet
+      // Try to switch to the Monad Testnet
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${ABSTRACT_CHAIN_ID.toString(16)}` }],
+        params: [{ chainId: `0x${MONAD_CHAIN_ID.toString(16)}` }],
       });
-      
+
       // Check if the switch was successful
       await checkNetwork();
-      
+
       if (isOnCorrectNetwork) {
         toast({
           title: "Network Switched",
-          description: `Successfully connected to ${ABSTRACT_CHAIN_NAME}!`,
+          description: `Successfully connected to ${MONAD_CHAIN_NAME}!`,
         });
       }
     } catch (switchError: any) {
@@ -168,15 +168,15 @@ export function WalletConnect() {
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: `0x${ABSTRACT_CHAIN_ID.toString(16)}`,
-                chainName: ABSTRACT_CHAIN_NAME,
+                chainId: `0x${MONAD_CHAIN_ID.toString(16)}`,
+                chainName: MONAD_CHAIN_NAME,
                 nativeCurrency: {
-                  name: 'Abstract Token',
-                  symbol: ABSTRACT_CURRENCY_SYMBOL,
+                  name: 'Monad',
+                  symbol: MONAD_CURRENCY_SYMBOL,
                   decimals: 18
                 },
-                rpcUrls: [ABSTRACT_RPC_URL],
-                blockExplorerUrls: [ABSTRACT_BLOCK_EXPLORER]
+                rpcUrls: [MONAD_RPC_URL],
+                blockExplorerUrls: [MONAD_BLOCK_EXPLORER]
               },
             ],
           });
@@ -187,22 +187,22 @@ export function WalletConnect() {
           if (isOnCorrectNetwork) {
             toast({
               title: "Network Added",
-              description: `Successfully added and connected to ${ABSTRACT_CHAIN_NAME}!`,
+              description: `Successfully added and connected to ${MONAD_CHAIN_NAME}!`,
             });
           }
         } catch (addError) {
-          console.error("Error adding Abstract Testnet:", addError);
+          console.error("Error adding Monad Testnet:", addError);
           toast({
             title: "Network Addition Failed",
-            description: "Could not add Abstract Testnet to your wallet. Please try adding it manually.",
+            description: "Could not add Monad Testnet to your wallet. Please try adding it manually.",
             variant: "destructive"
           });
         }
       } else {
-        console.error("Error switching to Abstract Testnet:", switchError);
+        console.error("Error switching to Monad Testnet:", switchError);
         toast({
           title: "Network Switch Failed",
-          description: "Could not switch to Abstract Testnet. Please try manually switching in your wallet.",
+          description: "Could not switch to Monad Testnet. Please try manually switching in your wallet.",
           variant: "destructive"
         });
       }
@@ -274,11 +274,10 @@ export function WalletConnect() {
   };
   
   // Display a compact component on mobile and an expanded one on larger screens
-  // Moved to left side to avoid conflict with Stagewise toolbar on the right
   return (
-    <div className="fixed bottom-4 left-4 z-50 md:bottom-6 md:left-6">
+    <div className="fixed bottom-4 right-4 z-50 md:bottom-6 md:right-6">
       {walletAddress ? (
-        <div className="flex flex-col items-start">
+        <div className="flex flex-col items-end">
           {!isOnCorrectNetwork && (
             <TooltipProvider>
               <Tooltip>
