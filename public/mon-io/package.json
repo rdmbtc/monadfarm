@@ -1,7 +1,7 @@
 {
-  "name": "noot-io",
+  "name": "mon-io",
   "version": "1.0.0",
-  "description": "A multiplayer Agar.io-like game for Nooter's Farm",
+  "description": "A multiplayer Agar.io-like game for Moner's Farm",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

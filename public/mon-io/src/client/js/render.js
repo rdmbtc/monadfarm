@@ -1,7 +1,7 @@
 var global = require('./global');
 
-// Custom Noot.io theme colors
-const nootTheme = {
+// Custom Mon.io theme colors
+const monTheme = {
     background: '#111111',
     food: '#00BCD4',
     gridLines: '#333333', 

@@ -92,7 +92,7 @@ export function SocialHubPage({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold text-white">Noot Quest Social Hub</h1>
+          <h1 className="text-xl font-bold text-white">Mon Quest Social Hub</h1>
         </div>
         <div className="flex items-center gap-2">
           <NotificationDropdown />

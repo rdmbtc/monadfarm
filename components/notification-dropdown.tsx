@@ -27,14 +27,14 @@ export function NotificationDropdown() {
     {
       id: 2,
       title: "Friend Request",
-      message: "NootMaster99 wants to be your friend",
+      message: "MonMaster99 wants to be your friend",
       time: "5 hours ago",
       unread: true,
     },
     {
       id: 3,
       title: "Event Starting Soon",
-      message: "The Great Noot Race begins in 1 hour",
+      message: "The Great Mon Race begins in 1 hour",
       time: "30 minutes ago",
       unread: true,
     },

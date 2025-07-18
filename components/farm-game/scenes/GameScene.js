@@ -200,8 +200,8 @@ if (isBrowser) {
             // Load penguin mage assets
             this.load.image('ABS_idle', '/defense/abster idle.png');
             this.load.image('ABS_attack', '/defense/abster attacks.png');
-            this.load.image('NOOT_idle', '/defense/noot idle.png');
-            this.load.image('NOOT_attack', '/defense/noot attack.png');
+            this.load.image('MON_idle', '/defense/noot idle.png');
+            this.load.image('MON_attack', '/defense/noot attack.png');
             
             // Load enemy images with proper path and error handling
             this.load.image('enemy_bird', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon1.png');
@@ -892,7 +892,7 @@ if (isBrowser) {
             border.setStrokeStyle(4, 0x2d572d);
             
             // Add game title with pixel art style - moved to top of screen and made smaller
-            this.add.text(400, 10, "NOOTER'S FARM DEFENSE", {
+            this.add.text(400, 10, "MONER'S FARM DEFENSE", {
               fontFamily: 'monospace',
               fontSize: '20px',
               color: '#4a8f4a',
@@ -1384,7 +1384,7 @@ if (isBrowser) {
               }
               
               // Show defense preview sprite if it doesn't exist
-              const spriteKey = this.toolMode === 'scarecrow' ? 'ABS_idle' : 'NOOT_idle';
+              const spriteKey = this.toolMode === 'scarecrow' ? 'ABS_idle' : 'MON_idle';
               if (!this.defensePreview && this.textures.exists(spriteKey)) {
                 this.defensePreview = this.add.image(pointer.x, pointer.y, spriteKey);
                 this.defensePreview.setDisplaySize(48, 48);
@@ -2630,7 +2630,7 @@ if (isBrowser) {
             }
 
 
-            // Add dog button (NOOT mage)
+            // Add dog button (MON mage)
             const dogButton = this.add.rectangle(250, 550, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
             dogButton.setInteractive({ useHandCursor: true });
             dogButton.input.hitArea.setTo(-40, -30, 80, 60);
@@ -2638,26 +2638,26 @@ if (isBrowser) {
               this.pendingDefenseType = 'dog';
               this.pendingDefensePlacement = true;
               this.setToolMode('dog');
-              this.showFloatingText(400, 300, "NOOT Fire Mage selected - Click map to place", 0xFF4400);
+              this.showFloatingText(400, 300, "MON Fire Mage selected - Click map to place", 0xFF4400);
             });
             addBounceEffect(dogButton); // Add bounce effect
             this.toolbarButtons.dog = dogButton; // Store reference
 
 
-            // Use NOOT image instead of emoji
-            const nootImageKey = 'NOOT_idle';
-            let nootImage;
-            if (this.textures.exists(nootImageKey)) {
-              nootImage = this.add.image(250, 550, nootImageKey).setDepth(2001);
-              nootImage.setDisplaySize(iconSize, iconSize); // Use variable size
-              nootImage.setInteractive({ useHandCursor: true });
-              nootImage.on('pointerdown', () => { dogButton.emit('pointerdown'); });
+            // Use MON image instead of emoji
+            const monImageKey = 'MON_idle';
+            let monImage;
+            if (this.textures.exists(monImageKey)) {
+              monImage = this.add.image(250, 550, monImageKey).setDepth(2001);
+              monImage.setDisplaySize(iconSize, iconSize); // Use variable size
+              monImage.setInteractive({ useHandCursor: true });
+              monImage.on('pointerdown', () => { dogButton.emit('pointerdown'); });
             } else {
-              nootImage = this.add.text(250, 550, '🧙‍♀️', {
+              monImage = this.add.text(250, 550, '🧙‍♀️', {
                 fontFamily: 'Arial', fontSize: '32px'
               }).setOrigin(0.5).setDepth(2001);
-              nootImage.setInteractive({ useHandCursor: true });
-              nootImage.on('pointerdown', () => { dogButton.emit('pointerdown'); });
+              monImage.setInteractive({ useHandCursor: true });
+              monImage.on('pointerdown', () => { dogButton.emit('pointerdown'); });
             }
 
 
@@ -2820,7 +2820,7 @@ if (isBrowser) {
               if (defenseType === 'scarecrow') {
                 this.showDefenseRange(gridX, gridY, 150);  // ABS mage range: 150
               } else if (defenseType === 'dog') {
-                this.showDefenseRange(gridX, gridY, 100);  // NOOT mage range: 100
+                this.showDefenseRange(gridX, gridY, 100);  // MON mage range: 100
               } else if (defenseType === 'wizard') {
                 this.showDefenseRange(gridX, gridY, 120);  // Wizard range: 120
               } else if (defenseType === 'cannon') {
@@ -2899,7 +2899,7 @@ if (isBrowser) {
             this.updateFarmCoins(-cost);
             
             // Show success message
-            const defenseName = defenseType === 'scarecrow' ? 'ABS ice mage' : defenseType === 'dog' ? 'NOOT fire mage' : defenseType === 'wizard' ? 'Wizard' : 'Cannon';
+            const defenseName = defenseType === 'scarecrow' ? 'ABS ice mage' : defenseType === 'dog' ? 'MON fire mage' : defenseType === 'wizard' ? 'Wizard' : 'Cannon';
             this.showFloatingText(x, y, `${defenseName} placed!`, 0x00FFFF);
             
             console.log(`Defense ${defenseType} placed at ${x},${y}`);
@@ -3588,7 +3588,7 @@ if (isBrowser) {
                 text = "ABS Ice Mage (45 coins)";
                 textColor = "#00AAFF";
               } else if (type === 'dog') {
-                text = "NOOT Fire Mage (65 coins)";
+                text = "MON Fire Mage (65 coins)";
                 textColor = "#FF4400";
               } else if (type === 'wizard') {
                 text = "Wizard (125 coins)";
@@ -3721,8 +3721,8 @@ if (isBrowser) {
                   spriteKey = 'ABS_idle';
                 } else if (mode === 'dog') {
                   range = 200;
-                  color = 0xFF4400; // Red for NOOT
-                  spriteKey = 'NOOT_idle';
+                  color = 0xFF4400; // Red for MON
+                  spriteKey = 'MON_idle';
                 } else if (mode === 'wizard') {
                   range = 300;
                   color = 0xFF00FF; // Purple for wizard
@@ -3792,7 +3792,7 @@ if (isBrowser) {
                 textColor = 0x0088FF;
                 break;
               case 'dog':
-                infoText = "NOOT FIRE MAGE: Click to place (65 coins)";
+                infoText = "MON FIRE MAGE: Click to place (65 coins)";
                 textColor = 0xFF8800;
                 break;
               case 'wizard':
@@ -3930,7 +3930,7 @@ if (isBrowser) {
             // Show confirmation text
             const defenseNames = {
               'scarecrow': 'ABS Ice Mage',
-              'dog': 'NOOT Fire Mage',
+              'dog': 'MON Fire Mage',
               'wizard': 'Wizard',
               'cannon': 'Cannon'
             };
@@ -4291,7 +4291,7 @@ if (isBrowser) {
               case 'ABS': // Ice Mage
                 color = 0x66ccff;
                 break;
-              case 'NOOT': // Fire Mage
+              case 'MON': // Fire Mage
                 color = 0xff6600;
                 break;
               case 'wizard':

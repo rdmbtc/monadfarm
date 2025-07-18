@@ -1335,8 +1335,8 @@ canvas {
 .akaya-button {
   font-family: var(--font-akaya);
   background-color: #111111;
-  color: var(--noot-text);
-  border: 2px solid var(--noot-border);
+  color: var(--mon-text);
+  border: 2px solid var(--mon-border);
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
   font-weight: 500;
@@ -1345,17 +1345,17 @@ canvas {
 }
 
 .akaya-button:hover {
-  background-color: var(--noot-accent);
-  color: var(--noot-text);
+  background-color: var(--mon-accent);
+  color: var(--mon-text);
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(51, 51, 51, 0.3);
-  border-color: var(--noot-highlight);
+  border-color: var(--mon-highlight);
 }
 
 .noot-input {
-  background-color: var(--noot-accent);
-  color: var(--noot-text);
-  border: 1px solid var(--noot-border);
+  background-color: var(--mon-accent);
+  color: var(--mon-text);
+  border: 1px solid var(--mon-border);
   border-radius: 0;
   padding: 0.5rem;
 }

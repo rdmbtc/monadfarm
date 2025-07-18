@@ -1,4 +1,4 @@
-// Noot.io - A simplified agar.io-like game
+// Mon.io - A simplified agar.io-like game
 const canvas = document.getElementById('cvs');
 const ctx = canvas.getContext('2d');
 let socket; // Define socket variable, will be assigned later
@@ -17,8 +17,8 @@ const OFFLINE_BOTS = 50; // Number of bots in offline mode
 // --- Helper to get WebSocket URL ---
 function getWebSocketURL() {
   // Connect to the deployed Fly.io backend
-  const url = 'wss://noot-nootio.fly.dev';
-  console.log(`[Noot.io App] Connecting to WebSocket: ${url}`);
+  const url = 'wss://mon-monio.fly.dev';
+  console.log(`[Mon.io App] Connecting to WebSocket: ${url}`);
   return url;
 }
 // --- End Helper ---
@@ -45,7 +45,7 @@ let mouseX = 0;
 let mouseY = 0;
 const colors = ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
 
-// --- Noot Wrapper Communication ---
+// --- Mon Wrapper Communication ---
 let initialFarmCoins = 0;
 let lastKnownMass = 0;
 let parentOrigin = '*'; // IMPORTANT: Replace '*' with the actual origin of the parent window in production
@@ -53,9 +53,9 @@ let parentOrigin = '*'; // IMPORTANT: Replace '*' with the actual origin of the 
 // Function to send earned coins back to the wrapper
 function sendEarnedCoins(coins) {
   if (coins > 0) {
-    console.log(`[Noot.io Game] Sending ${coins} earned coins.`);
+    console.log(`[Mon.io Game] Sending ${coins} earned coins.`);
     window.parent.postMessage({ // Use window.parent for iframe context
-      type: 'noot-io',
+      type: 'mon-io',
       action: 'earn-coins',
       coins: coins
     }, parentOrigin); // Use the stored origin
@@ -66,13 +66,13 @@ function sendEarnedCoins(coins) {
 function notifyWrapperOfModeChange(mode) {
   try {
     window.parent.postMessage({
-      type: 'noot-io',
+      type: 'mon-io',
       action: 'game-mode-changed',
       mode: mode // 'offline' or 'online'
     }, parentOrigin);
-    console.log(`[Noot.io App] Notified wrapper about mode change: ${mode}`);
+    console.log(`[Mon.io App] Notified wrapper about mode change: ${mode}`);
   } catch (e) {
-    console.error('[Noot.io App] Error notifying wrapper:', e);
+    console.error('[Mon.io App] Error notifying wrapper:', e);
   }
 }
 
@@ -80,13 +80,13 @@ function notifyWrapperOfModeChange(mode) {
 function notifyWrapperOfGameStart(mode) {
   try {
     window.parent.postMessage({
-      type: 'noot-io',
+      type: 'mon-io',
       action: 'game-started',
       mode: mode // 'offline' or 'online'
     }, parentOrigin);
-    console.log(`[Noot.io App] Notified wrapper about game start: ${mode}`);
+    console.log(`[Mon.io App] Notified wrapper about game start: ${mode}`);
   } catch (e) {
-    console.error('[Noot.io App] Error notifying wrapper:', e);
+    console.error('[Mon.io App] Error notifying wrapper:', e);
   }
 }
 
@@ -105,7 +105,7 @@ function checkEarnedCoins(currentMass) {
 
   lastKnownMass = currentMass; // Update last known mass
 }
-// --- End Noot Wrapper Communication ---
+// --- End Mon Wrapper Communication ---
 
 // Helper function to set game messages
 function setGameMessage(message, isRespawnMessage = false) {
@@ -133,7 +133,7 @@ function setGameMessage(message, isRespawnMessage = false) {
 
 // Function to initialize offline mode
 function initOfflineMode() {
-  console.log("[Noot.io App] Initializing OFFLINE mode...");
+  console.log("[Mon.io App] Initializing OFFLINE mode...");
   isOfflineMode = true;
   isGameInitialized = true;
   
@@ -161,17 +161,17 @@ function initOfflineMode() {
   
   // Set default player skin for offline mode
   if (skinsLoaded) {
-    const defaultSkin = 'case items/bronze/noot-noot.jpg';
+    const defaultSkin = 'case items/bronze/mon-mon.jpg';
     player.skinPath = defaultSkin;
     player.skin = loadedSkins[defaultSkin];
   }
   
-  console.log("[Noot.io App] OFFLINE mode initialized successfully.");
+  console.log("[Mon.io App] OFFLINE mode initialized successfully.");
 }
 
 // Function to initialize online mode
 function initOnlineMode() {
-  console.log("[Noot.io App] Initializing ONLINE mode...");
+  console.log("[Mon.io App] Initializing ONLINE mode...");
   isOfflineMode = false;
   
   // Notify wrapper
@@ -199,7 +199,7 @@ function initOnlineMode() {
     setupSocketListeners(); // Setup listeners for real socket
     
     socket.once('connect', () => {
-      console.log("[Noot.io App] Socket connected for online mode.");
+      console.log("[Mon.io App] Socket connected for online mode.");
       isGameInitialized = true;
       if (loadingIndicator) loadingIndicator.style.display = 'none';
       
@@ -212,7 +212,7 @@ function initOnlineMode() {
     });
     
     socket.once('connect_error', (err) => {
-      console.error("[Noot.io App] Initial connection failed:", err.message);
+      console.error("[Mon.io App] Initial connection failed:", err.message);
       isGameInitialized = false;
       if (loadingIndicator) loadingIndicator.style.display = 'none';
       
@@ -227,7 +227,7 @@ function initOnlineMode() {
       setTimeout(() => initOfflineMode(), 1000);
     });
   } catch (error) {
-    console.error("[Noot.io App] Failed to initialize socket connection:", error);
+    console.error("[Mon.io App] Failed to initialize socket connection:", error);
     isGameInitialized = false;
     if (loadingIndicator) loadingIndicator.style.display = 'none';
     
@@ -264,7 +264,7 @@ function resizeCanvas() {
   canvas.width = container.clientWidth;
   canvas.height = Math.max(600, container.clientHeight); // Ensure minimum height
   
-  console.log(`[Noot.io App] Canvas resized to ${canvas.width}x${canvas.height}`);
+  console.log(`[Mon.io App] Canvas resized to ${canvas.width}x${canvas.height}`);
 }
 
 window.addEventListener('resize', resizeCanvas);
@@ -297,7 +297,7 @@ function setupMouseTracking() {
   }, { passive: false });
   
   // Log initialization
-  console.log("[Noot.io App] Mouse tracking initialized.");
+  console.log("[Mon.io App] Mouse tracking initialized.");
 }
 
 // Interpolation factor (adjust for smoother/more responsive)
@@ -305,8 +305,8 @@ const INTERPOLATION_FACTOR = 0.15;
 
 // --- Skin Loading ---
 const skinPaths = [
-  'case items/bronze/noot-noot.jpg',
-  'case items/bronze/NOOT.png',
+  'case items/bronze/mon-mon.jpg',
+  'case items/bronze/MON.png',
   'case items/bronze/Dojo3.jpg',
   'case items/bronze/Chester.jpg',
   'case items/bronze/77-Bit.jpg',
@@ -335,15 +335,15 @@ async function preloadSkins() {
       const img = new Image();
       img.onload = () => {
         loadedSkins[path] = img; // Store loaded image
-        console.log(`[Noot.io App] Loaded skin: ${path}`);
+        console.log(`[Mon.io App] Loaded skin: ${path}`);
         resolve();
       };
       img.onerror = (err) => {
-        console.error(`[Noot.io App] Failed to load skin: ${path}`, err);
+        console.error(`[Mon.io App] Failed to load skin: ${path}`, err);
         reject(err);
       };
       // Construct the path correctly relative to the HTML file in /client/
-      // Assuming index.html is in /public/noot-io/client/
+      // Assuming index.html is in /public/mon-io/client/
       // and images are in /public/case items/
       img.src = `../../../${path}`; // Corrected relative path from js/ to public/case items/
     }));
@@ -351,9 +351,9 @@ async function preloadSkins() {
   try {
     await Promise.all(loadPromises);
     skinsLoaded = true;
-    console.log("[Noot.io App] All skins loaded successfully.");
+    console.log("[Mon.io App] All skins loaded successfully.");
   } catch (error) {
-    console.error("[Noot.io App] Error loading one or more skins.", error);
+    console.error("[Mon.io App] Error loading one or more skins.", error);
     // Game can continue without skins, or show an error
   }
 }
@@ -364,14 +364,14 @@ function setupSocketListeners() {
   if (!socket) return; // Should only be called if socket exists (online)
 
   socket.on('connect', () => {
-    console.log('[Noot.io App] Socket connected with ID:', socket.id);
+    console.log('[Mon.io App] Socket connected with ID:', socket.id);
     // Hide demo mode message if it was shown
     const serverStatus = document.getElementById('server-status');
     if (serverStatus) serverStatus.classList.add('hidden');
   });
 
   socket.on('connect_error', (err) => {
-    console.error('[Noot.io App] Socket connection error:', err.message);
+    console.error('[Mon.io App] Socket connection error:', err.message);
     // Show demo mode message
     const serverStatus = document.getElementById('server-status');
     if (serverStatus) serverStatus.classList.remove('hidden');
@@ -383,7 +383,7 @@ function setupSocketListeners() {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('[Noot.io App] Socket disconnected:', reason);
+    console.log('[Mon.io App] Socket disconnected:', reason);
     isGameRunning = false;
     isGameInitialized = false; // Allow re-init/mode selection
     player = {};
@@ -479,7 +479,7 @@ function setupSocketListeners() {
   // Listen for being eaten
   socket.on('eaten', (data) => {
       if (isOfflineMode) return;
-      console.log(`[Noot.io App] Eaten by ${data.by}!`);
+      console.log(`[Mon.io App] Eaten by ${data.by}!`);
       isGameRunning = false; // Stop local processing
       isGameInitialized = true; // Keep initialization
       player = {};
@@ -508,7 +508,7 @@ function setupSocketListeners() {
   // Listen for explicit respawn data from server
   socket.on('respawned', (data) => {
       if (isOfflineMode) return;
-      console.log("[Noot.io App] Received respawn data");
+      console.log("[Mon.io App] Received respawn data");
       player = {
           id: data.id || socket.id,
           name: data.name, // Use name from data
@@ -527,7 +527,7 @@ function setupSocketListeners() {
           player.skinPath = data.skinPath;
           player.skin = loadedSkins[data.skinPath];
       } else if (player && skinsLoaded) { // Fallback to default if server didn't send path
-          const defaultSkin = 'case items/bronze/noot-noot.jpg';
+          const defaultSkin = 'case items/bronze/mon-mon.jpg';
           player.skinPath = defaultSkin;
           player.skin = loadedSkins[defaultSkin];
       }
@@ -552,13 +552,13 @@ function setupSocketListeners() {
       
       const restartButton = document.getElementById('restart-button');
       if (restartButton) restartButton.style.display = 'none';
-      console.log("[Noot.io App] Respawned as:", player);
+      console.log("[Mon.io App] Respawned as:", player);
   });
 
   // Listen for initial game state (simplified for 'nearbyEntitiesUpdate')
   socket.on('initGame', (data) => {
     if (isOfflineMode) return;
-    console.log("[Noot.io App] Received initGame");
+    console.log("[Mon.io App] Received initGame");
     player = data.player || {};
     player.serverX = player.x;
     player.serverY = player.y;
@@ -570,7 +570,7 @@ function setupSocketListeners() {
         player.skinPath = data.player.skinPath;
         player.skin = loadedSkins[data.player.skinPath];
     } else if (player && skinsLoaded) { // Fallback
-        const defaultSkin = 'case items/bronze/noot-noot.jpg';
+        const defaultSkin = 'case items/bronze/mon-mon.jpg';
         player.skinPath = defaultSkin;
         player.skin = loadedSkins[defaultSkin];
     }
@@ -582,7 +582,7 @@ function setupSocketListeners() {
     lastKnownMass = player.mass || 0;
     isGameRunning = true;
 
-    console.log("[Noot.io App] My Player Initialized (Online):", player);
+    console.log("[Mon.io App] My Player Initialized (Online):", player);
 
     // Hide start menu, show canvas/wrapper
     const startMenu = document.getElementById('startMenu');
@@ -625,7 +625,7 @@ function setupSocketListeners() {
   // Handle players leaving (still useful)
   socket.on('playerLeft', (playerId) => {
     if (isOfflineMode) return;
-    console.log("[Noot.io App] Player Left:", playerId);
+    console.log("[Mon.io App] Player Left:", playerId);
     players = players.filter(p => p.id !== playerId);
   });
 
@@ -888,7 +888,7 @@ function spawnOfflineFood() {
 // Helper function for offline bots
 function spawnOfflineBot(index, isBigBot = false) {
     // Random skin selection for bots
-    let randomSkinPath = 'case items/bronze/noot-noot.jpg'; // Default fallback
+    let randomSkinPath = 'case items/bronze/mon-mon.jpg'; // Default fallback
     
     if (skinsLoaded) {
         const skinKeys = Object.keys(loadedSkins);

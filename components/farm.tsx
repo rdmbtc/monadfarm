@@ -3948,7 +3948,7 @@ export function Farm() {
               <CircleDollarSign className="h-5 w-5 mr-2 text-cyan-400"/> Noot.io
             </h2>
             <div className="noot-card p-1 overflow-hidden">
-              <NootIoWrapper farmCoins={farmCoins} addFarmCoins={addFarmCoins} />
+              <MonIoWrapper farmCoins={farmCoins} addFarmCoins={addFarmCoins} />
             </div>
           </div>
         )}
