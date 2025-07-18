@@ -28,7 +28,7 @@ import {
   RefreshCwIcon,
   CheckIcon,
   LockIcon,
-  CircleDollarSign, // Used for Noot.io and other components
+  CircleDollarSign, // Used for Mon.io and other components
   Store,
   CloudLightning,
   Wind,
@@ -41,9 +41,9 @@ import {
   Package,
   Leaf,
   Gem, // Import Gem icon for slot machine tab
-  DollarSign, // Import DollarSign for Noot Gamble
+  DollarSign, // Import DollarSign for Mon Gamble
   ChevronDown, // Import ChevronDown for dropdown indicator
-  Gamepad2, // Import Gamepad2 for Noot Games
+  Gamepad2, // Import Gamepad2 for Mon Games
   Activity // Import Activity icon for Sport Betting
 } from "lucide-react";
 import { TokenSwap } from "@/components/token-swap";
@@ -173,7 +173,7 @@ import EnhancedGuideContent from './EnhancedGuideContent';
 
 export function Farm() {
   // --- Guide State ---
-  const { shouldShowGuide, markGuideAsViewed, isNootPro } = useGuideContext();
+  const { shouldShowGuide, markGuideAsViewed, isMonPro } = useGuideContext();
   const [showFarmGuide, setShowFarmGuide] = useState(false);
 
   useEffect(() => {
@@ -2095,7 +2095,7 @@ export function Farm() {
       title="Your Nooter Profile"
       content={<EnhancedGuideContent guideType="profile" imagePath="/images/guide/profile.jpg" />}
       onClose={handleCloseProfileGuide}
-      isNootPro={isNootPro}
+      isMonPro={isMonPro}
     />
   )}
 
@@ -2106,7 +2106,7 @@ export function Farm() {
       title="Social Hub"
       content={<EnhancedGuideContent guideType="social" imagePath="/images/guide/social.jpg" />}
       onClose={handleCloseSocialGuide}
-      isNootPro={isNootPro}
+      isMonPro={isMonPro}
     />
   )}
 
@@ -2117,7 +2117,7 @@ export function Farm() {
       title="Token Swap"
       content={<EnhancedGuideContent guideType="swap" imagePath="/images/guide/token swap.jpg" />}
       onClose={handleCloseSwapGuide}
-      isNootPro={isNootPro}
+      isMonPro={isMonPro}
     />
   )}
 
@@ -2128,7 +2128,7 @@ export function Farm() {
       title="Platformer Game"
       content={<EnhancedGuideContent guideType="platformer" imagePath="/images/guide/platformer.jpg" />}
       onClose={handleClosePlatformerGuide}
-      isNootPro={isNootPro}
+      isMonPro={isMonPro}
     />
   )}
 
@@ -2139,7 +2139,7 @@ export function Farm() {
       title="Defend Your Farm"
       content={<EnhancedGuideContent guideType="defend" imagePath="/images/guide/defend your farm.jpg" />}
       onClose={handleCloseDefendGuide}
-      isNootPro={isNootPro}
+      isMonPro={isMonPro}
     />
   )}
 
@@ -3994,7 +3994,7 @@ export function Farm() {
           title="Welcome to Nooter's Farm!"
           content={<EnhancedGuideContent guideType="farm" imagePath="/images/guide/farm.jpg" />}
           onClose={handleCloseGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
       
@@ -4005,7 +4005,7 @@ export function Farm() {
           title="Complete Quests for Rewards!"
           content={<EnhancedGuideContent guideType="quests" imagePath="/images/guide/quest.jpg" />}
           onClose={handleCloseQuestsGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
       {/* Existing Farm and Quests guide modals */}
@@ -4017,7 +4017,7 @@ export function Farm() {
           title="Your Nooter Profile"
           content={<EnhancedGuideContent guideType="profile" imagePath="/images/guide/profile.jpg" />}
           onClose={handleCloseProfileGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
 
@@ -4028,7 +4028,7 @@ export function Farm() {
           title="Social Hub"
           content={<EnhancedGuideContent guideType="social" imagePath="/images/guide/social.jpg" />}
           onClose={handleCloseSocialGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
 
@@ -4039,7 +4039,7 @@ export function Farm() {
           title="Token Swap"
           content={<EnhancedGuideContent guideType="swap" imagePath="/images/guide/token swap.jpg" />}
           onClose={handleCloseSwapGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
 
@@ -4050,7 +4050,7 @@ export function Farm() {
           title="Platformer Game"
           content={<EnhancedGuideContent guideType="platformer" imagePath="/images/guide/platformer.jpg" />}
           onClose={handleClosePlatformerGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
 
@@ -4061,7 +4061,7 @@ export function Farm() {
           title="Defend Your Farm"
           content={<EnhancedGuideContent guideType="defend" imagePath="/images/guide/defend your farm.jpg" />}
           onClose={handleCloseDefendGuide}
-          isNootPro={isNootPro}
+          isMonPro={isMonPro}
         />
       )}
     </div>
