@@ -3459,6 +3459,15 @@ export default function NootCasePage() {
     }
   };
 
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <div className="container mx-auto py-8 px-4 min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading Mon Case...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 px-4 noot-theme min-h-screen">
       {/* Add the styles to the page */}
