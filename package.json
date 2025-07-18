@@ -9,8 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@abstract-foundation/agw-client": "^1.6.2",
-    "@abstract-foundation/agw-react": "^1.6.4",
     "@hookform/resolvers": "^3.9.1",
     "@privy-io/cross-app-connect": "^0.2.0",
     "@privy-io/react-auth": "^2.19.0",
@@ -44,6 +42,7 @@
     "@stagewise/toolbar-next": "^0.6.1",
     "@tanstack/react-query": "^5.72.2",
     "@types/js-cookie": "^3.0.6",
+    "@wagmi/core": "^2.17.3",
     "autoprefixer": "^10.4.20",
     "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.1",

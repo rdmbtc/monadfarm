@@ -21,12 +21,8 @@ import {
 import { parseAbi } from "viem"
 import { getGeneralPaymasterInput } from "viem/zksync"
 
-// Import official AGW packages 
-import { 
-  useLoginWithAbstract, 
-  useAbstractClient 
-} from "@abstract-foundation/agw-react"
-import { useAccount } from "wagmi"
+// Import Privy packages
+import { usePrivy, useWallets } from "@privy-io/react-auth"
 
 // Create compatibility layer for ethers v5/v6
 const etherUtils = {

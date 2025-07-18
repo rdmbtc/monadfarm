@@ -8,12 +8,8 @@ import { toast } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import { ethers, Contract, BrowserProvider } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
-// Import AGW packages
-import { 
-  useLoginWithAbstract, 
-  useAbstractClient
-} from "@abstract-foundation/agw-react";
-import { useAccount } from "wagmi";
+// Import Privy packages
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import NFTSupport from './components/NFTSupport';
 
 // NOOT token constants
@@ -1170,15 +1166,15 @@ export default function NootCasePage() {
     }
   };
   
-  // Connect to AGW
+  // Connect to Privy
   const connectAGW = async () => {
     try {
-      await loginWithAbstract();
+      await login();
       setActiveWallet(WALLET_OPTIONS.AGW);
       setIsWalletConnected(true);
-      toast.success("Connected to Abstract Gaming Wallet");
+      toast.success("Connected to Monad Testnet via Privy");
     } catch (error) {
-      console.error("AGW connection error:", error);
+      console.error("Privy connection error:", error);
       throw error;
     }
   };
@@ -3169,10 +3165,13 @@ export default function NootCasePage() {
   const [showWalletOptions, setShowWalletOptions] = useState<boolean>(false);
   const [metamaskProvider, setMetamaskProvider] = useState<any>(null);
   
-  // AGW connection hooks
-  const { login: loginWithAbstract } = useLoginWithAbstract();
-  const abstractClient = useAbstractClient();
-  const { address: agwAddress, isConnected: isAGWConnected } = useAccount();
+  // Privy connection hooks
+  const { login, authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
+
+  // Get wallet address and connection status
+  const agwAddress = wallets.length > 0 ? wallets[0].address : null;
+  const isAGWConnected = authenticated && wallets.length > 0;
 
   // Add function to fund contract with tokens for admin use
   const fundContractWithTokens = async () => {
@@ -3458,15 +3457,6 @@ export default function NootCasePage() {
       return { contractBalance: BigInt(0), formattedBalance: "0" };
     }
   };
-
-  // Show loading state during SSR
-  if (!isClient) {
-    return (
-      <div className="container mx-auto py-8 px-4 min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading Mon Case...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto py-8 px-4 noot-theme min-h-screen">
