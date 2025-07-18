@@ -13,7 +13,7 @@
     "@abstract-foundation/agw-react": "^1.6.4",
     "@hookform/resolvers": "^3.9.1",
     "@privy-io/cross-app-connect": "^0.2.0",
-    "@privy-io/react-auth": "^2.8.2",
+    "@privy-io/react-auth": "^2.19.0",
     "@radix-ui/react-accordion": "1.1.2",
     "@radix-ui/react-alert-dialog": "1.0.5",
     "@radix-ui/react-aspect-ratio": "1.0.3",
@@ -81,7 +81,7 @@
     "tailwindcss-animate": "^1.0.7",
     "unique-names-generator": "^4.7.1",
     "vaul": "^0.9.6",
-    "viem": "^2.26.3",
+    "viem": "^2.32.0",
     "wagmi": "^2.14.16",
     "zod": "^3.24.1"
   },

@@ -3,11 +3,12 @@
 import { ReactNode, useEffect } from "react"
 import { GameProvider } from "@/context/game-context"
 import { GuideProvider } from "@/context/guide-context"
-import { AbstractWalletProvider } from '@abstract-foundation/agw-react'
+import { PrivyProvider } from '@privy-io/react-auth'
+import { defineChain } from 'viem'
 import { ReactTogether } from 'react-together'
 
-// Define Monad Testnet chain configuration
-const monadTestnet = {
+// Define Monad Testnet chain configuration for Privy
+const monadTestnet = defineChain({
   id: 10143,
   name: 'Monad Testnet',
   network: 'monad-testnet',
@@ -17,14 +18,18 @@ const monadTestnet = {
     symbol: 'MON',
   },
   rpcUrls: {
-    public: { http: ['https://testnet-rpc.monad.xyz'] },
-    default: { http: ['https://testnet-rpc.monad.xyz'] },
+    default: {
+      http: ['https://testnet-rpc.monad.xyz'],
+    },
   },
   blockExplorers: {
-    default: { name: 'Monad Explorer', url: 'https://testnet.monadexplorer.com' },
+    default: {
+      name: 'Monad Explorer',
+      url: 'https://testnet.monadexplorer.com'
+    },
   },
   testnet: true,
-}
+})
 
 export function Providers({ children }: { children: ReactNode }) {
   // Add debug logging for context initialization
@@ -33,7 +38,29 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AbstractWalletProvider chain={monadTestnet}>
+    <PrivyProvider
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
+      config={{
+        // Set Monad Testnet as the default chain
+        defaultChain: monadTestnet,
+        // Support only Monad Testnet for now
+        supportedChains: [monadTestnet],
+        // Configure appearance
+        appearance: {
+          theme: 'dark',
+          accentColor: '#00ff88',
+          logo: '/images/nooter.png',
+        },
+        // Enable embedded wallets
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+        },
+        // Configure login methods
+        loginMethods: ['email', 'wallet'],
+        // Configure wallet connection options
+        walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+      }}
+    >
       <ReactTogether
         sessionParams={{
           appId: "monfarm-social-hub",
@@ -48,6 +75,6 @@ export function Providers({ children }: { children: ReactNode }) {
           </GuideProvider>
         </GameProvider>
       </ReactTogether>
-    </AbstractWalletProvider>
+    </PrivyProvider>
   )
 }

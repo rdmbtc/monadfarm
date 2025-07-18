@@ -214,7 +214,7 @@ export default function FarmFeed() {
             {isConnected ? (
               <>
                 <span className="text-green-400">{onlineCount}</span> farmers online
-                {error && <span className="text-red-400 ml-2">• Connection issues</span>}
+                {/* {error && <span className="text-red-400 ml-2">• Connection issues</span>} */}
               </>
             ) : (
               <span className="text-yellow-400">Connecting to farm community...</span>
