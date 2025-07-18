@@ -274,10 +274,11 @@ export function WalletConnect() {
   };
   
   // Display a compact component on mobile and an expanded one on larger screens
+  // Moved to left side to avoid conflict with Stagewise toolbar on the right
   return (
-    <div className="fixed bottom-4 right-4 z-50 md:bottom-6 md:right-6">
+    <div className="fixed bottom-4 left-4 z-50 md:bottom-6 md:left-6">
       {walletAddress ? (
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-start">
           {!isOnCorrectNetwork && (
             <TooltipProvider>
               <Tooltip>
