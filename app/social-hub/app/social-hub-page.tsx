@@ -11,6 +11,7 @@ import { PulseNotification } from "../../../components/ui/pulse-notification"
 import { StreakCounter } from "../../../components/ui/streak-counter"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import { SocialFeed } from "../../../components/social-feed"
@@ -35,9 +36,15 @@ export function SocialHubPage({
   const [userNickname, setUserNickname] = useState(nickname)
   const [showNicknameSetup, setShowNicknameSetup] = useState(false)
   const [activeTab, setActiveTab] = useState<'combined' | 'feed' | 'chat'>('combined')
+  const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
 
-  // React Together integration
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // React Together integration (only on client side)
   const {
     isConnected: isReactTogetherConnected,
     currentUser,
@@ -137,6 +144,15 @@ export function SocialHubPage({
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
+  }
+
+  // Show loading state during SSR or while client is initializing
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading Social Hub...</div>
+      </div>
+    )
   }
 
   return (

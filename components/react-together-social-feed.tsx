@@ -17,7 +17,7 @@ interface ReactTogetherSocialFeedProps {
   showUserPresence?: boolean
 }
 
-export function ReactTogetherSocialFeed({ 
+export function ReactTogetherSocialFeed({
   className = "",
   sessionName = "monfarm-social-feed",
   showUserPresence = false
@@ -25,6 +25,12 @@ export function ReactTogetherSocialFeed({
   const [newPostContent, setNewPostContent] = useState('')
   const [isPosting, setIsPosting] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // React Together integration
   const {
@@ -98,6 +104,17 @@ export function ReactTogetherSocialFeed({
   // Get user nickname
   const getUserNickname = (userId: string) => {
     return allNicknames[userId] || `Farmer ${userId.slice(0, 6)}`
+  }
+
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <Card className={`bg-[#171717] border border-[#333] rounded-none ${className}`}>
+        <CardContent className="p-8 text-center">
+          <div className="text-white/60">Loading social feed...</div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (!isConnected) {

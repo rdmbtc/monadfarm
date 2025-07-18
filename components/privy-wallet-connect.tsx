@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -15,22 +15,29 @@ interface PrivyWalletConnectProps {
   className?: string
 }
 
-export function PrivyWalletConnect({ 
-  onConnect, 
-  onDisconnect, 
-  className = "" 
+export function PrivyWalletConnect({
+  onConnect,
+  onDisconnect,
+  className = ""
 }: PrivyWalletConnectProps) {
-  const { 
-    ready, 
-    authenticated, 
-    user, 
-    login, 
+  const [isClient, setIsClient] = useState(false)
+
+  const {
+    ready,
+    authenticated,
+    user,
+    login,
     logout,
     linkWallet,
     unlinkWallet
   } = usePrivy()
-  
+
   const { wallets } = useWallets()
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Handle login/connect
   const handleConnect = async () => {
@@ -72,8 +79,8 @@ export function PrivyWalletConnect({
     }
   }
 
-  // Show loading state while Privy initializes
-  if (!ready) {
+  // Show loading state while Privy initializes or on server side
+  if (!isClient || !ready) {
     return (
       <Card className={`bg-[#171717] border border-[#333] rounded-none ${className}`}>
         <CardContent className="p-6 text-center">

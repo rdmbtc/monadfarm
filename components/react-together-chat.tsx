@@ -16,14 +16,20 @@ interface ReactTogetherChatProps {
   sessionName?: string
 }
 
-export function ReactTogetherChat({ 
+export function ReactTogetherChat({
   className = "",
   sessionName = "monfarm-chat"
 }: ReactTogetherChatProps) {
   const [messageInput, setMessageInput] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showQuickMessages, setShowQuickMessages] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // React Together integration
   const {
@@ -94,6 +100,17 @@ export function ReactTogetherChat({
   // Get user nickname
   const getUserNickname = (userId: string) => {
     return allNicknames[userId] || `User ${userId.slice(0, 6)}`
+  }
+
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <Card className={`bg-[#171717] border border-[#333] rounded-none ${className}`}>
+        <CardContent className="p-8 text-center">
+          <div className="text-white/60">Loading chat...</div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (!isConnected) {
@@ -258,7 +275,7 @@ export function ReactTogetherChat({
                 onChange={(e) => setMessageInput(e.target.value)}
                 placeholder="Chat with fellow farmers... 🌱"
                 className="bg-[#222] border-[#333] text-white rounded-none"
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                 disabled={!isConnected}
                 maxLength={500}
               />

@@ -37,6 +37,11 @@ export function Providers({ children }: { children: ReactNode }) {
     console.log("[Providers] Client-side providers initialized");
   }, []);
 
+  // Ensure we're on the client side before rendering providers
+  if (typeof window === 'undefined') {
+    return <>{children}</>
+  }
+
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
