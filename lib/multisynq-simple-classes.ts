@@ -71,7 +71,7 @@ export function createSimpleModel() {
         this.activities = [];
         this.participants = 0;
 
-        // Arrow functions automatically bind context, no manual binding needed
+        // Regular methods are used instead of arrow functions to avoid serialization issues
 
         // System event subscriptions with proper error handling
         try {
@@ -106,7 +106,7 @@ export function createSimpleModel() {
       }
     }
 
-    handleUserJoin = (viewId) => {
+    handleUserJoin(viewId) {
       try {
         console.log('User joined:', viewId);
         const nickname = this.generateRandomNickname();
@@ -129,7 +129,7 @@ export function createSimpleModel() {
       }
     }
 
-    handleUserExit = (viewId) => {
+    handleUserExit(viewId) {
       try {
         console.log('User left:', viewId);
         const user = this.users.get(viewId);
@@ -144,7 +144,7 @@ export function createSimpleModel() {
       }
     }
 
-    handleSendMessage = (data) => {
+    handleSendMessage(data) {
       try {
         const { userId, text, type = 'text' } = data;
         const user = this.users.get(userId);
@@ -171,7 +171,7 @@ export function createSimpleModel() {
       }
     }
 
-    handleSetNickname = (data) => {
+    handleSetNickname(data) {
       try {
         const { userId, nickname } = data;
         const user = this.users.get(userId);
@@ -184,7 +184,7 @@ export function createSimpleModel() {
       }
     }
 
-    handleCreatePost = (data) => {
+    handleCreatePost(data) {
       try {
         const { userId, content, media, tags = [] } = data;
         const user = this.users.get(userId);
@@ -213,7 +213,7 @@ export function createSimpleModel() {
       }
     }
 
-    handleLikePost = (data) => {
+    handleLikePost(data) {
       try {
         const { userId, postId } = data;
         const user = this.users.get(userId);
