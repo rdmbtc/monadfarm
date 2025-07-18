@@ -37,11 +37,8 @@ export function Providers({ children }: { children: ReactNode }) {
     console.log("[Providers] Client-side providers initialized");
   }, []);
 
-  // Ensure we're on the client side before rendering providers
-  if (typeof window === 'undefined') {
-    return <>{children}</>
-  }
-
+  // Always provide the context providers, even during SSR
+  // This prevents "hook called outside of provider" errors during static generation
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}

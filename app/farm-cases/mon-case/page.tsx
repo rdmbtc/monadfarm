@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Package, CircleDollarSign, Trophy, Wallet, CreditCard, Coins, LogOut, ExternalLink, RefreshCw, CircleAlert } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
-import confetti from 'canvas-confetti';
+// import confetti from 'canvas-confetti';
 import { ethers, Contract, BrowserProvider } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
 // Import Privy packages
@@ -2831,10 +2831,10 @@ export default function NootCasePage() {
       
       // Calculate gas limit based on token amount - larger transfers need more gas
       let gasLimit = 1000000; // Default
-      if (item.tokenKey === 'MOP' || item.tokenAmount >= 10000) {
-        gasLimit = 2500000; // Increase gas limit for large token amounts
-        console.log("Using higher gas limit for high-value token transfer");
-      }
+      // if (item.tokenKey === 'MOP' || item.tokenAmount >= 10000) {
+      //   gasLimit = 2500000; // Increase gas limit for large token amounts
+      //   console.log("Using higher gas limit for high-value token transfer");
+      // }
 
       try {
         console.log("Trying direct token transfer from contract");
@@ -2843,13 +2843,13 @@ export default function NootCasePage() {
         const tokenAmount = ethers.parseUnits(item.tokenAmount?.toString() || "0", 18);
         
         // Call claimTestTokens as primary method for MOP and high-value tokens
-        if (item.tokenKey === 'MOP' || item.tokenAmount >= 10000) {
-          console.log("Using claimTestTokens for MOP/high-value token");
-          const claimTx = await swapContract.claimTestTokens(
-            getChecksumAddress(item.tokenAddress),
-            tokenAmount,
-            { gasLimit }
-          );
+          if (item.tokenKey === 'MOP') {
+            console.log("Using claimTestTokens for MOP/high-value token");
+            const claimTx = await swapContract.claimTestTokens(
+              getChecksumAddress(item.tokenAddress),
+              tokenAmount,
+              { gasLimit }
+            );
           
           toast.loading(`Finalizing token claim...`, { id: "claim-toast" });
           
