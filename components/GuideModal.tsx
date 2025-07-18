@@ -7,17 +7,17 @@ interface GuideModalProps {
   title: string;
   content: string | React.ReactNode;
   onClose: () => void;
-  isNootPro?: boolean;
+  isMonPro?: boolean;
 }
 
-const GuideModal: React.FC<GuideModalProps> = ({ 
-  imagePath, 
-  title, 
-  content, 
+const GuideModal: React.FC<GuideModalProps> = ({
+  imagePath,
+  title,
+  content,
   onClose,
-  isNootPro = false 
+  isMonPro = false
 }) => {
-  const [timeRemaining, setTimeRemaining] = useState(isNootPro ? 0 : 5);
+  const [timeRemaining, setTimeRemaining] = useState(isMonPro ? 0 : 5);
   const [step, setStep] = useState(0);
   const [animateSparkle, setAnimateSparkle] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -35,13 +35,13 @@ const GuideModal: React.FC<GuideModalProps> = ({
   const totalSteps = contentItems.length > 0 ? contentItems.length + 1 : 1;
   
   useEffect(() => {
-    if (!isNootPro && timeRemaining > 0) {
+    if (!isMonPro && timeRemaining > 0) {
       const timer = setTimeout(() => {
         setTimeRemaining(prev => prev - 1);
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [timeRemaining, isNootPro]);
+  }, [timeRemaining, isMonPro]);
   
   useEffect(() => {
     // Add entrance animation to modal
@@ -262,9 +262,9 @@ const GuideModal: React.FC<GuideModalProps> = ({
           
           <button
             onClick={handleNextStep}
-            disabled={!isNootPro && timeRemaining > 0}
+            disabled={!isMonPro && timeRemaining > 0}
             className={`flex items-center px-6 py-2 rounded-lg font-medium transition-all ${
-              !isNootPro && timeRemaining > 0
+              !isMonPro && timeRemaining > 0
                 ? 'bg-[#222] text-white/60 cursor-not-allowed'
                 : 'bg-white text-black hover:bg-white/90 btn-shimmer'
             }`}
@@ -272,7 +272,7 @@ const GuideModal: React.FC<GuideModalProps> = ({
             {step === totalSteps - 1 ? (
               <>
                 <Check className="h-4 w-4 mr-1" />
-                {!isNootPro && timeRemaining > 0 ? `Got it (${timeRemaining}s)` : 'Got it!'}
+                {!isMonPro && timeRemaining > 0 ? `Got it (${timeRemaining}s)` : 'Got it!'}
               </>
             ) : (
               <>

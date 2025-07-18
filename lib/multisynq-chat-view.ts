@@ -358,6 +358,17 @@ export class MonFarmChatView {
 }
 
 export const createMonFarmChatView = (callbacks: ChatViewCallbacks = {}) => {
-  const monFarmView = new MonFarmChatView(callbacks);
-  return monFarmView.createView.bind(monFarmView);
+  try {
+    const monFarmView = new MonFarmChatView(callbacks);
+    return monFarmView.createView.bind(monFarmView);
+  } catch (error) {
+    console.error('Error creating MonFarm chat view:', error);
+    // Return a basic view class as fallback
+    return class extends window.Multisynq.View {
+      constructor(model: any) {
+        super(model);
+        console.log('Using fallback view class');
+      }
+    };
+  }
 };

@@ -16,13 +16,13 @@ export function useGuides() {
     platformer: false
   });
   
-  const [isNootPro, setIsNootPro] = useState(false);
+  const [isMonPro, setIsMonPro] = useState(false);
   
   useEffect(() => {
     // Load viewed guides and pro status from localStorage
     if (typeof window !== "undefined") {
       const savedGuides = localStorage.getItem('viewed-guides');
-      const savedProStatus = localStorage.getItem('noot-pro');
+      const savedProStatus = localStorage.getItem('mon-pro');
       
       if (savedGuides) {
         try {
@@ -33,7 +33,7 @@ export function useGuides() {
       }
       
       if (savedProStatus === 'true') {
-        setIsNootPro(true);
+        setIsMonPro(true);
       }
     }
   }, []);
@@ -51,10 +51,10 @@ export function useGuides() {
     return !viewedGuides[section];
   };
   
-  const setNootProStatus = (isPro: boolean) => {
-    setIsNootPro(isPro);
+  const setMonProStatus = (isPro: boolean) => {
+    setIsMonPro(isPro);
     if (typeof window !== "undefined") {
-      localStorage.setItem('noot-pro', isPro ? 'true' : 'false');
+      localStorage.setItem('mon-pro', isPro ? 'true' : 'false');
     }
   };
   
@@ -83,8 +83,8 @@ export function useGuides() {
   return {
     shouldShowGuide,
     markGuideAsViewed,
-    isNootPro,
-    setNootProStatus,
+    isMonPro,
+    setMonProStatus,
     resetAllGuides
   };
 } 
