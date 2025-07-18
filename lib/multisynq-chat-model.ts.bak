@@ -44,8 +44,8 @@ export class MonFarmChatModel {
 
   createModel() {
     const MultisynqModel = window.Multisynq.Model;
-    
-    return class extends MultisynqModel {
+
+    return class MonFarmChatModel extends MultisynqModel {
       init() {
         // Initialize data structures
         this.users = new Map(); // viewId -> user info
@@ -478,7 +478,17 @@ export const createMonFarmChatModel = () => {
     }
 
     const monFarmChat = new MonFarmChatModel();
-    return monFarmChat.createModel();
+    const ModelClass = monFarmChat.createModel();
+
+    // Ensure the class has a proper name for Multisynq registration
+    Object.defineProperty(ModelClass, 'name', { value: 'MonFarmChatModel' });
+
+    // Try explicit registration like in Multisynq examples
+    if (ModelClass.register && typeof ModelClass.register === 'function') {
+      ModelClass.register('MonFarmChatModel');
+    }
+
+    return ModelClass;
   } catch (error) {
     console.error('Error creating MonFarm chat model:', error);
     throw error;

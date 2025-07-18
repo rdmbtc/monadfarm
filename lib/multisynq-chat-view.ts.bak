@@ -39,7 +39,7 @@ export class MonFarmChatView {
     const MultisynqView = window.Multisynq.View;
     const callbacks = this.callbacks;
     
-    return class extends MultisynqView {
+    return class MonFarmChatView extends MultisynqView {
       constructor(modelInstance: any) {
         super(modelInstance);
         this.model = modelInstance;
@@ -364,13 +364,18 @@ export const createMonFarmChatView = (callbacks: ChatViewCallbacks = {}) => {
     }
 
     const monFarmView = new MonFarmChatView(callbacks);
-    return monFarmView.createView();
+    const ViewClass = monFarmView.createView();
+
+    // Ensure the class has a proper name for Multisynq registration
+    Object.defineProperty(ViewClass, 'name', { value: 'MonFarmChatView' });
+
+    return ViewClass;
   } catch (error) {
     console.error('Error creating MonFarm chat view:', error);
 
     // Return a basic view class as fallback only if Multisynq is available
     if (typeof window !== 'undefined' && window.Multisynq) {
-      return class extends window.Multisynq.View {
+      return class FallbackChatView extends window.Multisynq.View {
         constructor(model: any) {
           super(model);
           console.log('Using fallback view class due to error:', error);

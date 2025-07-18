@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { multisynqService, getMultisynqConfig } from '../services/multisynq-service';
-import { createMonFarmChatModel } from '../lib/multisynq-chat-model';
-import { createMonFarmChatView } from '../lib/multisynq-chat-view';
+import { createSimpleModel, createSimpleView } from '../lib/multisynq-simple-classes';
 import type { ChatMessage, MultisynqUser, MultisynqSession } from '../services/multisynq-service';
-import type { SocialPost, UserActivity } from '../lib/multisynq-chat-model';
+import type { SocialPost, UserActivity } from '../lib/multisynq-simple-classes';
 
 export interface UseMultisynqOptions {
   autoConnect?: boolean;
@@ -132,9 +131,10 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
         throw new Error('Multisynq library not loaded. Please check your internet connection and try again.');
       }
 
-      // Create model and view
-      const ChatModel = createMonFarmChatModel();
-      const ChatView = createMonFarmChatView({
+      // Create model and view - try simple classes first
+      console.log('Creating simple model and view classes...');
+      const ChatModel = createSimpleModel();
+      const ChatView = createSimpleView({
         onMessageReceived: (message) => {
           setMessages(prev => {
             const exists = prev.some(m => m.id === message.id);
@@ -190,7 +190,22 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
           console.log('System message:', message);
         }
       });
-      
+
+      // Debug: Check what we're passing to Session.join
+      console.log('ChatModel:', ChatModel);
+      console.log('ChatModel type:', typeof ChatModel);
+      console.log('ChatModel name:', ChatModel?.name);
+      console.log('ChatModel constructor:', ChatModel?.constructor?.name);
+      console.log('ChatView:', ChatView);
+      console.log('ChatView type:', typeof ChatView);
+      console.log('ChatView name:', ChatView?.name);
+      console.log('ChatView constructor:', ChatView?.constructor?.name);
+
+      // Additional debugging
+      console.log('window.Multisynq available:', !!window.Multisynq);
+      console.log('window.Multisynq.Model:', window.Multisynq?.Model);
+      console.log('window.Multisynq.View:', window.Multisynq?.View);
+
       // Join Multisynq session
       console.log('Attempting to join Multisynq session with:', {
         apiKey: getMultisynqConfig().apiKey ? '***' : 'MISSING',
