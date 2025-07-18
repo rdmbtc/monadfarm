@@ -36,83 +36,24 @@ export function RealTimeSocialFeed({
 }: RealTimeSocialFeedProps) {
   const {
     isConnected,
-    isLoading,
     currentUser,
     users,
     onlineCount,
     posts,
-    activities,
     createPost,
-    likePost,
-    savePost
-  } = useMultisynq({ autoConnect: true, sessionName });
+    likePost
+  } = useReactTogether({ chatKey: sessionName || 'monfarm-social-feed' });
 
   const [newPostContent, setNewPostContent] = useState('');
-  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
-  const [isPosting, setIsPosting] = useState(false);
-  const [postTags, setPostTags] = useState<string[]>([]);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  // Enhanced post creation with better UX
-  const handleSubmitPost = async (e: React.FormEvent) => {
+  // Handle post creation
+  const handleSubmitPost = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostContent.trim() || !isConnected || isPosting) return;
+    if (!newPostContent.trim() || !isConnected) return;
 
-    setIsPosting(true);
-
-    try {
-      // Add farm-related tags automatically
-      const farmTags = ['farm', 'social'];
-      if (newPostContent.toLowerCase().includes('crop')) farmTags.push('crops');
-      if (newPostContent.toLowerCase().includes('animal')) farmTags.push('animals');
-      if (newPostContent.toLowerCase().includes('harvest')) farmTags.push('harvest');
-
-      createPost(newPostContent.trim(), '', [...farmTags, ...postTags]);
-      setNewPostContent('');
-      setPostTags([]);
-
-      toast.success('🌱 Post shared with the farming community!');
-    } catch (error) {
-      toast.error('Failed to share post. Please try again.');
-    } finally {
-      setIsPosting(false);
-    }
-  };
-
-  // Add emoji to post
-  const addEmoji = (emoji: string) => {
-    setNewPostContent(prev => prev + emoji);
-    setShowEmojiPicker(false);
-  };
-
-  // Common farm emojis
-  const farmEmojis = ['🌱', '🌾', '🚜', '🐄', '🐷', '🐔', '🌽', '🥕', '🍅', '🌻', '🏡', '⭐'];
-
-  // Enhanced like functionality with animation
-  const handleLikePost = (postId: string) => {
-    likePost(postId);
-    toast.success('❤️ Liked!', { duration: 1000 });
-  };
-
-  // Handle like toggle
-  const handleLike = (postId: string) => {
-    if (!isConnected) return;
-    likePost(postId);
-  };
-
-  // Handle save toggle
-  const handleSave = (postId: string) => {
-    setSavedPosts(prev => {
-      const newSaved = new Set(prev);
-      if (newSaved.has(postId)) {
-        newSaved.delete(postId);
-        toast.success('Post unsaved');
-      } else {
-        newSaved.add(postId);
-        toast.success('Post saved');
-      }
-      return newSaved;
-    });
+    createPost(newPostContent.trim());
+    setNewPostContent('');
+    toast.success('🌱 Post shared with the farming community!');
   };
 
   // Format timestamp
@@ -188,111 +129,16 @@ export function RealTimeSocialFeed({
         </Card>
       )}
 
-      {/* Enhanced Post creation area */}
+      {/* Post creation area */}
       <div className="bg-[#171717] border border-[#333] p-4 rounded-none shadow-md">
-        <div className="mb-3">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Share with the farming community
-          </h3>
-          <p className="text-white/60 text-sm">What's happening on your farm today?</p>
-        </div>
-
         <form onSubmit={handleSubmitPost} className="space-y-4">
           <div className="flex items-start gap-3">
             <Avatar className="w-10 h-10 border border-[#333]">
-              <AvatarImage src="/images/nooter.png" alt="Your Avatar" />
+              <AvatarImage src="/images/mon.png" alt="Your Avatar" />
               <AvatarFallback>{currentUser?.nickname?.substring(0, 2) || 'YN'}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 space-y-3">
-              <textarea
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                placeholder="Share your farming adventures, ask questions, or celebrate your harvest! 🌱"
-                className="w-full bg-[#111] border border-[#333] text-white placeholder:text-white/50 rounded-none p-3 min-h-[100px] resize-none focus:outline-none focus:border-white/30"
-                maxLength={500}
-                disabled={!isConnected || isPosting}
-              />
-
-              {/* Emoji picker */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="bg-transparent border-[#333] text-white hover:bg-[#222] rounded-none"
-                  >
-                    😊 Emoji
-                  </Button>
-
-                  {showEmojiPicker && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="absolute z-10 bg-[#111] border border-[#333] p-2 rounded-none shadow-lg"
-                    >
-                      <div className="grid grid-cols-6 gap-1">
-                        {farmEmojis.map((emoji, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => addEmoji(emoji)}
-                            className="p-2 hover:bg-[#222] rounded-none text-lg"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-white/60">
-                  <span>{newPostContent.length}/500</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-[#333] text-white hover:bg-[#222] rounded-none"
-              >
-                📷 Photo
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="bg-transparent border-[#333] text-white hover:bg-[#222] rounded-none"
-              >
-                🎮 Game Update
-              </Button>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={!newPostContent.trim() || !isConnected || isPosting}
-              className="bg-white text-black hover:bg-white/90 rounded-none"
-            >
-              {isPosting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="h-4 w-4 border-2 border-black border-t-transparent rounded-full mr-2"
-                />
-              ) : null}
-              {isPosting ? 'Sharing...' : 'Share Post'}
-            </Button>
-          </div>
-        </form>
-      </div>
+            <Input
+              value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
               placeholder={isConnected ? "Share your quest adventures with everyone..." : "Connect to share posts"}
               className="flex-1 bg-[#222] border-[#333] focus:border-[#444] text-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -371,39 +217,13 @@ export function RealTimeSocialFeed({
             transition={{ duration: 0.3 }}
             className="bg-[#171717] border border-[#333] shadow-md rounded-none overflow-hidden"
           >
-            {/* Enhanced Post header */}
+            {/* Post header */}
             <div className="p-4 flex justify-between items-center border-b border-[#333]">
               <div className="flex items-center gap-3">
                 <Avatar className="border border-[#333]">
-                  <AvatarImage src="/images/nooter.png" alt={post.nickname} />
+                  <AvatarImage src="/images/mon.png" alt={post.nickname} />
                   <AvatarFallback>{post.nickname.substring(0, 2)}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white">{post.nickname}</span>
-                    {post.userId === currentUser?.userId && (
-                      <Badge variant="outline" className="text-xs px-1 py-0 border-[#333] text-white/70">You</Badge>
-                    )}
-                    {post.tags?.includes('harvest') && (
-                      <span className="text-xs">🌾</span>
-                    )}
-                    {post.tags?.includes('animals') && (
-                      <span className="text-xs">🐄</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-white/60">
-                    <span>{formatTime(post.timestamp)}</span>
-                    {post.isNew && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="bg-green-500 text-white px-2 py-0.5 rounded-full text-xs"
-                      >
-                        New
-                      </motion.span>
-                    )}
-                  </div>
-                </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-white">{post.nickname}</span>
@@ -448,42 +268,26 @@ export function RealTimeSocialFeed({
               )}
             </div>
             
-            {/* Enhanced Post actions */}
+            {/* Post actions */}
             <div className="px-4 py-2 border-t border-[#333] flex justify-between">
               <div className="flex items-center gap-4">
-                <motion.button
-                  onClick={() => handleLikePost(post.id)}
+                <button 
+                  onClick={() => handleLike(post.id)} 
                   className="flex items-center gap-1 text-white/70 hover:text-white transition-colors"
                   disabled={!isConnected}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                 >
-                  <HeartIcon
+                  <HeartIcon 
                     className={cn(
-                      "h-5 w-5 transition-all duration-200",
-                      post.likedBy?.has(currentUser?.userId || '') ? "fill-red-500 text-red-500 scale-110" : ""
-                    )}
+                      "h-5 w-5 transition-colors", 
+                      post.likedBy.has(currentUser?.userId || '') ? "fill-red-500 text-red-500" : ""
+                    )} 
                   />
-                  <span>{post.likes || 0}</span>
-                </motion.button>
-
-                <motion.button
-                  className="flex items-center gap-1 text-white/70 hover:text-white transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                  <span>{post.likes}</span>
+                </button>
+                <button className="flex items-center gap-1 text-white/70 hover:text-white">
                   <MessageCircle className="h-5 w-5" />
-                  <span>{post.comments || 0}</span>
-                </motion.button>
-
-                <motion.button
-                  className="flex items-center gap-1 text-white/70 hover:text-white transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Share2 className="h-5 w-5" />
-                  <span>Share</span>
-                </motion.button>
+                  <span>{post.comments}</span>
+                </button>
                 <button className="flex items-center gap-1 text-white/70 hover:text-white">
                   <Share2 className="h-5 w-5" />
                 </button>

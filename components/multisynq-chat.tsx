@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useMultisynq } from '../hooks/useMultisynq';
+import { useReactTogether } from '../hooks/useReactTogether';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -43,46 +43,19 @@ export function MultisynqChat({
 }: MultisynqChatProps) {
   const {
     isConnected,
-    isLoading,
-    error,
-    session,
     currentUser,
     users,
     onlineCount,
     messages,
-    posts,
-    activities,
-    connect,
-    disconnect,
     sendMessage,
-    setNickname,
-    createPost,
-    likePost,
-    resetChat,
-    getSessionUrl,
-    generateQRCode
-  } = useMultisynq({ autoConnect, sessionName, password });
+    setNickname
+  } = useReactTogether({ chatKey: sessionName || 'monfarm-chat' });
 
   const [messageInput, setMessageInput] = useState('');
   const [postInput, setPostInput] = useState('');
   const [nicknameInput, setNicknameInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showQuickMessages, setShowQuickMessages] = useState(false);
-
-  // Farm-themed quick messages
-  const quickMessages = [
-    "🌱 Just planted some crops!",
-    "🚜 Time to harvest!",
-    "🐄 My animals are happy today",
-    "⭐ Great farming day!",
-    "🌾 Crops are growing well",
-    "🏡 Farm life is the best!"
-  ];
-
-  // Farm emojis for chat
-  const farmEmojis = ['🌱', '🌾', '🚜', '🐄', '🐷', '🐔', '🌽', '🥕', '🍅', '🌻', '🏡', '⭐', '💰', '🎯'];
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
@@ -99,30 +72,12 @@ export function MultisynqChat({
     }
   }, [isConnected]);
 
-  // Enhanced message sending
+  // Handle message send
   const handleSendMessage = () => {
     if (messageInput.trim() && isConnected) {
       sendMessage(messageInput.trim());
       setMessageInput('');
-      setShowEmojiPicker(false);
-      setShowQuickMessages(false);
-      toast.success('Message sent! 💬', { duration: 1000 });
     }
-  };
-
-  // Send quick message
-  const sendQuickMessage = (quickMsg: string) => {
-    if (isConnected) {
-      sendMessage(quickMsg);
-      setShowQuickMessages(false);
-      toast.success('Quick message sent! 🚀', { duration: 1000 });
-    }
-  };
-
-  // Add emoji to message
-  const addEmoji = (emoji: string) => {
-    setMessageInput(prev => prev + emoji);
-    setShowEmojiPicker(false);
   };
 
   // Handle post creation
@@ -335,97 +290,23 @@ export function MultisynqChat({
                 </div>
               </ScrollArea>
               
-              {/* Enhanced Chat input */}
-              <div className="p-4 border-t border-[#333] space-y-3">
-                {/* Quick messages */}
-                {showQuickMessages && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="grid grid-cols-2 gap-2"
+              <div className="p-4 border-t border-[#333]">
+                <div className="flex gap-2">
+                  <Input
+                    ref={messageInputRef}
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="bg-[#222] border-[#333] text-white"
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    disabled={!isConnected}
+                  />
+                  <Button 
+                    onClick={handleSendMessage} 
+                    disabled={!isConnected || !messageInput.trim()}
                   >
-                    {quickMessages.map((msg, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => sendQuickMessage(msg)}
-                        className="bg-[#222] border-[#333] text-white hover:bg-[#333] text-xs justify-start"
-                      >
-                        {msg}
-                      </Button>
-                    ))}
-                  </motion.div>
-                )}
-
-                {/* Emoji picker */}
-                {showEmojiPicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#222] border border-[#333] p-3 rounded-none"
-                  >
-                    <div className="grid grid-cols-7 gap-2">
-                      {farmEmojis.map((emoji, index) => (
-                        <button
-                          key={index}
-                          onClick={() => addEmoji(emoji)}
-                          className="p-2 hover:bg-[#333] rounded-none text-lg"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Input area */}
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowQuickMessages(!showQuickMessages)}
-                      className="bg-[#222] border-[#333] text-white hover:bg-[#333]"
-                    >
-                      🚀 Quick
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="bg-[#222] border-[#333] text-white hover:bg-[#333]"
-                    >
-                      😊 Emoji
-                    </Button>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Input
-                      ref={messageInputRef}
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      placeholder="Chat with fellow farmers... 🌱"
-                      className="bg-[#222] border-[#333] text-white rounded-none"
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      disabled={!isConnected}
-                      maxLength={500}
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={!messageInput.trim() || !isConnected}
-                      className="bg-white text-black hover:bg-white/90 rounded-none"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs text-white/60">
-                    <span>
-                      {isConnected ? `${onlineCount} farmers online` : 'Disconnected'}
-                    </span>
-                    <span>{messageInput.length}/500</span>
-                  </div>
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>

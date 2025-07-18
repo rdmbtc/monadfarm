@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 import { useToast } from "../hooks/use-toast"
 import { AnimatedBadge } from "./ui/animated-badge"
 import { Confetti } from "./ui/confetti"
-import { useMultisynq } from "../hooks/useMultisynq"
+import { useReactTogether } from "../hooks/useReactTogether"
 
 // Sample feed data
 const feedItems = [
@@ -74,21 +74,17 @@ export default function FarmFeed() {
   const [posts, setPosts] = useState(feedItems)
   const { toast } = useToast()
 
-  // Integrate Multisynq for real-time functionality
+  // Integrate React Together for real-time functionality
   const {
     isConnected,
-    isLoading,
-    error,
     currentUser,
     users,
     onlineCount,
-    posts: multisynqPosts,
+    posts: reactTogetherPosts,
     createPost,
-    likePost,
-    connect
-  } = useMultisynq({
-    autoConnect: true,
-    sessionName: 'monfarm-social-feed'
+    likePost
+  } = useReactTogether({
+    chatKey: 'monfarm-social-feed'
   })
 
   const handleLike = (postId: number) => {
@@ -164,9 +160,9 @@ export default function FarmFeed() {
 
   // Merge Multisynq posts with local posts
   useEffect(() => {
-    if (multisynqPosts && multisynqPosts.length > 0) {
-      // Convert Multisynq posts to local format
-      const convertedPosts = multisynqPosts.map(post => ({
+    if (reactTogetherPosts && reactTogetherPosts.length > 0) {
+      // Convert React Together posts to local format
+      const convertedPosts = reactTogetherPosts.map((post: any) => ({
         id: parseInt(post.id) || Date.now(), // Convert string ID to number
         user: {
           name: post.nickname || post.userId,
@@ -186,11 +182,11 @@ export default function FarmFeed() {
       // Merge with existing local posts, avoiding duplicates
       setPosts(prevPosts => {
         const existingIds = new Set(prevPosts.map(p => p.id))
-        const newPosts = convertedPosts.filter(p => !existingIds.has(p.id))
+        const newPosts = convertedPosts.filter((p: any) => !existingIds.has(p.id))
         return [...newPosts, ...prevPosts]
       })
     }
-  }, [multisynqPosts])
+  }, [reactTogetherPosts])
 
   // Mark posts as not new after they've been viewed
   useEffect(() => {
