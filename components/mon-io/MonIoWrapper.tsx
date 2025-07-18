@@ -19,7 +19,7 @@ const MonIoWrapper: React.FC<MonIoWrapperProps> = ({ farmCoins, addFarmCoins }) 
     // Set up message listener to handle events from the iframe
     const handleMessage = (event: MessageEvent) => {
       // Make sure message is from our game
-      if (event.data && event.data.type === 'noot-io') {
+      if (event.data && event.data.type === 'mon-io') {
         // Handle different message types
         if (event.data.action === 'earn-coins') {
           // Add coins when the player earns them in the game
@@ -52,7 +52,7 @@ const MonIoWrapper: React.FC<MonIoWrapperProps> = ({ farmCoins, addFarmCoins }) 
     if (iframe && iframe.contentWindow && iframeLoaded) {
       // Send initial coins data to the game
       iframe.contentWindow.postMessage({
-        type: 'noot-io-init',
+        type: 'mon-io-init',
         farmCoins
       }, '*');
       
@@ -63,7 +63,7 @@ const MonIoWrapper: React.FC<MonIoWrapperProps> = ({ farmCoins, addFarmCoins }) 
   // Handle iframe load event
   const handleIframeLoad = () => {
     setIframeLoaded(true);
-    console.log('Noot.io iframe loaded');
+    console.log('Mon.io iframe loaded');
     
     // Auto-start in offline mode after a short delay
     setTimeout(() => {
@@ -80,7 +80,7 @@ const MonIoWrapper: React.FC<MonIoWrapperProps> = ({ farmCoins, addFarmCoins }) 
     if (iframe && iframe.contentWindow) {
       console.log('Sending command to game:', command);
       iframe.contentWindow.postMessage({
-        type: 'noot-io-command',
+        type: 'mon-io-command',
         command: command
       }, "*"); // Use '*' as the target origin when sending command to iframe
       

@@ -62,8 +62,8 @@ import SportBettingPage from "@/app/sport-betting/app/page"; // Assuming this is
 // Import SocialHubPage for social tab
 import { SocialHubPage } from "@/app/social-hub/app/social-hub-page"; // Path to the new SocialHubPage component
 
-// Import NootIoWrapper for Noot.io game
-import NootIoWrapper from '@/components/noot-io/NootIoWrapper';
+// Import MonIoWrapper for Mon.io game
+import MonIoWrapper from '@/components/mon-io/MonIoWrapper';
 
 // Dynamically import P5Wrapper with SSR disabled
 const DynamicP5Wrapper = dynamic(() => import('./p5-platformer/P5Wrapper'), { // Corrected path
@@ -2188,9 +2188,9 @@ export function Farm() {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 border border-[#333] overflow-hidden">
-                <img src="/images/logo mark/Monad Logo - Default - Logo Mark.png" alt="MonFarm" className="w-full h-full object-cover" />
+                <img src="/images/nooter.png" alt="Nooter" className="w-full h-full object-cover" />
               </div>
-              <h1 className="text-xl font-bold text-white noot-title">MonFarm</h1>
+              <h1 className="text-xl font-bold text-white noot-title">Nooter's Farm</h1>
             </div>
             
             <div className="flex items-center gap-2">
