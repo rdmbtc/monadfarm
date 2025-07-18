@@ -359,16 +359,26 @@ export class MonFarmChatView {
 
 export const createMonFarmChatView = (callbacks: ChatViewCallbacks = {}) => {
   try {
+    if (typeof window === 'undefined' || !window.Multisynq) {
+      throw new Error('Multisynq not loaded or not in browser environment');
+    }
+
     const monFarmView = new MonFarmChatView(callbacks);
-    return monFarmView.createView.bind(monFarmView);
+    return monFarmView.createView();
   } catch (error) {
     console.error('Error creating MonFarm chat view:', error);
-    // Return a basic view class as fallback
-    return class extends window.Multisynq.View {
-      constructor(model: any) {
-        super(model);
-        console.log('Using fallback view class');
-      }
-    };
+
+    // Return a basic view class as fallback only if Multisynq is available
+    if (typeof window !== 'undefined' && window.Multisynq) {
+      return class extends window.Multisynq.View {
+        constructor(model: any) {
+          super(model);
+          console.log('Using fallback view class due to error:', error);
+        }
+      };
+    }
+
+    // If Multisynq is not available, throw the error
+    throw error;
   }
 };

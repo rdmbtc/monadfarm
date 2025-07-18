@@ -472,6 +472,15 @@ export class MonFarmChatModel {
 }
 
 export const createMonFarmChatModel = () => {
-  const monFarmChat = new MonFarmChatModel();
-  return monFarmChat.createModel();
+  try {
+    if (typeof window === 'undefined' || !window.Multisynq) {
+      throw new Error('Multisynq not loaded or not in browser environment');
+    }
+
+    const monFarmChat = new MonFarmChatModel();
+    return monFarmChat.createModel();
+  } catch (error) {
+    console.error('Error creating MonFarm chat model:', error);
+    throw error;
+  }
 };

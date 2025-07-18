@@ -127,6 +127,11 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
         newSession = await multisynqService.createSession();
       }
       
+      // Ensure Multisynq is loaded before creating model and view
+      if (!window.Multisynq) {
+        throw new Error('Multisynq library not loaded. Please check your internet connection and try again.');
+      }
+
       // Create model and view
       const ChatModel = createMonFarmChatModel();
       const ChatView = createMonFarmChatView({
@@ -187,6 +192,15 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
       });
       
       // Join Multisynq session
+      console.log('Attempting to join Multisynq session with:', {
+        apiKey: getMultisynqConfig().apiKey ? '***' : 'MISSING',
+        appId: getMultisynqConfig().appId,
+        modelType: typeof ChatModel,
+        viewType: typeof ChatView,
+        name: newSession.name,
+        hasPassword: !!newSession.password
+      });
+
       const multisynqSession = await window.Multisynq.Session.join({
         apiKey: getMultisynqConfig().apiKey,
         appId: getMultisynqConfig().appId,
