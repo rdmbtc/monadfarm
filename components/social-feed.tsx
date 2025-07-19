@@ -1,154 +1,214 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from 'react';
+import { useStateTogether, useConnectedUsers, useMyId } from 'react-together';
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { HeartIcon, MessageCircle, Share2, Bookmark, MoreHorizontal } from "lucide-react"
+import { Textarea } from "./ui/textarea"
+import { HeartIcon, MessageCircle, Share2, Bookmark, MoreHorizontal, Send, Plus, Users } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "./ui/badge"
 import { cn } from "../lib/utils"
+import toast from 'react-hot-toast'
+
+interface SocialPost {
+  id: string;
+  userId: string;
+  nickname: string;
+  content: string;
+  timestamp: number;
+  likes: number;
+  likedBy: string[];
+  tags: string[];
+  media?: string;
+}
 
 export function SocialFeed() {
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: {
-        name: "NootExplorer",
-        avatar: "/images/mon.png",
-        verified: true,
-      },
-      content: "Just completed the Ancient Ruins quest! Found some rare artifacts and earned 500 XP. Who wants to join me for the Forest Expedition next?",
-      timestamp: "3 hours ago",
-      likes: 24,
-      comments: 5,
-      liked: false,
-      saved: false,
-      media: "/images/guide/Ancient Ruins quest.jpg",
-      tags: ["QuestComplete", "AncientRuins"]
-    },
-    {
-      id: 2,
-      author: {
-        name: "NootMaster99",
-        avatar: "/images/mon.png",
-        verified: false,
-      },
-      content: "Trading rare items at the marketplace tomorrow. Looking for enchanted boots and magical scrolls. I have plenty of healing potions to offer!",
-      timestamp: "6 hours ago",
-      likes: 17,
-      comments: 12,
-      liked: true,
-      saved: true,
-      media: null,
-      tags: ["Trading", "Marketplace"]
-    },
-    {
-      id: 3,
-      author: {
-        name: "AdventureNoot",
-        avatar: "/images/mon.png",
-        verified: true,
-      },
-      content: "Reached level 50 today! The journey has been incredible. Thanks to everyone who helped along the way. Special shoutout to the Noot Guild!",
-      timestamp: "1 day ago",
-      likes: 86,
-      comments: 32,
-      liked: false,
-      saved: false,
-      media: "/images/guide/level 50 today.jpg",
-      tags: ["LevelUp", "Milestone"]
-    },
-  ])
-  
-  const [newPostContent, setNewPostContent] = useState("")
-  
-  const handleLike = (postId) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          liked: !post.liked,
-          likes: post.liked ? post.likes - 1 : post.likes + 1
-        }
-      }
-      return post
-    }))
-  }
-  
-  const handleSave = (postId) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          saved: !post.saved
-        }
-      }
-      return post
-    }))
-  }
-  
-  const handleSubmitPost = (e) => {
-    e.preventDefault()
-    if (!newPostContent.trim()) return
-    
-    const newPost = {
-      id: Date.now(),
-      author: {
-        name: "YourNootName",
-        avatar: "/images/nooter.png",
-        verified: false,
-      },
-      content: newPostContent,
-      timestamp: "Just now",
-      likes: 0,
-      comments: 0,
-      liked: false,
-      saved: false,
-      media: null,
-      tags: []
+  // React Together hooks - these automatically sync across all users!
+  const [posts, setPosts] = useStateTogether<SocialPost[]>('monfarm-social-posts', []);
+  const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('monfarm-user-nicknames', {});
+
+  // Get current user info
+  const myId = useMyId();
+  const connectedUsers = useConnectedUsers();
+
+  // Local state for UI
+  const [newPostContent, setNewPostContent] = useState("");
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
+
+  // Generate or get user nickname
+  const myNickname = userNicknames[myId] || generateFarmerName();
+
+  // Set nickname if not already set
+  React.useEffect(() => {
+    if (myId && !userNicknames[myId]) {
+      setUserNicknames(prev => ({
+        ...prev,
+        [myId]: generateFarmerName()
+      }));
     }
-    
-    setPosts([newPost, ...posts])
-    setNewPostContent("")
+  }, [myId, userNicknames, setUserNicknames]);
+
+  function generateFarmerName() {
+    const adjectives = [
+      "Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden",
+      "Sunny", "Fresh", "Wild", "Free", "Bold", "Pure", "Strong", "Gentle", "Noble", "Proud"
+    ];
+    const farmTerms = [
+      "Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher", "Shepherd", "Keeper",
+      "Sower", "Reaper", "Cultivator", "Tender", "Breeder", "Herder", "Caretaker", "Steward"
+    ];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const term = farmTerms[Math.floor(Math.random() * farmTerms.length)];
+    return `${adj} ${term}`;
   }
   
+  const handleCreatePost = () => {
+    if (!newPostContent.trim() || !myId || isPosting) return;
+
+    setIsPosting(true);
+
+    const newPost: SocialPost = {
+      id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: myId,
+      nickname: myNickname,
+      content: newPostContent.trim(),
+      timestamp: Date.now(),
+      likes: 0,
+      likedBy: [],
+      tags: ['farming', 'monfarm']
+    };
+
+    // Add to posts - this automatically syncs to all users!
+    setPosts(prev => [newPost, ...prev].slice(0, 50)); // Keep last 50 posts
+
+    setNewPostContent('');
+    setShowCreatePost(false);
+    setIsPosting(false);
+    toast.success('Post shared with the farming community! 🌾');
+  };
+
+  const handleLikePost = (postId: string) => {
+    if (!myId) return;
+
+    setPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        const hasLiked = post.likedBy.includes(myId);
+
+        if (hasLiked) {
+          // Unlike
+          return {
+            ...post,
+            likes: Math.max(0, post.likes - 1),
+            likedBy: post.likedBy.filter(id => id !== myId)
+          };
+        } else {
+          // Like
+          return {
+            ...post,
+            likes: post.likes + 1,
+            likedBy: [...post.likedBy, myId]
+          };
+        }
+      }
+      return post;
+    }));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleCreatePost();
+    }
+  };
+  
+  const isConnected = !!myId;
+
   return (
     <div className="w-full max-w-3xl mx-auto space-y-4">
+      {/* Connection Status */}
+      <div className="flex items-center justify-between bg-[#171717] border border-[#333] p-3 rounded-none">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-green-400" />
+          <span className="text-sm text-white">{connectedUsers.length} farmers online</span>
+          <div className={cn(
+            "w-2 h-2 rounded-full ml-2",
+            isConnected ? "bg-green-500" : "bg-red-500"
+          )} />
+        </div>
+        <span className="text-xs text-gray-400">Welcome, {myNickname}!</span>
+      </div>
+
       {/* Post creation area */}
-      <div className="bg-[#171717] border border-[#333] p-4 rounded-none shadow-md">
-        <form onSubmit={handleSubmitPost} className="space-y-4">
-          <div className="flex items-start gap-3">
-            <Avatar className="w-10 h-10 border border-[#333]">
-              <AvatarImage src="/images/mon.png" alt="Your Avatar" />
-              <AvatarFallback>YN</AvatarFallback>
-            </Avatar>
-            <Input
+      {!showCreatePost ? (
+        <div className="bg-[#171717] border border-[#333] p-4 rounded-none shadow-md">
+          <Button
+            onClick={() => setShowCreatePost(true)}
+            disabled={!isConnected}
+            className="w-full bg-[#333] hover:bg-[#444] text-white border border-[#444] rounded-none"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Share your farming experience...
+          </Button>
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="bg-[#171717] border border-[#333] p-4 rounded-none shadow-md"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-10 h-10 border border-[#333]">
+                <AvatarImage src="/images/nooter.png" alt="Your Avatar" />
+                <AvatarFallback className="bg-green-600 text-white text-xs">
+                  {myNickname.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm text-gray-300">{myNickname}</span>
+            </div>
+
+            <Textarea
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
-              placeholder="Share your quest adventures..."
-              className="flex-1 bg-[#222] border-[#333] focus:border-[#444] text-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              onKeyPress={handleKeyPress}
+              placeholder="What's happening on your farm? Share your harvest, discoveries, or farming tips..."
+              className="min-h-[100px] bg-[#222] border-[#333] focus:border-[#444] text-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
+              maxLength={1000}
             />
-          </div>
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" className="bg-transparent border-[#333] hover:bg-[#222] text-white rounded-none">
-                📷 Photo
-              </Button>
-              <Button type="button" variant="outline" size="sm" className="bg-transparent border-[#333] hover:bg-[#222] text-white rounded-none">
-                📍 Location
-              </Button>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">
+                {newPostContent.length}/1000 • Ctrl+Enter to post
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowCreatePost(false);
+                    setNewPostContent('');
+                  }}
+                  className="bg-transparent border-[#333] hover:bg-[#222] text-white rounded-none"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreatePost}
+                  disabled={!newPostContent.trim() || isPosting}
+                  className="bg-[#333] hover:bg-[#444] text-white border border-[#444] rounded-none"
+                >
+                  <Send className="h-4 w-4 mr-1" />
+                  Post
+                </Button>
+              </div>
             </div>
-            <Button 
-              type="submit" 
-              className="bg-[#333] hover:bg-[#444] text-white border border-[#444] rounded-none"
-              disabled={!newPostContent.trim()}
-            >
-              Post
-            </Button>
           </div>
-        </form>
-      </div>
+        </motion.div>
+      )}
       
       {/* Feed posts */}
       <AnimatePresence>
@@ -165,19 +225,23 @@ export function SocialFeed() {
             <div className="p-4 flex justify-between items-center border-b border-[#333]">
               <div className="flex items-center gap-3">
                 <Avatar className="border border-[#333]">
-                  <AvatarImage src={post.author.avatar} alt={post.author.name} />
-                  <AvatarFallback>{post.author.name.substring(0, 2)}</AvatarFallback>
+                  <AvatarImage src="/images/nooter.png" alt={post.nickname} />
+                  <AvatarFallback className="bg-blue-600 text-white text-sm">
+                    {post.nickname.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-white">{post.author.name}</span>
-                    {post.author.verified && (
-                      <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                      </svg>
+                    <span className="font-semibold text-white">{post.nickname}</span>
+                    {connectedUsers.some(user => user.id === post.userId) && (
+                      <Badge variant="secondary" className="text-xs bg-green-600/20 text-green-400 ml-2">
+                        Online
+                      </Badge>
                     )}
                   </div>
-                  <span className="text-xs text-white/60">{post.timestamp}</span>
+                  <span className="text-xs text-white/60">
+                    {new Date(post.timestamp).toLocaleString()}
+                  </span>
                 </div>
               </div>
               <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-[#222] rounded-none h-8 w-8">
@@ -213,39 +277,47 @@ export function SocialFeed() {
             {/* Post actions */}
             <div className="px-4 py-2 border-t border-[#333] flex justify-between">
               <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => handleLike(post.id)} 
-                  className="flex items-center gap-1 text-white/70 hover:text-white"
+                <button
+                  onClick={() => handleLikePost(post.id)}
+                  disabled={!isConnected}
+                  className={cn(
+                    "flex items-center gap-1 text-white/70 hover:text-white",
+                    post.likedBy.includes(myId || '') && "text-red-400"
+                  )}
                 >
-                  <HeartIcon 
+                  <HeartIcon
                     className={cn(
-                      "h-5 w-5", 
-                      post.liked ? "fill-red-500 text-red-500" : ""
-                    )} 
+                      "h-5 w-5",
+                      post.likedBy.includes(myId || '') && "fill-red-400 text-red-400"
+                    )}
                   />
                   <span>{post.likes}</span>
                 </button>
                 <button className="flex items-center gap-1 text-white/70 hover:text-white">
                   <MessageCircle className="h-5 w-5" />
-                  <span>{post.comments}</span>
+                  <span>0</span>
                 </button>
                 <button className="flex items-center gap-1 text-white/70 hover:text-white">
                   <Share2 className="h-5 w-5" />
                 </button>
               </div>
-              <button 
-                onClick={() => handleSave(post.id)}
-                className={cn(
-                  "text-white/70 hover:text-white",
-                  post.saved ? "text-yellow-500" : ""
-                )}
-              >
-                <Bookmark className={cn("h-5 w-5", post.saved ? "fill-yellow-500" : "")} />
+              <button className="text-white/70 hover:text-white">
+                <Bookmark className="h-5 w-5" />
               </button>
             </div>
           </motion.div>
         ))}
       </AnimatePresence>
+
+      {posts.length === 0 && (
+        <div className="text-center py-12 bg-[#171717] border border-[#333] rounded-none">
+          <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-500 mb-2">No posts yet!</p>
+          <p className="text-sm text-gray-600">
+            Be the first to share your farming experience
+          </p>
+        </div>
+      )}
     </div>
   )
 } 

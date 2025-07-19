@@ -26,6 +26,7 @@ import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import { SocialFeed } from "../../../components/social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
+import { ReactTogether } from 'react-together'
 
 interface SocialHubPageProps {
   farmCoins?: number;
@@ -80,8 +81,35 @@ export function SocialHubPage({
     show: { opacity: 1, y: 0 },
   }
 
+  // Get API key and handle missing key
+  const apiKey = process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY;
+
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">⚠️ API Key Missing</h1>
+          <p className="text-gray-300 mb-4">
+            React Together API key not found in environment variables.
+          </p>
+          <p className="text-sm text-gray-500">
+            Make sure NEXT_PUBLIC_REACT_TOGETHER_API_KEY is set in your .env file
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-black">
+    <ReactTogether
+      sessionParams={{
+        apiKey: apiKey,
+        appId: "monfarm.social.hub",
+        name: "monfarm-social-hub-main",
+        password: "public"
+      }}
+    >
+      <div className="min-h-screen bg-black">
       {showDailyReward && (
         <RewardPopup
           title="Social Hub Daily Reward!"
@@ -103,7 +131,7 @@ export function SocialHubPage({
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold text-white">Noot Quest Social Hub</h1>
+          <h1 className="text-xl font-bold text-white">🌾 MonFarm Social Hub</h1>
         </div>
         <div className="flex items-center gap-2">
           <NotificationDropdown />
@@ -207,8 +235,9 @@ export function SocialHubPage({
 
       {/* Footer */}
       <footer className="mt-8 py-4 px-4 border-t border-[#333] bg-[#111] text-white/60 text-center text-sm">
-        <p>© {new Date().getFullYear()} Noot Quest - All rights reserved</p>
+        <p>© {new Date().getFullYear()} MonFarm Social Hub - All rights reserved</p>
       </footer>
     </div>
+    </ReactTogether>
   )
-} 
+}
