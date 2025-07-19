@@ -8,7 +8,7 @@ import { Input } from './ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { useReactTogether } from '../hooks/useReactTogether'
+import { useMultisynq } from '../hooks/useMultisynq'
 import toast from 'react-hot-toast'
 
 interface ReactTogetherChatProps {
@@ -41,8 +41,9 @@ export function ReactTogetherChat({
     sendMessage,
     setNickname,
     allNicknames
-  } = useReactTogether({
-    chatKey: sessionName
+  } = useMultisynq({
+    autoConnect: true,
+    sessionName: sessionName
   })
 
   // Farm-themed quick messages

@@ -5,13 +5,8 @@ import { GameProvider } from "@/context/game-context"
 import { GuideProvider } from "@/context/guide-context"
 import { PrivyProvider } from '@privy-io/react-auth'
 import { defineChain } from 'viem'
-import dynamic from 'next/dynamic'
-
-// Dynamically import ReactTogether to avoid SSR issues
-const ReactTogether = dynamic(
-  () => import('react-together').then(mod => ({ default: mod.ReactTogether })),
-  { ssr: false }
-)
+// Note: ReactTogether removed to prevent duplicate WalletConnect initialization
+// We're using Multisynq instead for real-time features
 
 // Define Monad Testnet chain configuration for Privy
 const monadTestnet = defineChain({
@@ -77,37 +72,21 @@ export function Providers({ children }: { children: ReactNode }) {
           },
           loginMethods: ['email', 'wallet'],
           walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-          // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
+          // Configure supported wallets - exclude Coinbase Smart Wallet for unsupported chains
           externalWallets: {
             coinbaseWallet: {
-              // Disable Coinbase Smart Wallet for unsupported chains
-              connectionOptions: 'smartWalletOnly'
+              // Disable Coinbase Smart Wallet entirely for Monad Testnet
+              connectionOptions: 'eoaOnly'
             }
           },
         }}
       >
-        {/* Don't initialize ReactTogether during SSR to prevent duplicate initialization */}
-        {isClient ? (
-          <ReactTogether
-            sessionParams={{
-              appId: "monfarm-social-hub",
-              apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
-            }}
-            rememberUsers={true}
-          >
-            <GameProvider>
-              <GuideProvider>
-                {children}
-              </GuideProvider>
-            </GameProvider>
-          </ReactTogether>
-        ) : (
-          <GameProvider>
-            <GuideProvider>
-              {children}
-            </GuideProvider>
-          </GameProvider>
-        )}
+        {/* Using Multisynq instead of ReactTogether to prevent duplicate initialization */}
+        <GameProvider>
+          <GuideProvider>
+            {children}
+          </GuideProvider>
+        </GameProvider>
       </PrivyProvider>
     )
   }
@@ -135,11 +114,11 @@ export function Providers({ children }: { children: ReactNode }) {
         loginMethods: ['email', 'wallet'],
         // Configure wallet connection options
         walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
+        // Configure supported wallets - exclude Coinbase Smart Wallet for unsupported chains
         externalWallets: {
           coinbaseWallet: {
-            // Disable Coinbase Smart Wallet for unsupported chains
-            connectionOptions: 'smartWalletOnly'
+            // Disable Coinbase Smart Wallet entirely for Monad Testnet
+            connectionOptions: 'eoaOnly'
           }
         },
       }}

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useReactTogether } from '../hooks/useReactTogether';
+import { useMultisynq } from '../hooks/useMultisynq';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -49,7 +49,7 @@ export function MultisynqChat({
     messages,
     sendMessage,
     setNickname
-  } = useReactTogether({ chatKey: sessionName || 'monfarm-chat' });
+  } = useMultisynq({ autoConnect: true, sessionName: sessionName || 'monfarm-chat' });
 
   const [messageInput, setMessageInput] = useState('');
   const [postInput, setPostInput] = useState('');

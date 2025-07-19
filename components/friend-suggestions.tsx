@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useState } from "react"
 import { useToast } from "../hooks/use-toast"
 import { ShimmerButton } from "./ui/shimmer-button"
-import { useReactTogether } from "../hooks/useReactTogether"
+import { useMultisynq } from "../hooks/useMultisynq"
 import { Badge } from "./ui/badge"
 import { Clock, Zap } from "lucide-react"
 import { useEffect } from "react"
@@ -69,8 +69,9 @@ export default function FriendSuggestions() {
     currentUser,
     users,
     onlineCount
-  } = useReactTogether({
-    chatKey: 'monfarm-friend-suggestions'
+  } = useMultisynq({
+    autoConnect: true,
+    sessionName: 'monfarm-friend-suggestions'
   })
 
   // Update recent users when React Together users change
