@@ -6,6 +6,8 @@ import { GuideProvider } from "@/context/guide-context"
 import { PrivyProvider } from '@privy-io/react-auth'
 import { defineChain } from 'viem'
 import { ReactTogether } from 'react-together'
+import { NoSSRWrapper } from '@/components/no-ssr-wrapper'
+import { FarmGameModel } from '@/models/farm-game-model'
 
 // Define Monad Testnet chain configuration for Privy
 const monadTestnet = defineChain({
@@ -32,8 +34,12 @@ const monadTestnet = defineChain({
 })
 
 export function Providers({ children }: { children: ReactNode }) {
+  // Track if we're on the client side
+  const [isClient, setIsClient] = useState(false)
+
   // Add debug logging for context initialization
   useEffect(() => {
+    setIsClient(true)
     console.log("[Providers] Client-side providers initialized");
 
     // Log configuration warnings in development
@@ -44,58 +50,64 @@ export function Providers({ children }: { children: ReactNode }) {
       if (!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
         console.warn('⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect features may not work properly.')
       }
-      if (!process.env.NEXT_PUBLIC_MULTISYNQ_API_KEY) {
-        console.warn('⚠️ NEXT_PUBLIC_MULTISYNQ_API_KEY is not set. Real-time features may not work properly.')
+      if (!process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY) {
+        console.warn('⚠️ NEXT_PUBLIC_REACT_TOGETHER_API_KEY is not set. Real-time features may not work properly.')
       }
     }
   }, []);
 
   // Client-side only configuration (SSR disabled)
   return (
-    <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-      config={{
-        // Set Monad Testnet as the default chain
-        defaultChain: monadTestnet,
-        // Support only Monad Testnet for now
-        supportedChains: [monadTestnet],
-        // Configure appearance
-        appearance: {
-          theme: 'dark',
-          accentColor: '#00ff88',
-          logo: '/images/nooter.png',
-        },
-        // Enable embedded wallets
-        embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-        },
-        // Configure login methods
-        loginMethods: ['email', 'wallet'],
-        // Configure wallet connection options
-        walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
-        externalWallets: {
-          coinbaseWallet: {
-            // Disable Coinbase Smart Wallet for unsupported chains
-            connectionOptions: 'smartWalletOnly'
-          }
-        },
-      }}
-    >
-      <ReactTogether
-        sessionParams={{
-          appId: "monfarm-social-hub",
-          apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
-          name: "monfarm-social-hub-session"
+    <NoSSRWrapper fallback={<div>Loading...</div>}>
+      <PrivyProvider
+        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
+        config={{
+          defaultChain: monadTestnet,
+          supportedChains: [monadTestnet],
+          appearance: {
+            theme: 'dark',
+            accentColor: '#00ff88',
+            logo: '/images/nooter.png',
+          },
+          embeddedWallets: {
+            createOnLogin: 'users-without-wallets',
+          },
+          loginMethods: ['email', 'wallet'],
+          walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+          // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
+          externalWallets: {
+            coinbaseWallet: {
+              // Disable Coinbase Smart Wallet for unsupported chains
+              connectionOptions: 'smartWalletOnly'
+            }
+          },
         }}
-        rememberUsers={true}
       >
-        <GameProvider>
-          <GuideProvider>
-            {children}
-          </GuideProvider>
-        </GameProvider>
-      </ReactTogether>
-    </PrivyProvider>
+        {/* Only initialize ReactTogether on client side to prevent SSR issues */}
+        {isClient ? (
+          <ReactTogether
+            sessionParams={{
+              appId: "monfarm-social-hub",
+              apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
+              name: "monfarm-social-hub-session",
+              model: FarmGameModel
+            }}
+            rememberUsers={true}
+          >
+            <GameProvider>
+              <GuideProvider>
+                {children}
+              </GuideProvider>
+            </GameProvider>
+          </ReactTogether>
+        ) : (
+          <GameProvider>
+            <GuideProvider>
+              {children}
+            </GuideProvider>
+          </GameProvider>
+        )}
+      </PrivyProvider>
+    </NoSSRWrapper>
   )
 }

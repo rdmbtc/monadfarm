@@ -70,6 +70,12 @@ const nextConfig = {
     unoptimized: true, // Required for static export
     domains: ['localhost'],
   },
+  experimental: {
+    // Disable all server-side features
+    serverComponentsExternalPackages: [],
+    // Force client-side rendering
+    esmExternals: 'loose',
+  },
   compiler: {
     removeConsole: {
       exclude: ['error', 'warn'],
