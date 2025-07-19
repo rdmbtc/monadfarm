@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 import { useToast } from "../hooks/use-toast"
 import { AnimatedBadge } from "./ui/animated-badge"
 import { Confetti } from "./ui/confetti"
-import { useReactTogether } from "../hooks/useReactTogether"
+import { useMultisynq } from "../hooks/useMultisynq"
 
 // Sample feed data
 const feedItems = [
@@ -74,17 +74,18 @@ export default function FarmFeed() {
   const [posts, setPosts] = useState(feedItems)
   const { toast } = useToast()
 
-  // Integrate React Together for real-time functionality
+  // Integrate Multisynq for real-time functionality
   const {
     isConnected,
     currentUser,
     users,
     onlineCount,
-    posts: reactTogetherPosts,
+    posts: multisynqPosts,
     createPost,
     likePost
-  } = useReactTogether({
-    chatKey: 'monfarm-social-feed'
+  } = useMultisynq({
+    autoConnect: true,
+    sessionName: 'monfarm-social-feed'
   })
 
   const handleLike = (postId: number) => {
@@ -160,9 +161,9 @@ export default function FarmFeed() {
 
   // Merge Multisynq posts with local posts
   useEffect(() => {
-    if (reactTogetherPosts && reactTogetherPosts.length > 0) {
-      // Convert React Together posts to local format
-      const convertedPosts = reactTogetherPosts.map((post: any) => ({
+    if (multisynqPosts && multisynqPosts.length > 0) {
+      // Convert Multisynq posts to local format
+      const convertedPosts = multisynqPosts.map((post: any) => ({
         id: parseInt(post.id) || Date.now(), // Convert string ID to number
         user: {
           name: post.nickname || post.userId,
@@ -186,7 +187,7 @@ export default function FarmFeed() {
         return [...newPosts, ...prevPosts]
       })
     }
-  }, [reactTogetherPosts])
+  }, [multisynqPosts])
 
   // Mark posts as not new after they've been viewed
   useEffect(() => {
