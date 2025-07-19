@@ -7,16 +7,33 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Users, MessageCircle, Zap } from 'lucide-react';
 
 export default function SocialTestPage() {
+  // Debug API key loading
+  const apiKey = process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY;
+  console.log('API Key loaded:', apiKey ? 'Yes' : 'No', apiKey?.slice(0, 10) + '...');
+
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black p-6 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">⚠️ API Key Missing</h1>
+          <p className="text-gray-300 mb-4">
+            React Together API key not found in environment variables.
+          </p>
+          <p className="text-sm text-gray-500">
+            Make sure NEXT_PUBLIC_REACT_TOGETHER_API_KEY is set in your .env file
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ReactTogether
-      apiKey={process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "demo-key"}
-      appId="monfarm.social.test"
       sessionParams={{
+        apiKey: apiKey,
+        appId: "monfarm.social.test",
         name: "monfarm-social-test",
         password: "public"
-      }}
-      userInfo={{
-        color: "#22c55e" // Green theme
       }}
     >
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black p-6">
