@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 import { useToast } from "../hooks/use-toast"
 import { AnimatedBadge } from "./ui/animated-badge"
 import { Confetti } from "./ui/confetti"
-import { useStateTogether, useEventTogether, useConnectedUsers, useMyId } from 'react-together'
+import { useStateTogether, useFunctionTogether, useConnectedUsers, useMyId } from 'react-together'
 
 // Sample feed data
 const feedItems = [
@@ -86,7 +86,22 @@ export default function FarmFeed() {
     likes: number;
     likedBy: string[];
   }>>('social-posts', [])
-  const [sendSocialEvent, onSocialEvent] = useEventTogether('social')
+  // Use useFunctionTogether for social events
+  const broadcastSocialEvent = useFunctionTogether('broadcastSocialEvent', (event: any) => {
+    if (event.type === 'newPost') {
+      setMultisynqPosts(prev => {
+        const exists = prev.some(p => p.id === event.post.id)
+        if (exists) return prev
+        return [event.post, ...prev].slice(0, 50) // Keep last 50 posts
+      })
+    } else if (event.type === 'likePost') {
+      setMultisynqPosts(prev => prev.map(post =>
+        post.id === event.postId
+          ? { ...post, likes: post.likes + 1, likedBy: [...post.likedBy, event.userId] }
+          : post
+      ))
+    }
+  })
 
   // Derived state
   const isConnected = !!myId

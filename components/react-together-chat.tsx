@@ -8,7 +8,7 @@ import { Input } from './ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { useStateTogether, useEventTogether, useConnectedUsers, useMyId } from 'react-together'
+import { useStateTogether, useFunctionTogether, useConnectedUsers, useMyId } from 'react-together'
 import toast from 'react-hot-toast'
 
 interface ReactTogetherChatProps {
@@ -43,7 +43,21 @@ export function ReactTogetherChat({
     type?: string;
   }>>('chat-messages', [])
   const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('user-nicknames', {})
-  const [sendChatEvent, onChatEvent] = useEventTogether('chat')
+  // Use useFunctionTogether for chat events
+  const broadcastChatMessage = useFunctionTogether('broadcastChatMessage', (message: {
+    id: string;
+    userId: string;
+    nickname: string;
+    text: string;
+    timestamp: number;
+    type?: string;
+  }) => {
+    setMessages(prev => {
+      const exists = prev.some(m => m.id === message.id)
+      if (exists) return prev
+      return [...prev, message].slice(-100) // Keep last 100 messages
+    })
+  })
 
   // Derived state
   const isConnected = !!myId

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { useStateTogether, useEventTogether, useConnectedUsers, useMyId } from 'react-together';
+import { useStateTogether, useFunctionTogether, useConnectedUsers, useMyId } from 'react-together';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -49,7 +49,22 @@ export function RealTimeSocialFeed({
     tags: string[];
   }>>('social-posts', [])
   const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('user-nicknames', {})
-  const [sendSocialEvent, onSocialEvent] = useEventTogether('social')
+  // Use useFunctionTogether for social events
+  const broadcastSocialEvent = useFunctionTogether('broadcastSocialEvent', (event: any) => {
+    if (event.type === 'newPost') {
+      setPosts(prev => {
+        const exists = prev.some(p => p.id === event.post.id)
+        if (exists) return prev
+        return [event.post, ...prev].slice(0, 50) // Keep last 50 posts
+      })
+    } else if (event.type === 'likePost') {
+      setPosts(prev => prev.map(post =>
+        post.id === event.postId
+          ? { ...post, likes: post.likes + 1, likedBy: [...post.likedBy, event.userId] }
+          : post
+      ))
+    }
+  })
 
   // Derived state
   const isConnected = !!myId

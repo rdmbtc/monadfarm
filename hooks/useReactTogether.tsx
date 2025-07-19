@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useStateTogether, useEventTogether } from 'react-together';
+import { useStateTogether, useFunctionTogether } from 'react-together';
 
 export interface ChatMessage {
   id: string;
@@ -84,10 +84,26 @@ export function useReactTogether(options: UseReactTogetherOptions = {}): UseReac
   // Social feed state using React Together
   const [posts, setPosts] = useStateTogether<SocialPost[]>('posts', []);
   
-  // Events for real-time communication
-  const [sendChatEvent, onChatEvent] = useEventTogether('chat');
-  const [sendUserEvent, onUserEvent] = useEventTogether('user');
-  const [sendSocialEvent, onSocialEvent] = useEventTogether('social');
+  // Use useFunctionTogether for real-time communication
+  const broadcastChatEvent = useFunctionTogether('broadcastChatEvent', (event: any) => {
+    if (event.type === 'newMessage') {
+      setMessages(prev => [...prev, event.message])
+    }
+  });
+
+  const broadcastUserEvent = useFunctionTogether('broadcastUserEvent', (event: any) => {
+    if (event.type === 'userJoined') {
+      setUsers(prev => [...prev, event.user])
+    } else if (event.type === 'userLeft') {
+      setUsers(prev => prev.filter(u => u.userId !== event.userId))
+    }
+  });
+
+  const broadcastSocialEvent = useFunctionTogether('broadcastSocialEvent', (event: any) => {
+    if (event.type === 'newPost') {
+      setPosts(prev => [event.post, ...prev])
+    }
+  });
   
   // Generate unique user ID
   const generateUserId = useCallback(() => {
