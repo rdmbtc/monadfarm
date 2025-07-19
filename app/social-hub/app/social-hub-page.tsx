@@ -24,7 +24,7 @@ import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
 import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
-import { BulletproofSocialFeed } from "../../../components/bulletproof-social-feed"
+import BulletproofSocialFeed from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
 import { ReactTogether } from 'react-together'
 import { ReactTogetherErrorBoundary } from "../../../components/react-together-error-boundary"

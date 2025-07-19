@@ -381,3 +381,6 @@ export function BulletproofSocialFeed() {
     </div>
   );
 }
+
+// Also export as default for better compatibility
+export default BulletproofSocialFeed;
