@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useState } from "react"
 import { useToast } from "../hooks/use-toast"
 import { ShimmerButton } from "./ui/shimmer-button"
-import { useMultisynq } from "../hooks/useMultisynq"
+import { useConnectedUsers, useMyId } from 'react-together'
 import { Badge } from "./ui/badge"
 import { Clock, Zap } from "lucide-react"
 import { useEffect } from "react"
@@ -64,15 +64,22 @@ export default function FriendSuggestions() {
   const { toast } = useToast()
 
   // Get real-time users from React Together
-  const {
-    isConnected,
-    currentUser,
-    users,
-    onlineCount
-  } = useMultisynq({
-    autoConnect: true,
-    sessionName: 'monfarm-friend-suggestions'
-  })
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+
+  // Derived state
+  const isConnected = !!myId
+  const currentUser = myId ? {
+    userId: myId,
+    nickname: `User${myId.slice(-4)}`,
+    isOnline: true
+  } : null
+  const users = connectedUsers.map(userId => ({
+    userId,
+    nickname: `User${userId.slice(-4)}`,
+    isOnline: true
+  }))
+  const onlineCount = connectedUsers.length
 
   // Update recent users when React Together users change
   useEffect(() => {

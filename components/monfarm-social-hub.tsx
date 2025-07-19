@@ -18,7 +18,7 @@ import {
   Copy,
   ExternalLink
 } from 'lucide-react';
-import { useMultisynq } from '../hooks/useMultisynq';
+import { useConnectedUsers, useMyId } from 'react-together';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -38,21 +38,33 @@ export function MonFarmSocialHub({
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [showSessionInfo, setShowSessionInfo] = useState(false);
   
-  const {
-    isConnected,
-    isLoading,
-    error,
-    session,
-    currentUser,
-    users,
-    onlineCount,
-    messages,
-    posts,
-    activities,
-    getSessionUrl,
-    generateQRCode,
-    disconnect
-  } = useMultisynq({ autoConnect: true, sessionName, password });
+  // React Together integration
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+
+  // Derived state
+  const isConnected = !!myId
+  const isLoading = false
+  const error = null
+  const session = { name: sessionName || 'monfarm-social-hub' }
+  const currentUser = myId ? {
+    userId: myId,
+    nickname: `User${myId.slice(-4)}`,
+    isOnline: true
+  } : null
+  const users = connectedUsers.map(userId => ({
+    userId,
+    nickname: `User${userId.slice(-4)}`,
+    isOnline: true
+  }))
+  const onlineCount = connectedUsers.length
+  const messages: any[] = []
+  const posts: any[] = []
+  const activities: any[] = []
+
+  const getSessionUrl = () => `${window.location.origin}${window.location.pathname}?session=${sessionName}`
+  const generateQRCode = () => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getSessionUrl())}`
+  const disconnect = () => {}
 
   // Copy session URL to clipboard
   const copySessionUrl = () => {

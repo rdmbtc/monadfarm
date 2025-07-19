@@ -17,7 +17,7 @@ import { AnimatedCard } from "@/components/ui/animated-card"
 import { AnimatedBadge } from "@/components/ui/animated-badge"
 import { ShimmerButton } from "@/components/ui/shimmer-button"
 import { Confetti } from "@/components/ui/confetti"
-import { useMultisynq } from "@/hooks/useMultisynq"
+import { useStateTogether, useEventTogether, useConnectedUsers, useMyId } from 'react-together'
 
 // Sample feed data
 const feedItems = [
@@ -78,22 +78,98 @@ export default function FarmFeed() {
   const [posts, setPosts] = useState(feedItems)
   const { toast } = useToast()
 
-  // Integrate Multisynq for real-time functionality
-  const {
-    isConnected,
-    isLoading,
-    error,
-    currentUser,
-    users,
-    onlineCount,
-    posts: multisynqPosts,
-    createPost,
-    likePost,
-    connect
-  } = useMultisynq({
-    autoConnect: true,
-    sessionName: 'monfarm-social-hub-feed'
+  // React Together integration
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+  const [multisynqPosts, setMultisynqPosts] = useStateTogether<Array<{
+    id: string;
+    userId: string;
+    nickname: string;
+    content: string;
+    timestamp: number;
+    likes: number;
+    likedBy: string[];
+  }>>('social-posts', [])
+  const [sendSocialEvent, onSocialEvent] = useEventTogether('social')
+
+  // Derived state
+  const isConnected = !!myId
+  const isLoading = false
+  const error = null
+  const currentUser = myId ? {
+    userId: myId,
+    nickname: `User${myId.slice(-4)}`,
+    isOnline: true
+  } : null
+  const users = connectedUsers.map(userId => ({
+    userId,
+    nickname: `User${userId.slice(-4)}`,
+    isOnline: true
+  }))
+  const onlineCount = connectedUsers.length
+
+  // Handle social events
+  onSocialEvent((event: any) => {
+    if (event.type === 'postCreated') {
+      setMultisynqPosts(prev => {
+        const exists = prev.some(p => p.id === event.post.id)
+        if (exists) return prev
+        return [event.post, ...prev].slice(0, 100)
+      })
+    } else if (event.type === 'postLiked') {
+      setMultisynqPosts(prev => prev.map(post =>
+        post.id === event.postId
+          ? { ...post, likes: event.likes, likedBy: event.likedBy }
+          : post
+      ))
+    }
   })
+
+  // Create post function
+  const createPost = (content: string) => {
+    if (!content.trim() || !currentUser) return
+
+    const post = {
+      id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: currentUser.userId,
+      nickname: currentUser.nickname,
+      content: content.trim(),
+      timestamp: Date.now(),
+      likes: 0,
+      likedBy: []
+    }
+
+    sendSocialEvent({
+      type: 'postCreated',
+      post
+    })
+  }
+
+  // Like post function
+  const likePost = (postId: string) => {
+    if (!myId) return
+
+    const post = multisynqPosts.find(p => p.id === postId)
+    if (!post) return
+
+    const newLikedBy = [...post.likedBy]
+    const likedIndex = newLikedBy.indexOf(myId)
+
+    if (likedIndex > -1) {
+      newLikedBy.splice(likedIndex, 1)
+    } else {
+      newLikedBy.push(myId)
+    }
+
+    sendSocialEvent({
+      type: 'postLiked',
+      postId,
+      likes: newLikedBy.length,
+      likedBy: newLikedBy
+    })
+  }
+
+  const connect = () => {}
 
   const handleLike = (postId: number) => {
     if (likedPosts.includes(postId)) {

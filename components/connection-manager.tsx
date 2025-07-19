@@ -18,7 +18,7 @@ import {
   Clock,
   Zap
 } from 'lucide-react';
-import { useMultisynq } from '../hooks/useMultisynq';
+import { useConnectedUsers, useMyId } from 'react-together';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -33,18 +33,30 @@ export function ConnectionManager({
   showAdvancedOptions = false,
   autoReconnect = true
 }: ConnectionManagerProps) {
-  const {
-    isConnected,
-    isLoading,
-    error,
-    session,
-    currentUser,
-    users,
-    onlineCount,
-    connect,
-    disconnect,
-    getSessionUrl
-  } = useMultisynq({ autoConnect: false });
+  // React Together integration
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+
+  // Derived state
+  const isConnected = !!myId
+  const isLoading = false
+  const error = null
+  const session = { name: 'connection-manager' }
+  const currentUser = myId ? {
+    userId: myId,
+    nickname: `User${myId.slice(-4)}`,
+    isOnline: true
+  } : null
+  const users = connectedUsers.map(userId => ({
+    userId,
+    nickname: `User${userId.slice(-4)}`,
+    isOnline: true
+  }))
+  const onlineCount = connectedUsers.length
+
+  const connect = async () => {}
+  const disconnect = () => {}
+  const getSessionUrl = () => `${window.location.origin}${window.location.pathname}`
 
   const [sessionName, setSessionName] = useState('');
   const [password, setPassword] = useState('');

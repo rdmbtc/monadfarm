@@ -19,7 +19,7 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
-import { useMultisynq } from '../../hooks/useMultisynq';
+import { useConnectedUsers, useMyId } from 'react-together';
 
 export default function MultisynqTestPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -29,21 +29,33 @@ export default function MultisynqTestPage() {
     message: string;
   }>>([]);
 
-  const {
-    isConnected,
-    isLoading,
-    error,
-    session,
-    currentUser,
-    users,
-    onlineCount,
-    messages,
-    posts,
-    activities,
-    sendMessage,
-    createPost,
-    likePost
-  } = useMultisynq({ autoConnect: false });
+  // React Together integration
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+
+  // Derived state for testing
+  const isConnected = !!myId
+  const isLoading = false
+  const error = null
+  const session = { name: 'multisynq-test' }
+  const currentUser = myId ? {
+    userId: myId,
+    nickname: `User${myId.slice(-4)}`,
+    isOnline: true
+  } : null
+  const users = connectedUsers.map(userId => ({
+    userId,
+    nickname: `User${userId.slice(-4)}`,
+    isOnline: true
+  }))
+  const onlineCount = connectedUsers.length
+  const messages: any[] = []
+  const posts: any[] = []
+  const activities: any[] = []
+
+  const sendMessage = () => {}
+  const createPost = () => {}
+  const likePost = () => {}
 
   // Run basic connectivity tests
   const runConnectivityTests = () => {

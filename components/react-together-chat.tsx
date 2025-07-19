@@ -8,7 +8,7 @@ import { Input } from './ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { useReactTogether } from '../hooks/useReactTogether'
+import { useStateTogether, useEventTogether, useConnectedUsers, useMyId } from 'react-together'
 import toast from 'react-hot-toast'
 
 interface ReactTogetherChatProps {
@@ -31,21 +31,73 @@ export function ReactTogetherChat({
     setIsClient(true)
   }, [])
 
-  // Multisynq integration
-  const {
-    isConnected,
-    isLoading,
-    error,
-    currentUser,
-    users,
-    onlineCount,
-    messages,
-    sendMessage,
-    setNickname
-  } = useMultisynq({
-    autoConnect: true,
-    sessionName: sessionName
+  // React Together integration
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+  const [messages, setMessages] = useStateTogether<Array<{
+    id: string;
+    userId: string;
+    nickname: string;
+    text: string;
+    timestamp: number;
+    type?: string;
+  }>>('chat-messages', [])
+  const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('user-nicknames', {})
+  const [sendChatEvent, onChatEvent] = useEventTogether('chat')
+
+  // Derived state
+  const isConnected = !!myId
+  const currentUser = myId ? {
+    userId: myId,
+    nickname: userNicknames[myId] || `User${myId.slice(-4)}`,
+    isOnline: true
+  } : null
+  const users = connectedUsers.map(userId => ({
+    userId,
+    nickname: userNicknames[userId] || `User${userId.slice(-4)}`,
+    isOnline: true
+  }))
+  const onlineCount = connectedUsers.length
+
+  // Handle chat events
+  onChatEvent((event: any) => {
+    if (event.type === 'newMessage') {
+      setMessages(prev => {
+        const exists = prev.some(m => m.id === event.message.id)
+        if (exists) return prev
+        return [...prev, event.message].slice(-500) // Keep last 500 messages
+      })
+    }
   })
+
+  // Send message function
+  const sendMessage = (text: string, type: string = 'text') => {
+    if (!text.trim() || !currentUser) return
+
+    const message = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: currentUser.userId,
+      nickname: currentUser.nickname,
+      text: text.trim(),
+      timestamp: Date.now(),
+      type
+    }
+
+    sendChatEvent({
+      type: 'newMessage',
+      message
+    })
+  }
+
+  // Set nickname function
+  const setNickname = (nickname: string) => {
+    if (!nickname.trim() || !myId) return
+
+    setUserNicknames(prev => ({
+      ...prev,
+      [myId]: nickname.trim()
+    }))
+  }
 
   // Farm-themed quick messages
   const quickMessages = [
@@ -101,8 +153,7 @@ export function ReactTogetherChat({
 
   // Get user nickname
   const getUserNickname = (userId: string) => {
-    const user = users.find(u => u.userId === userId)
-    return user?.nickname || `User ${userId.slice(0, 6)}`
+    return allNicknames[userId] || `User ${userId.slice(0, 6)}`
   }
 
   // Show loading state during SSR
