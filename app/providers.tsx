@@ -72,11 +72,11 @@ export function Providers({ children }: { children: ReactNode }) {
           },
           loginMethods: ['email', 'wallet'],
           walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-          // Configure supported wallets - exclude Coinbase Smart Wallet for unsupported chains
+          // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
           externalWallets: {
             coinbaseWallet: {
-              // Disable Coinbase Smart Wallet entirely for Monad Testnet
-              connectionOptions: 'eoaOnly'
+              // Disable Coinbase Smart Wallet for unsupported chains
+              connectionOptions: 'smartWalletOnly'
             }
           },
         }}
@@ -114,30 +114,21 @@ export function Providers({ children }: { children: ReactNode }) {
         loginMethods: ['email', 'wallet'],
         // Configure wallet connection options
         walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        // Configure supported wallets - exclude Coinbase Smart Wallet for unsupported chains
+        // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
         externalWallets: {
           coinbaseWallet: {
-            // Disable Coinbase Smart Wallet entirely for Monad Testnet
-            connectionOptions: 'eoaOnly'
+            // Disable Coinbase Smart Wallet for unsupported chains
+            connectionOptions: 'smartWalletOnly'
           }
         },
       }}
     >
-      <ReactTogether
-        sessionParams={{
-          appId: "monfarm-social-hub",
-          apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
-          // Only provide session name on client side to prevent SSR connection attempts
-          ...(typeof window !== 'undefined' && { name: "monfarm-social-hub-session" })
-        }}
-        rememberUsers={true}
-      >
-        <GameProvider>
-          <GuideProvider>
-            {children}
-          </GuideProvider>
-        </GameProvider>
-      </ReactTogether>
+      {/* Using Multisynq instead of ReactTogether to prevent duplicate initialization */}
+      <GameProvider>
+        <GuideProvider>
+          {children}
+        </GuideProvider>
+      </GameProvider>
     </PrivyProvider>
   )
 }

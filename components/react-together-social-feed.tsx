@@ -11,17 +11,17 @@ import { useMultisynq } from '../hooks/useMultisynq'
 import toast from 'react-hot-toast'
 import { cn } from '../lib/utils'
 
-interface ReactTogetherSocialFeedProps {
+interface MultisynqSocialFeedProps {
   className?: string
   sessionName?: string
   showUserPresence?: boolean
 }
 
-export function ReactTogetherSocialFeed({
+export function MultisynqSocialFeed({
   className = "",
   sessionName = "monfarm-social-feed",
   showUserPresence = false
-}: ReactTogetherSocialFeedProps) {
+}: MultisynqSocialFeedProps) {
   const [newPostContent, setNewPostContent] = useState('')
   const [isPosting, setIsPosting] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -32,7 +32,7 @@ export function ReactTogetherSocialFeed({
     setIsClient(true)
   }, [])
 
-  // React Together integration
+  // Multisynq integration
   const {
     isConnected,
     currentUser,

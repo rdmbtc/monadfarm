@@ -11,15 +11,15 @@ import { Badge } from './ui/badge'
 import { useMultisynq } from '../hooks/useMultisynq'
 import toast from 'react-hot-toast'
 
-interface ReactTogetherChatProps {
+interface MultisynqChatProps {
   className?: string
   sessionName?: string
 }
 
-export function ReactTogetherChat({
+export function MultisynqChat({
   className = "",
   sessionName = "monfarm-chat"
-}: ReactTogetherChatProps) {
+}: MultisynqChatProps) {
   const [messageInput, setMessageInput] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showQuickMessages, setShowQuickMessages] = useState(false)
@@ -31,7 +31,7 @@ export function ReactTogetherChat({
     setIsClient(true)
   }, [])
 
-  // React Together integration
+  // Multisynq integration
   const {
     isConnected,
     currentUser,

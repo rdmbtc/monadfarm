@@ -42,7 +42,7 @@ export function RealTimeSocialFeed({
     posts,
     createPost,
     likePost
-  } = useReactTogether({ chatKey: sessionName || 'monfarm-social-feed' });
+  } = useMultisynq({ autoConnect: true, sessionName: sessionName || 'monfarm-social-feed' });
 
   const [newPostContent, setNewPostContent] = useState('');
 
