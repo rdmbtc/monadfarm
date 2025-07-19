@@ -2,6 +2,7 @@
 
 import { ReactTogether } from 'react-together';
 import { ReactTogetherSocialFeedNew } from '@/components/react-together-social-feed-new';
+import { ReactTogetherErrorBoundary } from '@/components/react-together-error-boundary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Users, MessageCircle, Zap } from 'lucide-react';
@@ -28,14 +29,15 @@ export default function SocialTestPage() {
   }
 
   return (
-    <ReactTogether
-      sessionParams={{
-        apiKey: apiKey,
-        appId: "monfarm.social.test",
-        name: "monfarm-social-test",
-        password: "public"
-      }}
-    >
+    <ReactTogetherErrorBoundary>
+      <ReactTogether
+        sessionParams={{
+          apiKey: apiKey,
+          appId: "monfarm.social.test",
+          name: "monfarm-social-test",
+          password: "public"
+        }}
+      >
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black p-6">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Header */}
@@ -99,6 +101,7 @@ export default function SocialTestPage() {
           </Card>
         </div>
       </div>
-    </ReactTogether>
+      </ReactTogether>
+    </ReactTogetherErrorBoundary>
   )
 }

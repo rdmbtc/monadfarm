@@ -1,12 +1,10 @@
 "use client"
 
 import React, { useState } from 'react';
-import { useStateTogether, useConnectedUsers, useMyId } from 'react-together';
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
+import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
-import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
-import { HeartIcon, MessageCircle, Share2, Bookmark, MoreHorizontal, Send, Plus, Users } from "lucide-react"
+import { HeartIcon, MessageCircle, Share2, Bookmark, Send, Plus, Users, WifiOff } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "./ui/badge"
 import { cn } from "../lib/utils"
@@ -21,108 +19,77 @@ interface SocialPost {
   likes: number;
   likedBy: string[];
   tags: string[];
-  media?: string;
 }
 
-export function SocialFeed() {
-  // React Together hooks - these automatically sync across all users!
-  const [posts, setPosts] = useStateTogether<SocialPost[]>('monfarm-social-posts', []);
-  const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('monfarm-user-nicknames', {});
-
-  // Get current user info
-  const myId = useMyId();
-  const connectedUsers = useConnectedUsers();
-
-  // Local state for UI
-  const [newPostContent, setNewPostContent] = useState("");
+export function FallbackSocialFeed() {
+  // Local state only - no real-time sync
+  const [posts, setPosts] = useState<SocialPost[]>([
+    {
+      id: 'demo-1',
+      userId: 'demo-user',
+      nickname: 'Demo Farmer',
+      content: 'Welcome to MonFarm Social Hub! This is running in offline mode. Real-time features are temporarily unavailable.',
+      timestamp: Date.now() - 3600000, // 1 hour ago
+      likes: 5,
+      likedBy: [],
+      tags: ['demo', 'offline']
+    }
+  ]);
+  
+  const [newPostContent, setNewPostContent] = useState('');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
 
-  // Generate or get user nickname - with null check
-  const myNickname = (myId && userNicknames[myId]) || generateFarmerName();
+  const currentUser = {
+    id: 'offline-user',
+    nickname: 'Offline Farmer'
+  };
 
-  // Set nickname if not already set
-  React.useEffect(() => {
-    if (myId && !userNicknames[myId]) {
-      setUserNicknames(prev => ({
-        ...prev,
-        [myId]: generateFarmerName()
-      }));
-    }
-  }, [myId, userNicknames, setUserNicknames]);
-
-  function generateFarmerName() {
-    const adjectives = [
-      "Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden",
-      "Sunny", "Fresh", "Wild", "Free", "Bold", "Pure", "Strong", "Gentle", "Noble", "Proud"
-    ];
-    const farmTerms = [
-      "Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher", "Shepherd", "Keeper",
-      "Sower", "Reaper", "Cultivator", "Tender", "Breeder", "Herder", "Caretaker", "Steward"
-    ];
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const term = farmTerms[Math.floor(Math.random() * farmTerms.length)];
-    return `${adj} ${term}`;
-  }
-  
   const handleCreatePost = () => {
-    if (!newPostContent.trim() || !myId || isPosting) return;
+    if (!newPostContent.trim() || isPosting) return;
 
     setIsPosting(true);
-
+    
     const newPost: SocialPost = {
-      id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId: myId,
-      nickname: myNickname,
+      id: `offline-post-${Date.now()}`,
+      userId: currentUser.id,
+      nickname: currentUser.nickname,
       content: newPostContent.trim(),
       timestamp: Date.now(),
       likes: 0,
       likedBy: [],
-      tags: ['farming', 'monfarm']
+      tags: ['farming', 'offline']
     };
 
-    // Add to posts - this automatically syncs to all users!
-    setPosts(prev => {
-      // Ensure prev is always an array
-      const currentPosts = Array.isArray(prev) ? prev : [];
-      return [newPost, ...currentPosts].slice(0, 50); // Keep last 50 posts
-    });
-
+    setPosts(prev => [newPost, ...prev].slice(0, 50));
+    
     setNewPostContent('');
     setShowCreatePost(false);
     setIsPosting(false);
-    toast.success('Post shared with the farming community! 🌾');
+    toast.success('Post created (offline mode) 🌾');
   };
 
   const handleLikePost = (postId: string) => {
-    if (!myId) return;
-
-    setPosts(prev => {
-      // Ensure prev is always an array
-      const currentPosts = Array.isArray(prev) ? prev : [];
-      return currentPosts.map(post => {
+    setPosts(prev => prev.map(post => {
       if (post.id === postId) {
-        const hasLiked = post.likedBy.includes(myId);
-
+        const hasLiked = post.likedBy.includes(currentUser.id);
+        
         if (hasLiked) {
-          // Unlike
           return {
             ...post,
             likes: Math.max(0, post.likes - 1),
-            likedBy: post.likedBy.filter(id => id !== myId)
+            likedBy: post.likedBy.filter(id => id !== currentUser.id)
           };
         } else {
-          // Like
           return {
             ...post,
             likes: post.likes + 1,
-            likedBy: [...post.likedBy, myId]
+            likedBy: [...post.likedBy, currentUser.id]
           };
         }
       }
       return post;
-      });
-    });
+    }));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -131,22 +98,17 @@ export function SocialFeed() {
       handleCreatePost();
     }
   };
-  
-  const isConnected = !!myId;
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-4">
-      {/* Connection Status */}
+      {/* Offline Status */}
       <div className="flex items-center justify-between bg-[#171717] border border-[#333] p-3 rounded-none">
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-green-400" />
-          <span className="text-sm text-white">{connectedUsers.length} farmers online</span>
-          <div className={cn(
-            "w-2 h-2 rounded-full ml-2",
-            isConnected ? "bg-green-500" : "bg-red-500"
-          )} />
+          <WifiOff className="h-4 w-4 text-yellow-400" />
+          <span className="text-sm text-white">Offline Mode</span>
+          <div className="w-2 h-2 rounded-full ml-2 bg-yellow-500" />
         </div>
-        <span className="text-xs text-gray-400">Welcome, {myNickname}!</span>
+        <span className="text-xs text-gray-400">Real-time features unavailable</span>
       </div>
 
       {/* Post creation area */}
@@ -154,11 +116,10 @@ export function SocialFeed() {
         <div className="bg-[#171717] border border-[#333] p-4 rounded-none shadow-md">
           <Button
             onClick={() => setShowCreatePost(true)}
-            disabled={!isConnected}
             className="w-full bg-[#333] hover:bg-[#444] text-white border border-[#444] rounded-none"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Share your farming experience...
+            Share your farming experience (offline)...
           </Button>
         </div>
       ) : (
@@ -171,23 +132,22 @@ export function SocialFeed() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10 border border-[#333]">
-                <AvatarImage src="/images/nooter.png" alt="Your Avatar" />
                 <AvatarFallback className="bg-green-600 text-white text-xs">
-                  {myNickname.slice(0, 2).toUpperCase()}
+                  {currentUser.nickname.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm text-gray-300">{myNickname}</span>
+              <span className="text-sm text-gray-300">{currentUser.nickname}</span>
             </div>
-
+            
             <Textarea
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="What's happening on your farm? Share your harvest, discoveries, or farming tips..."
+              placeholder="What's happening on your farm? (Note: This will only be visible to you in offline mode)"
               className="min-h-[100px] bg-[#222] border-[#333] focus:border-[#444] text-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
               maxLength={1000}
             />
-
+            
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
                 {newPostContent.length}/1000 • Ctrl+Enter to post
@@ -217,10 +177,10 @@ export function SocialFeed() {
           </div>
         </motion.div>
       )}
-      
+
       {/* Feed posts */}
       <AnimatePresence>
-        {Array.isArray(posts) && posts.map((post) => (
+        {posts.map((post) => (
           <motion.div
             key={post.id}
             initial={{ opacity: 0, y: 20 }}
@@ -233,7 +193,6 @@ export function SocialFeed() {
             <div className="p-4 flex justify-between items-center border-b border-[#333]">
               <div className="flex items-center gap-3">
                 <Avatar className="border border-[#333]">
-                  <AvatarImage src="/images/nooter.png" alt={post.nickname} />
                   <AvatarFallback className="bg-blue-600 text-white text-sm">
                     {post.nickname.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
@@ -241,9 +200,9 @@ export function SocialFeed() {
                 <div>
                   <div className="flex items-center gap-1">
                     <span className="font-semibold text-white">{post.nickname}</span>
-                    {isConnected && (
-                      <Badge variant="secondary" className="text-xs bg-green-600/20 text-green-400 ml-2">
-                        Online
+                    {post.id.includes('demo') && (
+                      <Badge variant="secondary" className="text-xs bg-yellow-600/20 text-yellow-400 ml-2">
+                        Demo
                       </Badge>
                     )}
                   </div>
@@ -252,15 +211,13 @@ export function SocialFeed() {
                   </span>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-[#222] rounded-none h-8 w-8">
-                <MoreHorizontal className="h-5 w-5" />
-              </Button>
             </div>
             
             {/* Post content */}
             <div className="p-4">
-              <p className="text-white mb-3">{post.content}</p>
+              <p className="text-white mb-3 whitespace-pre-wrap">{post.content}</p>
               
+              {/* Tags */}
               {post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {post.tags.map((tag) => (
@@ -274,30 +231,23 @@ export function SocialFeed() {
                   ))}
                 </div>
               )}
-              
-              {post.media && (
-                <div className="mt-3 mb-4 rounded-none overflow-hidden border border-[#333]">
-                  <img src={post.media} alt="Post media" className="w-full h-auto" />
-                </div>
-              )}
             </div>
             
             {/* Post actions */}
             <div className="px-4 py-2 border-t border-[#333] flex justify-between">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => handleLikePost(post.id)}
-                  disabled={!isConnected}
+                <button 
+                  onClick={() => handleLikePost(post.id)} 
                   className={cn(
                     "flex items-center gap-1 text-white/70 hover:text-white",
-                    post.likedBy.includes(myId || '') && "text-red-400"
+                    post.likedBy.includes(currentUser.id) && "text-red-400"
                   )}
                 >
-                  <HeartIcon
+                  <HeartIcon 
                     className={cn(
-                      "h-5 w-5",
-                      post.likedBy.includes(myId || '') && "fill-red-400 text-red-400"
-                    )}
+                      "h-5 w-5", 
+                      post.likedBy.includes(currentUser.id) && "fill-red-400 text-red-400"
+                    )} 
                   />
                   <span>{post.likes}</span>
                 </button>
@@ -316,16 +266,6 @@ export function SocialFeed() {
           </motion.div>
         ))}
       </AnimatePresence>
-
-      {(!Array.isArray(posts) || posts.length === 0) && (
-        <div className="text-center py-12 bg-[#171717] border border-[#333] rounded-none">
-          <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 mb-2">No posts yet!</p>
-          <p className="text-sm text-gray-600">
-            Be the first to share your farming experience
-          </p>
-        </div>
-      )}
     </div>
-  )
-} 
+  );
+}

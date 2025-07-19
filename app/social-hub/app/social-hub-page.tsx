@@ -27,6 +27,7 @@ import { RewardPopup } from "../../../components/ui/reward-popup"
 import { SocialFeed } from "../../../components/social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
 import { ReactTogether } from 'react-together'
+import { ReactTogetherErrorBoundary } from "../../../components/react-together-error-boundary"
 
 interface SocialHubPageProps {
   farmCoins?: number;
@@ -101,15 +102,16 @@ export function SocialHubPage({
   }
 
   return (
-    <ReactTogether
-      sessionParams={{
-        apiKey: apiKey,
-        appId: "monfarm.social.hub",
-        name: "monfarm-social-hub-main",
-        password: "public"
-      }}
-    >
-      <div className="min-h-screen bg-black">
+    <ReactTogetherErrorBoundary>
+      <ReactTogether
+        sessionParams={{
+          apiKey: apiKey,
+          appId: "monfarm.social.hub",
+          name: "monfarm-social-hub-main",
+          password: "public"
+        }}
+      >
+        <div className="min-h-screen bg-black">
       {showDailyReward && (
         <RewardPopup
           title="Social Hub Daily Reward!"
@@ -239,5 +241,6 @@ export function SocialHubPage({
       </footer>
     </div>
     </ReactTogether>
+    </ReactTogetherErrorBoundary>
   )
 }
