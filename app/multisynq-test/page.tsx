@@ -1,25 +1,44 @@
 "use client"
 
-import React, { useState } from 'react';
-import { MultisynqChat } from '../../components/multisynq-chat';
-import { RealTimeSocialFeed } from '../../components/real-time-social-feed';
-import { ConnectionManager } from '../../components/connection-manager';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { 
-  TestTube, 
-  MessageCircle, 
-  Activity, 
-  Users, 
+import {
+  TestTube,
+  MessageCircle,
+  Activity,
+  Users,
   Settings,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
-import { useConnectedUsers, useMyId } from 'react-together';
+
+// Dynamically import components that use React Together hooks to avoid SSR issues
+const MultisynqChat = dynamic(() => import('../../components/multisynq-chat').then(mod => ({ default: mod.MultisynqChat })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+});
+
+const RealTimeSocialFeed = dynamic(() => import('../../components/real-time-social-feed').then(mod => ({ default: mod.RealTimeSocialFeed })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+});
+
+const ConnectionManager = dynamic(() => import('../../components/connection-manager').then(mod => ({ default: mod.ConnectionManager })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+});
+
+const MultisynqTestClient = dynamic(() => import('../../components/multisynq-test-client').then(mod => ({ default: mod.MultisynqTestClient })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+});
 
 export default function MultisynqTestPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -28,34 +47,51 @@ export default function MultisynqTestPage() {
     status: 'pass' | 'fail' | 'pending';
     message: string;
   }>>([]);
+  const [isClient, setIsClient] = useState(false);
+  const [reactTogetherData, setReactTogetherData] = useState({
+    isConnected: false,
+    currentUser: null,
+    users: [],
+    onlineCount: 0,
+    error: null
+  });
 
-  // React Together integration
-  const myId = useMyId()
-  const connectedUsers = useConnectedUsers()
+  // Ensure we're on the client side before rendering React Together components
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  // Derived state for testing
-  const isConnected = !!myId
-  const isLoading = false
-  const error = null
-  const session = { name: 'multisynq-test' }
-  const currentUser = myId ? {
-    userId: myId,
-    nickname: `User${myId.slice(-4)}`,
-    isOnline: true
-  } : null
-  const users = connectedUsers.map(userId => ({
-    userId,
-    nickname: `User${userId.slice(-4)}`,
-    isOnline: true
-  }))
-  const onlineCount = connectedUsers.length
-  const messages: any[] = []
-  const posts: any[] = []
-  const activities: any[] = []
+  // Mock data for testing
+  const mockData = {
+    isLoading: false,
+    session: { name: 'multisynq-test' },
+    messages: [],
+    posts: [],
+    activities: [],
+    sendMessage: () => {},
+    createPost: () => {},
+    likePost: () => {}
+  };
 
-  const sendMessage = () => {}
-  const createPost = () => {}
-  const likePost = () => {}
+  // Combine React Together data with mock data
+  const {
+    isConnected,
+    currentUser,
+    users,
+    onlineCount,
+    error
+  } = reactTogetherData;
+
+  const {
+    isLoading,
+    session,
+    messages,
+    posts,
+    activities,
+    sendMessage,
+    createPost,
+    likePost
+  } = mockData;
 
   // Run basic connectivity tests
   const runConnectivityTests = () => {
@@ -149,6 +185,22 @@ export default function MultisynqTestPage() {
       default: return <Info className="h-4 w-4 text-gray-500" />;
     }
   };
+
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-gray-400">Loading Multisynq Test Page...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -252,6 +304,9 @@ export default function MultisynqTestPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* React Together Status Component */}
+            <MultisynqTestClient onDataUpdate={setReactTogetherData} />
 
             <Card className="bg-[#171717] border-[#333]">
               <CardHeader>
