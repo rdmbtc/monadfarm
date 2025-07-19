@@ -1,6 +1,6 @@
 "use client"
 
-import { VanillaMultisynqSocialFeed } from '@/components/vanilla-multisynq-social-feed'
+import { SimpleSocialFeed } from '@/components/simple-social-feed'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Sparkles, Users, MessageCircle } from 'lucide-react'
@@ -48,7 +48,7 @@ export default function SocialTestPage() {
 
         {/* Social Feed */}
         <div className="flex justify-center">
-          <VanillaMultisynqSocialFeed className="w-full max-w-2xl" />
+          <SimpleSocialFeed className="w-full max-w-2xl" />
         </div>
 
         {/* Technical Info */}

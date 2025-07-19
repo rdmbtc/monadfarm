@@ -61,24 +61,18 @@ export function VanillaMultisynqSocialFeed({
   const modelRef = useRef<any>(null)
   const postIdCounterRef = useRef(0)
 
-  // Social Feed Model (similar to your vanilla example)
-  class SocialFeedModel {
+  // Social Feed Model (proper Multisynq pattern)
+  class SocialFeedModel extends window.Multisynq?.Model {
     posts: SocialPost[] = []
     postIdCounter = 0
-    sessionId: string
-
-    constructor(sessionId: string) {
-      this.sessionId = sessionId
-      this.init()
-    }
 
     init() {
-      if (window.Multisynq) {
-        // Subscribe to events
-        window.Multisynq.subscribe(this.sessionId, "createPost", this.handleCreatePost.bind(this))
-        window.Multisynq.subscribe(this.sessionId, "likePost", this.handleLikePost.bind(this))
-        window.Multisynq.subscribe(this.sessionId, "postsChanged", this.handlePostsChanged.bind(this))
-      }
+      this.posts = []
+      this.postIdCounter = 0
+
+      // Subscribe to events using proper Multisynq pattern
+      this.subscribe(this.sessionId, "createPost", this.handleCreatePost)
+      this.subscribe(this.sessionId, "likePost", this.handleLikePost)
     }
 
     handleCreatePost(data: {
@@ -100,16 +94,14 @@ export function VanillaMultisynqSocialFeed({
       }
 
       this.posts.unshift(post) // Add to beginning
-      
+
       // Keep only last 50 posts
       if (this.posts.length > 50) {
         this.posts = this.posts.slice(0, 50)
       }
 
-      // Broadcast to all clients
-      if (window.Multisynq) {
-        window.Multisynq.publish(this.sessionId, "postsChanged", this.posts)
-      }
+      // Broadcast to all clients using proper Multisynq method
+      this.publish(this.sessionId, "postsChanged", this.posts)
     }
 
     handleLikePost(data: {
@@ -120,7 +112,7 @@ export function VanillaMultisynqSocialFeed({
       if (!post) return
 
       const hasLiked = post.likedBy.includes(data.userId)
-      
+
       if (hasLiked) {
         // Unlike
         post.likedBy = post.likedBy.filter(id => id !== data.userId)
@@ -131,14 +123,20 @@ export function VanillaMultisynqSocialFeed({
         post.likes += 1
       }
 
-      // Broadcast to all clients
-      if (window.Multisynq) {
-        window.Multisynq.publish(this.sessionId, "postsChanged", this.posts)
-      }
+      // Broadcast to all clients using proper Multisynq method
+      this.publish(this.sessionId, "postsChanged", this.posts)
+    }
+  }
+  }
+
+  // Social Feed View (handles UI updates)
+  class SocialFeedView extends window.Multisynq?.View {
+    constructor(model: any) {
+      super(model)
+      this.subscribe(this.sessionId, "postsChanged", this.updatePosts)
     }
 
-    handlePostsChanged(posts: SocialPost[]) {
-      this.posts = posts
+    updatePosts(posts: SocialPost[]) {
       setPosts([...posts]) // Update React state
     }
   }
@@ -157,26 +155,27 @@ export function VanillaMultisynqSocialFeed({
         // Generate user info
         const userId = localStorage.getItem('farm-user-id') || `user_${Date.now()}`
         const nickname = localStorage.getItem('farm-nickname') || `Farmer${userId.slice(-4)}`
-        
+
         localStorage.setItem('farm-user-id', userId)
         localStorage.setItem('farm-nickname', nickname)
-        
+
         setCurrentUser({ userId, nickname })
 
-        // Join Multisynq session
+        // Join Multisynq session with proper model and view
         const session = await window.Multisynq.Session.join({
           apiKey: apiKey,
           appId: appId,
+          model: SocialFeedModel,
+          view: SocialFeedView,
           name: `${appId}-social-feed`,
           password: 'public'
         })
 
         sessionRef.current = session
-        modelRef.current = new SocialFeedModel(session.id)
-        
+
         setIsConnected(true)
         setConnectedUsers(1) // Start with current user
-        
+
         console.log('Multisynq session joined:', session.id)
         toast.success('Connected to social feed! 🌾')
 
@@ -198,12 +197,12 @@ export function VanillaMultisynqSocialFeed({
 
   // Handle creating a new post
   const handleCreatePost = useCallback(async () => {
-    if (!postContent.trim() || !currentUser || isPosting || !window.Multisynq || !sessionRef.current) return
+    if (!postContent.trim() || !currentUser || isPosting || !sessionRef.current) return
 
     setIsPosting(true)
     try {
-      // Publish create post event
-      window.Multisynq.publish(sessionRef.current.id, "createPost", {
+      // Publish create post event using the session's publish method
+      sessionRef.current.publish(sessionRef.current.id, "createPost", {
         userId: currentUser.userId,
         nickname: currentUser.nickname,
         content: postContent.trim(),
@@ -223,9 +222,9 @@ export function VanillaMultisynqSocialFeed({
 
   // Handle liking a post
   const handleLikePost = useCallback((postId: string) => {
-    if (!currentUser || !window.Multisynq || !sessionRef.current) return
+    if (!currentUser || !sessionRef.current) return
 
-    window.Multisynq.publish(sessionRef.current.id, "likePost", {
+    sessionRef.current.publish(sessionRef.current.id, "likePost", {
       userId: currentUser.userId,
       postId: postId
     })
