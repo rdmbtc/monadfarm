@@ -282,8 +282,8 @@ export function WalletConnect() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    onClick={switchToAbstractNetwork} 
+                  <Button
+                    onClick={switchToMonadNetwork}
                     variant="destructive"
                     size="sm"
                     className="mb-2 text-xs px-3 py-1 h-auto bg-white text-black border-0 rounded-none hover:bg-white/90 noot-text"
@@ -291,19 +291,19 @@ export function WalletConnect() {
                   >
                     {isNetworkSwitching ? (
                       <span className="flex items-center">
-                        <PlugZap className="h-3 w-3 mr-1 animate-pulse" /> 
+                        <PlugZap className="h-3 w-3 mr-1 animate-pulse" />
                         Switching...
                       </span>
                     ) : (
                       <span className="flex items-center">
-                        <AlertCircle className="h-3 w-3 mr-1" /> 
-                        Switch to Abstract Testnet
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Switch to Monad Testnet
                       </span>
                     )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left" className="bg-black border border-[#333] text-white noot-text">
-                  <p>You need to be on Abstract Testnet to use all features</p>
+                  <p>You need to be on Monad Testnet to use all features</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -330,7 +330,7 @@ export function WalletConnect() {
                 </Button>
               </div>
               <div className="text-xs mt-1 text-white/60">
-                {isOnCorrectNetwork ? 'Connected to Abstract Testnet' : 'Wrong Network'}
+                {isOnCorrectNetwork ? 'Connected to Monad Testnet' : 'Wrong Network'}
               </div>
             </div>
             
@@ -346,7 +346,7 @@ export function WalletConnect() {
                   <div className="flex items-center justify-between">
                     <span>Network:</span>
                     <span className="text-white">
-                      {isOnCorrectNetwork ? ABSTRACT_CHAIN_NAME : "Wrong Network"}
+                      {isOnCorrectNetwork ? MONAD_CHAIN_NAME : "Wrong Network"}
                     </span>
                   </div>
                 </div>
@@ -367,8 +367,8 @@ export function WalletConnect() {
                     Add $NOOT to Wallet
                   </DropdownMenuItem>
                   {!isOnCorrectNetwork && (
-                    <DropdownMenuItem onClick={switchToAbstractNetwork} className="hover:bg-[#222] focus:bg-[#222] noot-text">
-                      Switch to Abstract Testnet
+                    <DropdownMenuItem onClick={switchToMonadNetwork} className="hover:bg-[#222] focus:bg-[#222] noot-text">
+                      Switch to Monad Testnet
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={disconnectWallet} className="hover:bg-[#222] focus:bg-[#222] noot-text">

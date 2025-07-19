@@ -1,0 +1,58 @@
+# Farm Cases System
+
+## Overview
+The Farm Cases system allows players to open virtual cases containing rare farming items, participate in case battles, and manage contracts.
+
+## Case Types
+
+### Mon Case
+- Contains farm-themed items
+- Rarity levels: Common, Rare, Epic, Legendary
+- Cost: Varies by case type
+- Rewards: Seeds, tools, boosters, decorations
+
+### Battle Cases
+- Used in player vs player battles
+- Winner takes all items
+- Entry fee required
+- Spectator mode available
+
+## How to Use Cases
+
+### Opening Cases
+1. Purchase cases with Farm Coins or NOOT tokens
+2. Click to open and reveal contents
+3. Items are added to your inventory
+4. Rare items have special effects
+
+### Case Battles
+1. Create or join a battle
+2. Select your case
+3. Wait for opponent
+4. Cases open simultaneously
+5. Higher value wins all items
+
+### Contract System
+1. Create custom case opening contracts
+2. Set terms and conditions
+3. Other players can accept contracts
+4. Automated execution and rewards
+
+## Item Rarities
+- Common (70%): Basic seeds and tools
+- Rare (20%): Enhanced items with bonuses
+- Epic (8%): Powerful boosters and decorations
+- Legendary (2%): Unique items with special abilities
+
+## Tips
+- Check item values before battles
+- Save rare cases for important battles
+- Participate in community events
+- Trade items with other players
+
+## Supported Tokens
+- Farm Coins (in-game currency)
+- NOOT tokens (blockchain currency)
+- ETH (for premium cases)
+
+For more information, visit the Farm Cases section in-game.

@@ -8,6 +8,7 @@ import { defineChain } from 'viem'
 import { ReactTogether } from 'react-together'
 import { NoSSRWrapper } from '@/components/no-ssr-wrapper'
 import { FarmGameModel } from '@/models/farm-game-model'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 // Define Monad Testnet chain configuration for Privy
 const monadTestnet = defineChain({
@@ -36,30 +37,35 @@ const monadTestnet = defineChain({
 export function Providers({ children }: { children: ReactNode }) {
   // Track if we're on the client side
   const [isClient, setIsClient] = useState(false)
+  const [hasInitialized, setHasInitialized] = useState(false)
 
   // Add debug logging for context initialization
   useEffect(() => {
-    setIsClient(true)
-    console.log("[Providers] Client-side providers initialized");
+    if (!hasInitialized) {
+      setIsClient(true)
+      setHasInitialized(true)
+      console.log("[Providers] Client-side providers initialized");
 
-    // Log configuration warnings in development
-    if (process.env.NODE_ENV === 'development') {
-      if (!process.env.NEXT_PUBLIC_PRIVY_APP_ID) {
-        console.warn('⚠️ NEXT_PUBLIC_PRIVY_APP_ID is not set. Wallet connections may not work properly.')
-      }
-      if (!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
-        console.warn('⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect features may not work properly.')
-      }
-      if (!process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY) {
-        console.warn('⚠️ NEXT_PUBLIC_REACT_TOGETHER_API_KEY is not set. Real-time features may not work properly.')
+      // Log configuration warnings in development
+      if (process.env.NODE_ENV === 'development') {
+        if (!process.env.NEXT_PUBLIC_PRIVY_APP_ID) {
+          console.warn('⚠️ NEXT_PUBLIC_PRIVY_APP_ID is not set. Wallet connections may not work properly.')
+        }
+        if (!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
+          console.warn('⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect features may not work properly.')
+        }
+        if (!process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY) {
+          console.warn('⚠️ NEXT_PUBLIC_REACT_TOGETHER_API_KEY is not set. Real-time features may not work properly.')
+        }
       }
     }
-  }, []);
+  }, [hasInitialized]);
 
   // Client-side only configuration (SSR disabled)
   return (
-    <NoSSRWrapper fallback={<div>Loading...</div>}>
-      <PrivyProvider
+    <ErrorBoundary>
+      <NoSSRWrapper fallback={<div>Loading...</div>}>
+        <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
         config={{
           defaultChain: monadTestnet,
@@ -74,21 +80,21 @@ export function Providers({ children }: { children: ReactNode }) {
           },
           loginMethods: ['email', 'wallet'],
           walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-          // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
+          // Configure supported wallets - disable Coinbase Smart Wallet for Monad Testnet
           externalWallets: {
             coinbaseWallet: {
               // Disable Coinbase Smart Wallet for unsupported chains
-              connectionOptions: 'smartWalletOnly'
+              connectionOptions: 'eoaOnly'
             }
           },
         }}
       >
         {/* Only initialize ReactTogether on client side to prevent SSR issues */}
-        {isClient ? (
+        {isClient && process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY ? (
           <ReactTogether
             sessionParams={{
               appId: "monfarm-social-hub",
-              apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
+              apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY,
               name: "monfarm-social-hub-session",
               model: FarmGameModel
             }}
@@ -107,7 +113,8 @@ export function Providers({ children }: { children: ReactNode }) {
             </GuideProvider>
           </GameProvider>
         )}
-      </PrivyProvider>
-    </NoSSRWrapper>
+        </PrivyProvider>
+      </NoSSRWrapper>
+    </ErrorBoundary>
   )
 }

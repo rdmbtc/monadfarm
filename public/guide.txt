@@ -1,0 +1,39 @@
+# MonFarm Guide
+
+Welcome to MonFarm - Your Digital Farming Adventure!
+
+## Getting Started
+1. Connect your wallet to begin farming
+2. Plant seeds in your plots
+3. Wait for crops to grow
+4. Harvest and sell for Farm Coins
+5. Expand your farm and unlock new features
+
+## Basic Farming
+- Select seeds from the seed shop
+- Click empty plots to plant
+- Crops take time to grow (varies by type)
+- Harvest when ready (green checkmark appears)
+- Sell crops for coins and XP
+
+## Advanced Features
+- Animal husbandry for passive income
+- Crafting system for valuable items
+- Seasonal effects on crop growth
+- Weather bonuses and penalties
+- Social features and multiplayer farming
+
+## Tips for Success
+- Plant crops suited to the current season
+- Use boosters to increase yields
+- Manage your inventory efficiently
+- Participate in social activities
+- Complete daily quests for rewards
+
+## Troubleshooting
+- Ensure wallet is connected to Monad Testnet
+- Refresh page if crops don't update
+- Check console for error messages
+- Contact support if issues persist
+
+Happy Farming! 🌾
