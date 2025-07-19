@@ -58,7 +58,12 @@ const CrashoutGame: React.FC = () => {
         }),
       });
 
-      // ... existing code ...
+      // Handle response
+      if (response.ok) {
+        console.log("Bet placed successfully");
+      }
+    } catch (error) {
+      console.error("Error placing bet:", error);
     }
   }
 

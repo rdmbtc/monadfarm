@@ -14,10 +14,12 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false, // Disable strict mode to prevent double-mounting issues with Phaser
-  // Static export disabled for Vercel deployment with Multisynq
-  // output: 'export',
-  // Remove trailingSlash for Vercel deployment
-  // trailingSlash: true,
+  // DISABLE SSR COMPLETELY - Enable static export to make this a client-side only app
+  // This resolves all React Together SSR issues by preventing server-side rendering
+  output: 'export',
+  trailingSlash: true,
+  skipTrailingSlashRedirect: true,
+  distDir: 'out',
   // Set standard page extensions
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   // Configure empty pages directory
@@ -65,7 +67,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true,
+    unoptimized: true, // Required for static export
+    domains: ['localhost'],
   },
   compiler: {
     removeConsole: {

@@ -1,11 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { Menu } from "lucide-react"
+import dynamic from "next/dynamic"
+import { Menu, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import FarmFeed from "@/components/farm-feed"
 import { EventsCarousel } from "@/components/events-carousel"
-import FriendSuggestions from "@/components/friend-suggestions"
 import AchievementShowcase from "@/components/achievement-showcase"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { PulseNotification } from "@/components/ui/pulse-notification"
@@ -15,10 +14,41 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { RewardPopup } from "@/components/ui/reward-popup"
 
+// Dynamically import components that use React Together hooks to avoid SSR issues
+const FarmFeed = dynamic(() => import("@/components/farm-feed"), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-[#171717] border border-[#333] rounded-lg p-8">
+      <div className="flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin mr-2 text-white" />
+        <span className="text-white">Loading farm feed...</span>
+      </div>
+    </div>
+  )
+})
+
+const FriendSuggestions = dynamic(() => import("@/components/friend-suggestions"), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-[#171717] border border-[#333] rounded-lg p-8">
+      <div className="flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin mr-2 text-white" />
+        <span className="text-white">Loading friend suggestions...</span>
+      </div>
+    </div>
+  )
+})
+
 export default function Home() {
   const [showDailyReward, setShowDailyReward] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
+
+  // Ensure we're on the client side before rendering React Together components
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Show daily reward popup after a short delay
   useEffect(() => {
@@ -50,6 +80,20 @@ export default function Home() {
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
+  }
+
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-black">
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-600 dark:text-gray-400" />
+            <p className="text-gray-600 dark:text-gray-400">Loading MonFarm Social Hub...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
