@@ -24,7 +24,7 @@ import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
 import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
-import { SocialHubFeed } from "../../../components/social-hub-feed"
+import { BulletproofSocialFeed } from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
 import { ReactTogether } from 'react-together'
 import { ReactTogetherErrorBoundary } from "../../../components/react-together-error-boundary"
@@ -230,7 +230,7 @@ export function SocialHubPage({
               <EventsCarousel />
             </motion.div>
 
-            <SocialHubFeed />
+            <BulletproofSocialFeed />
           </motion.div>
         </motion.div>
       </main>
