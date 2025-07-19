@@ -44,6 +44,19 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsClient(true)
     console.log("[Providers] Client-side providers initialized");
+
+    // Log configuration warnings in development
+    if (process.env.NODE_ENV === 'development') {
+      if (!process.env.NEXT_PUBLIC_PRIVY_APP_ID) {
+        console.warn('⚠️ NEXT_PUBLIC_PRIVY_APP_ID is not set. Wallet connections may not work properly.')
+      }
+      if (!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
+        console.warn('⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect features may not work properly.')
+      }
+      if (!process.env.NEXT_PUBLIC_MULTISYNQ_API_KEY) {
+        console.warn('⚠️ NEXT_PUBLIC_MULTISYNQ_API_KEY is not set. Real-time features may not work properly.')
+      }
+    }
   }, []);
 
   // During SSR, provide all providers but with minimal configuration
@@ -64,22 +77,37 @@ export function Providers({ children }: { children: ReactNode }) {
           },
           loginMethods: ['email', 'wallet'],
           walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+          // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
+          externalWallets: {
+            coinbaseWallet: {
+              // Disable Coinbase Smart Wallet for unsupported chains
+              connectionOptions: 'smartWalletOnly'
+            }
+          },
         }}
       >
-        <ReactTogether
-          sessionParams={{
-            appId: "monfarm-social-hub",
-            apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
-            // Don't provide session name during SSR
-          }}
-          rememberUsers={true}
-        >
+        {/* Don't initialize ReactTogether during SSR to prevent duplicate initialization */}
+        {isClient ? (
+          <ReactTogether
+            sessionParams={{
+              appId: "monfarm-social-hub",
+              apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "",
+            }}
+            rememberUsers={true}
+          >
+            <GameProvider>
+              <GuideProvider>
+                {children}
+              </GuideProvider>
+            </GameProvider>
+          </ReactTogether>
+        ) : (
           <GameProvider>
             <GuideProvider>
               {children}
             </GuideProvider>
           </GameProvider>
-        </ReactTogether>
+        )}
       </PrivyProvider>
     )
   }
@@ -107,6 +135,13 @@ export function Providers({ children }: { children: ReactNode }) {
         loginMethods: ['email', 'wallet'],
         // Configure wallet connection options
         walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+        // Configure supported wallets - exclude Coinbase Smart Wallet for Monad Testnet
+        externalWallets: {
+          coinbaseWallet: {
+            // Disable Coinbase Smart Wallet for unsupported chains
+            connectionOptions: 'smartWalletOnly'
+          }
+        },
       }}
     >
       <ReactTogether

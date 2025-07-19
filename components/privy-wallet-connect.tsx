@@ -43,16 +43,30 @@ export function PrivyWalletConnect({
   const handleConnect = async () => {
     try {
       await login()
-      
+
       // Get the connected wallet address
       if (wallets.length > 0) {
         const address = wallets[0].address
         onConnect?.(address)
         toast.success('🎉 Connected to Monad Testnet!')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to connect wallet:', error)
-      toast.error('Failed to connect wallet. Please try again.')
+
+      // Provide specific error messages based on error type
+      let errorMessage = 'Failed to connect wallet. Please try again.'
+
+      if (error?.message?.includes('User rejected')) {
+        errorMessage = 'Connection cancelled by user.'
+      } else if (error?.message?.includes('MetaMask')) {
+        errorMessage = 'MetaMask connection failed. Please ensure MetaMask is installed and unlocked.'
+      } else if (error?.message?.includes('WalletConnect')) {
+        errorMessage = 'WalletConnect failed. Please check your internet connection.'
+      } else if (error?.message?.includes('Coinbase')) {
+        errorMessage = 'Coinbase Wallet connection failed. Note: Monad Testnet may not be supported by Coinbase Smart Wallet.'
+      }
+
+      toast.error(errorMessage)
     }
   }
 

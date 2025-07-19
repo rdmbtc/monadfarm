@@ -3,10 +3,8 @@ import "./globals.css"
 import { Toaster } from "react-hot-toast"
 import { Inter } from "next/font/google"
 import { Providers } from "./providers"
+import { ConfigChecker } from "@/components/config-checker"
 import Script from "next/script"
-import { StagewiseToolbar } from '@stagewise/toolbar-next'
-import { MonFarmDevToolbar } from "../components/monfarm-dev-toolbar"
-import "../lib/dev-utils" // Initialize development utilities
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -74,16 +72,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className={`${inter.className} bg-black text-white`} suppressHydrationWarning>
-        {/* Stagewise Toolbar - Available in Production for Vercel Testing */}
-        <StagewiseToolbar
-          config={{
-            plugins: [],
-            showInProduction: true,
-            theme: 'dark',
-            position: 'bottom-right',
-          }}
-        />
-
         <Providers>
           {children}
         </Providers>
@@ -134,6 +122,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             border: '1px solid #333',
           }
         }} />
+        {/* Only show config checker in development */}
+        {process.env.NODE_ENV === 'development' && <ConfigChecker />}
       </body>
     </html>
   )
