@@ -92,7 +92,11 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
     };
 
     // Add to posts - this automatically syncs to all users!
-    setPosts(prev => [newPost, ...prev].slice(0, 50)); // Keep last 50 posts
+    setPosts(prev => {
+      // Ensure prev is always an array
+      const currentPosts = Array.isArray(prev) ? prev : [];
+      return [newPost, ...currentPosts].slice(0, 50); // Keep last 50 posts
+    });
     
     setPostContent('');
     setShowCreatePost(false);
@@ -103,7 +107,10 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
   const handleLikePost = (postId: string) => {
     if (!myId) return;
 
-    setPosts(prev => prev.map(post => {
+    setPosts(prev => {
+      // Ensure prev is always an array
+      const currentPosts = Array.isArray(prev) ? prev : [];
+      return currentPosts.map(post => {
       if (post.id === postId) {
         const hasLiked = post.likedBy.includes(myId);
         
@@ -124,7 +131,8 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
         }
       }
       return post;
-    }));
+      });
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -229,7 +237,7 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
           <ScrollArea className="h-96">
             <div className="space-y-4 pr-4">
               <AnimatePresence>
-                {posts.map((post) => (
+                {Array.isArray(posts) && posts.map((post) => (
                   <motion.div
                     key={post.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -300,7 +308,7 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
                 ))}
               </AnimatePresence>
               
-              {posts.length === 0 && (
+              {(!Array.isArray(posts) || posts.length === 0) && (
                 <div className="text-center py-12">
                   <Sparkles className="h-12 w-12 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-500 mb-2">No posts yet!</p>
