@@ -105,7 +105,7 @@ export class MultisynqService {
       script.async = true;
       
       script.onload = () => {
-        if (window.Multisynq) {
+        if (typeof window !== 'undefined' && window.Multisynq) {
           resolve();
         } else {
           reject(new Error('Multisynq script loaded but Multisynq object not found'));

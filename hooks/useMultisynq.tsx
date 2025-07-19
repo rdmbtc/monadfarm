@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { multisynqService, getMultisynqConfig } from '../services/multisynq-service';
-import { createSimpleModel, createSimpleView, clearModelRegistry, getRegistrationStatus } from '../lib/multisynq-simple-classes';
-import { logMultisynqState, getMultisynqDebugInfo, validateMultisynqState } from '../lib/multisynq-debug';
+import { createSimpleModel, createSimpleView } from '../lib/multisynq-simple-classes';
 import type { ChatMessage, MultisynqUser, MultisynqSession } from '../services/multisynq-service';
 import type { SocialPost, UserActivity } from '../lib/multisynq-simple-classes';
 
@@ -49,7 +48,8 @@ export interface UseMultisynqReturn {
 
 export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqReturn {
   const { autoConnect = true, sessionName, password } = options;
-  
+  const [isClient, setIsClient] = useState(false);
+
   // State
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +66,12 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
   const sessionRef = useRef<any>(null);
   const viewRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
-  
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Clear error after some time
   useEffect(() => {
     if (error) {
@@ -77,7 +82,7 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
   
   // Initialize Multisynq
   useEffect(() => {
-    if (isInitializedRef.current) return;
+    if (isInitializedRef.current || !isClient || typeof window === 'undefined') return;
     
     const initializeMultisynq = async () => {
       try {
@@ -127,41 +132,15 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
         newSession = await multisynqService.createSession();
       }
       
-      // Ensure Multisynq is loaded before creating model and view
-      if (!window.Multisynq) {
+      // Ensure we're on client side and Multisynq is loaded
+      if (typeof window === 'undefined' || !window.Multisynq) {
         throw new Error('Multisynq library not loaded. Please check your internet connection and try again.');
-      }
-
-      // Log current registration status and validate Multisynq state
-      const regStatus = getRegistrationStatus();
-      const validation = validateMultisynqState();
-
-      console.log('Current registration status:', regStatus);
-      logMultisynqState('Before Model Creation');
-
-      if (!validation.valid) {
-        throw new Error(`Multisynq validation failed: ${validation.issues.join(', ')}`);
       }
 
       // Create model and view - try simple classes first
       console.log('Creating simple model and view classes...');
-      let ChatModel, ChatView;
-
-      try {
-        ChatModel = createSimpleModel();
-        console.log('Model created successfully:', ChatModel.name);
-
-        // Verify model is properly registered
-        if (!ChatModel || typeof ChatModel !== 'function') {
-          throw new Error('Model creation failed - invalid model class');
-        }
-      } catch (modelError) {
-        console.error('Failed to create model:', modelError);
-        throw new Error(`Model creation failed: ${modelError.message}`);
-      }
-
-      try {
-        ChatView = createSimpleView({
+      const ChatModel = createSimpleModel();
+      const ChatView = createSimpleView({
         onMessageReceived: (message) => {
           setMessages(prev => {
             const exists = prev.some(m => m.id === message.id);
@@ -218,45 +197,21 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
         }
       });
 
-      // Verify view is properly created
-      if (!ChatView || typeof ChatView !== 'function') {
-        throw new Error('View creation failed - invalid view class');
-      }
-
-      console.log('View created successfully:', ChatView.name);
-      } catch (viewError) {
-        console.error('Failed to create view:', viewError);
-        throw new Error(`View creation failed: ${viewError.message}`);
-      }
-
-      // Final validation before session creation
-      console.log('Validating model and view before session creation...');
-      if (!ChatModel || !ChatView) {
-        throw new Error('Model or View is null/undefined');
-      }
-
-      if (typeof ChatModel !== 'function' || typeof ChatView !== 'function') {
-        throw new Error('Model or View is not a constructor function');
-      }
-
       // Debug: Check what we're passing to Session.join
-      console.log('Final validation passed. Model and View details:');
-      console.log('ChatModel:', ChatModel.name, typeof ChatModel);
-      console.log('ChatView:', ChatView.name, typeof ChatView);
-      console.log('Registration status:', getRegistrationStatus());
+      console.log('ChatModel:', ChatModel);
+      console.log('ChatModel type:', typeof ChatModel);
+      console.log('ChatModel name:', ChatModel?.name);
+      console.log('ChatModel constructor:', ChatModel?.constructor?.name);
+      console.log('ChatView:', ChatView);
+      console.log('ChatView type:', typeof ChatView);
+      console.log('ChatView name:', ChatView?.name);
       console.log('ChatView constructor:', ChatView?.constructor?.name);
 
-      // Additional debugging
-      console.log('window.Multisynq available:', !!window.Multisynq);
-      console.log('window.Multisynq.Model:', window.Multisynq?.Model);
-      console.log('window.Multisynq.View:', window.Multisynq?.View);
-
-      // Small delay to ensure everything is properly initialized
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Final check before session creation
-      if (!window.Multisynq || !window.Multisynq.Session) {
-        throw new Error('Multisynq Session not available after initialization delay');
+      // Additional debugging (only on client side)
+      if (typeof window !== 'undefined') {
+        console.log('window.Multisynq available:', !!window.Multisynq);
+        console.log('window.Multisynq.Model:', window.Multisynq?.Model);
+        console.log('window.Multisynq.View:', window.Multisynq?.View);
       }
 
       // Join Multisynq session
@@ -269,7 +224,7 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
         hasPassword: !!newSession.password
       });
 
-      const multisynqSession = await window.Multisynq.Session.join({
+      const multisynqSession = await (window as any).Multisynq.Session.join({
         apiKey: getMultisynqConfig().apiKey,
         appId: getMultisynqConfig().appId,
         model: ChatModel,
@@ -299,37 +254,26 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
   
   // Disconnect from session
   const disconnect = useCallback(() => {
-    try {
-      if (sessionRef.current) {
-        try {
-          sessionRef.current.leave();
-        } catch (err) {
-          console.warn('Error leaving session:', err);
-        }
-        sessionRef.current = null;
+    if (sessionRef.current) {
+      try {
+        sessionRef.current.leave();
+      } catch (err) {
+        console.warn('Error leaving session:', err);
       }
-
-      viewRef.current = null;
-      setIsConnected(false);
-      setSession(null);
-      setCurrentUser(null);
-      setUsers([]);
-      setOnlineCount(0);
-      setMessages([]);
-      setPosts([]);
-      setActivities([]);
-      setError(null);
-
-      // Clear model registry to prevent conflicts on reconnection
-      clearModelRegistry();
-      console.log('Model registry cleared for clean reconnection');
-
-      multisynqService.disconnect();
-      console.log('Successfully disconnected from Multisynq session');
-    } catch (error) {
-      console.error('Error during disconnect:', error);
-      setError(`Disconnect error: ${error.message || error}`);
+      sessionRef.current = null;
     }
+    
+    viewRef.current = null;
+    setIsConnected(false);
+    setSession(null);
+    setCurrentUser(null);
+    setUsers([]);
+    setOnlineCount(0);
+    setMessages([]);
+    setPosts([]);
+    setActivities([]);
+    
+    multisynqService.disconnect();
   }, []);
   
   // Action methods
@@ -417,13 +361,5 @@ export function useMultisynq(options: UseMultisynqOptions = {}): UseMultisynqRet
     // Utility
     getSessionUrl,
     generateQRCode,
-
-    // Debug utilities
-    getDebugInfo: () => ({
-      multisynqState: getMultisynqDebugInfo(),
-      registrationStatus: getRegistrationStatus(),
-      validation: validateMultisynqState()
-    }),
-    logDebugState: (context?: string) => logMultisynqState(context || 'Manual Debug')
   };
 }

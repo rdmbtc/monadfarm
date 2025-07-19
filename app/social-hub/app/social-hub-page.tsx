@@ -3,15 +3,25 @@
 import Link from "next/link"
 import { Menu } from "lucide-react"
 import { Button } from "../../../components/ui/button"
-import FarmFeed from "../../../components/farm-feed"
+import { ClientOnlyWrapper } from "../../../components/client-only-wrapper"
+import dynamic from "next/dynamic"
+
+// Dynamically import FarmFeed to avoid SSR issues
+const FarmFeed = dynamic(() => import("../../../components/farm-feed"), {
+  ssr: false,
+  loading: () => <div className="text-white">Loading feed...</div>
+})
 import { EventsCarousel } from "../../../components/events-carousel"
-import FriendSuggestions from "../../../components/friend-suggestions"
+// Dynamically import FriendSuggestions to avoid SSR issues
+const FriendSuggestions = dynamic(() => import("../../../components/friend-suggestions"), {
+  ssr: false,
+  loading: () => <div className="text-white">Loading friends...</div>
+})
 import AchievementShowcase from "../../../components/achievement-showcase"
 import { PulseNotification } from "../../../components/ui/pulse-notification"
 import { StreakCounter } from "../../../components/ui/streak-counter"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
-import dynamic from "next/dynamic"
 import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import { SocialFeed } from "../../../components/social-feed"
@@ -31,92 +41,16 @@ export function SocialHubPage({
   playerLevel = 42
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
-  const [isWalletConnected, setIsWalletConnected] = useState(false)
-  const [walletAddress, setWalletAddress] = useState("")
-  const [userNickname, setUserNickname] = useState(nickname)
-  const [showNicknameSetup, setShowNicknameSetup] = useState(false)
-  const [activeTab, setActiveTab] = useState<'combined' | 'feed' | 'chat'>('combined')
-  const [isClient, setIsClient] = useState(false)
   const { toast } = useToast()
 
-  // Ensure we're on the client side
+  // Show daily reward popup after a short delay
   useEffect(() => {
-    setIsClient(true)
+    const timer = setTimeout(() => {
+      setShowDailyReward(true)
+    }, 3000)
+
+    return () => clearTimeout(timer)
   }, [])
-
-  // React Together integration (only on client side)
-  const {
-    isConnected: isReactTogetherConnected,
-    currentUser,
-    users,
-    onlineCount,
-    setNickname: setReactTogetherNickname
-  } = useReactTogether({
-    chatKey: 'monfarm-social-hub'
-  })
-
-  // Handle wallet connection
-  const handleWalletConnected = (address: string) => {
-    setIsWalletConnected(true)
-    setWalletAddress(address)
-
-    // Show nickname setup if user doesn't have one set
-    if (!userNickname || userNickname === "FarmerJoe123") {
-      setShowNicknameSetup(true)
-    } else {
-      // Set nickname in React Together
-      setReactTogetherNickname(userNickname)
-
-      toast({
-        title: "Welcome back to Social Hub!",
-        description: "Your wallet is connected. You can now interact with other farmers!",
-      })
-    }
-  }
-
-  // Handle wallet disconnection
-  const handleWalletDisconnected = () => {
-    setIsWalletConnected(false)
-    setWalletAddress("")
-  }
-
-  // Handle nickname setup
-  const handleNicknameSet = (newNickname: string) => {
-    setUserNickname(newNickname)
-    setShowNicknameSetup(false)
-
-    // Set nickname in React Together
-    setReactTogetherNickname(newNickname)
-
-    toast({
-      title: "Welcome to Social Hub!",
-      description: `Your wallet is connected and you're ready to interact with other farmers!`,
-    })
-  }
-
-  // Handle nickname setup skip
-  const handleNicknameSkip = () => {
-    setShowNicknameSetup(false)
-
-    // Set default nickname in React Together
-    setReactTogetherNickname(userNickname)
-
-    toast({
-      title: "Welcome to Social Hub!",
-      description: "You can set your nickname later in profile settings.",
-    })
-  }
-
-  // Show daily reward popup after a short delay (only if wallet connected)
-  useEffect(() => {
-    if (isWalletConnected) {
-      const timer = setTimeout(() => {
-        setShowDailyReward(true)
-      }, 3000)
-
-      return () => clearTimeout(timer)
-    }
-  }, [isWalletConnected])
 
   const handleClaimDailyReward = () => {
     // Add coins when claiming reward
@@ -144,15 +78,6 @@ export function SocialHubPage({
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
-  }
-
-  // Show loading state during SSR or while client is initializing
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">Loading Social Hub...</div>
-      </div>
-    )
   }
 
   return (

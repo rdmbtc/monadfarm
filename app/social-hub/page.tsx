@@ -1,8 +1,22 @@
 "use client"
 
-import { MonFarmSocialHub } from "../../components/monfarm-social-hub"
-import { ConnectionManager } from "../../components/connection-manager"
+import dynamic from "next/dynamic"
 import { Suspense } from "react"
+
+// Dynamically import components that use browser-only features
+const MonFarmSocialHub = dynamic(() => import("../../components/monfarm-social-hub").then(mod => ({ default: mod.MonFarmSocialHub })), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white">Loading MonFarm Social Hub...</div>
+    </div>
+  )
+})
+
+const ConnectionManager = dynamic(() => import("../../components/connection-manager").then(mod => ({ default: mod.ConnectionManager })), {
+  ssr: false,
+  loading: () => null
+})
 
 export default function SocialHub() {
   return (
