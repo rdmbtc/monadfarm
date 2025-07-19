@@ -23,6 +23,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#000000" />
         
+        {/* Load Multisynq client library globally */}
+        <Script
+          src="https://cdn.jsdelivr.net/npm/@multisynq/client@latest/bundled/multisynq-client.min.js"
+          strategy="beforeInteractive"
+        />
+
         {/* Script to prevent errors with window.ethereum property and others */}
         <Script id="ethereum-shim" strategy="beforeInteractive">
           {`

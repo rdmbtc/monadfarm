@@ -53,6 +53,31 @@ export function useFarmGameModel(userId?: string, nickname?: string): UseFarmGam
   // Get current player
   const myPlayer = userId ? players[userId] || null : null
 
+  // Listen for Multisynq events
+  useEffect(() => {
+    if (!model) return
+
+    const handlePostCreated = (event: any) => {
+      console.log('[useFarmGameModel] Post created:', event.post)
+      // State is automatically updated by the model
+    }
+
+    const handlePostLiked = (event: any) => {
+      console.log('[useFarmGameModel] Post liked:', event)
+      // State is automatically updated by the model
+    }
+
+    // Subscribe to Multisynq events
+    model.subscribe(model.sessionId, 'postCreated', handlePostCreated)
+    model.subscribe(model.sessionId, 'postLiked', handlePostLiked)
+
+    return () => {
+      // Cleanup subscriptions
+      model.unsubscribe(model.sessionId, 'postCreated', handlePostCreated)
+      model.unsubscribe(model.sessionId, 'postLiked', handlePostLiked)
+    }
+  }, [model])
+
   // Event publishers
   const publishPlayerJoin = usePublish((data: { userId: string; nickname: string }) => 
     [model?.id, 'player-join', data]

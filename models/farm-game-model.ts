@@ -1,5 +1,15 @@
 import { ReactTogetherModel } from 'react-together'
 
+// Extend ReactTogetherModel with Multisynq functionality
+declare module 'react-together' {
+  interface ReactTogetherModel {
+    sessionId: string
+    publish(sessionId: string, event: string, data?: any): void
+    subscribe(sessionId: string, event: string, handler: (data?: any) => void): void
+    unsubscribe(sessionId: string, event: string, handler: (data?: any) => void): void
+  }
+}
+
 export interface FarmPlot {
   status: 'empty' | 'growing' | 'ready'
   crop?: string
@@ -54,13 +64,17 @@ export class FarmGameModel extends ReactTogetherModel {
     sharedFarmEnabled: false
   }
 
+  // Social feed state
+  postIdCounter: number = 0
+
   init() {
     super.init({
       players: {},
       sharedFarmPlots: [],
       chatMessages: [],
       socialPosts: [],
-      gameSettings: this.gameSettings
+      gameSettings: this.gameSettings,
+      postIdCounter: 0
     })
 
     // Subscribe to game events
@@ -339,14 +353,16 @@ export class FarmGameModel extends ReactTogetherModel {
     tags?: string[]
   }) {
     const { userId, nickname, content, media, tags = [] } = data
-    
+
     if (!content.trim() || content.length > 1000) {
       console.warn(`[FarmGameModel] Invalid social post from ${userId}`)
       return
     }
 
+    // Generate unique post ID
+    this.postIdCounter += 1
     const post: SocialPost = {
-      id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `post_${this.postIdCounter}_${Date.now()}`,
       userId,
       nickname,
       content: content.trim(),
@@ -358,14 +374,16 @@ export class FarmGameModel extends ReactTogetherModel {
     }
 
     this.socialPosts.unshift(post) // Add to beginning
-    
+
     // Keep only last 50 posts
     if (this.socialPosts.length > 50) {
       this.socialPosts = this.socialPosts.slice(0, 50)
     }
 
+    // Broadcast to all clients
+    this.publish(this.sessionId, "postCreated", { post })
     this.updateState({ socialPosts: this.socialPosts })
-    console.log(`[FarmGameModel] New social post from ${nickname}`)
+    console.log(`[FarmGameModel] New social post from ${nickname}: ${post.id}`)
   }
 
   handleLikeSocialPost(data: {
@@ -374,20 +392,34 @@ export class FarmGameModel extends ReactTogetherModel {
   }) {
     const { userId, postId } = data
     const post = this.socialPosts.find(p => p.id === postId)
-    
-    if (!post) return
+
+    if (!post) {
+      console.warn(`[FarmGameModel] Post not found: ${postId}`)
+      return
+    }
 
     const hasLiked = post.likedBy.includes(userId)
-    
+
     if (hasLiked) {
       // Unlike
       post.likedBy = post.likedBy.filter(id => id !== userId)
       post.likes = Math.max(0, post.likes - 1)
+      console.log(`[FarmGameModel] User ${userId} unliked post ${postId}`)
     } else {
       // Like
       post.likedBy.push(userId)
       post.likes += 1
+      console.log(`[FarmGameModel] User ${userId} liked post ${postId}`)
     }
+
+    // Broadcast like update to all clients
+    this.publish(this.sessionId, "postLiked", {
+      postId,
+      likes: post.likes,
+      likedBy: post.likedBy,
+      userId,
+      action: hasLiked ? 'unlike' : 'like'
+    })
 
     this.updateState({ socialPosts: this.socialPosts })
   }
