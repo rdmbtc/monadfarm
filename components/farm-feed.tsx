@@ -117,22 +117,7 @@ export default function FarmFeed() {
   }))
   const onlineCount = connectedUsers.length
 
-  // Handle social events
-  onSocialEvent((event: any) => {
-    if (event.type === 'postCreated') {
-      setMultisynqPosts(prev => {
-        const exists = prev.some(p => p.id === event.post.id)
-        if (exists) return prev
-        return [event.post, ...prev].slice(0, 100)
-      })
-    } else if (event.type === 'postLiked') {
-      setMultisynqPosts(prev => prev.map(post =>
-        post.id === event.postId
-          ? { ...post, likes: event.likes, likedBy: event.likedBy }
-          : post
-      ))
-    }
-  })
+  // Social events are now handled by broadcastSocialEvent function above
 
   // Create post function
   const createPost = (content: string) => {

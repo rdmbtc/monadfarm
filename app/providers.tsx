@@ -59,7 +59,7 @@ export function Providers({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [hasInitialized]);
+  }, []); // Remove hasInitialized dependency to prevent re-initialization
 
   // Client-side only configuration (SSR disabled)
   return (

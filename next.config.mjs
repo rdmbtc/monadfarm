@@ -13,6 +13,22 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable bundle analyzer when ANALYZE=true
+  ...(process.env.ANALYZE === 'true' && {
+    webpack: (config, { isServer }) => {
+      if (!isServer) {
+        const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
+        config.plugins.push(
+          new BundleAnalyzerPlugin({
+            analyzerMode: 'static',
+            openAnalyzer: false,
+            reportFilename: '../bundle-analyzer-report.html'
+          })
+        )
+      }
+      return config
+    }
+  }),
   reactStrictMode: false, // Disable strict mode to prevent double-mounting issues with Phaser
   // DISABLE SSR COMPLETELY - Enable static export to make this a client-side only app
   // This resolves all React Together SSR issues by preventing server-side rendering

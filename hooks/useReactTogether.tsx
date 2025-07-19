@@ -198,29 +198,7 @@ export function useReactTogether(options: UseReactTogetherOptions = {}): UseReac
     }
   }, [setUsers, setUserNicknames]));
   
-  // Handle social events
-  onSocialEvent(useCallback((event: any) => {
-    switch (event.type) {
-      case 'postCreated':
-        setPosts(prev => {
-          const exists = prev.some(p => p.id === event.post.id);
-          if (exists) return prev;
-          return [event.post, ...prev].slice(0, 100); // Keep last 100 posts
-        });
-        break;
-      case 'postLiked':
-        setPosts(prev => prev.map(post =>
-          post.id === event.postId
-            ? {
-                ...post,
-                likes: event.likes,
-                likedBy: new Set(event.likedBy)
-              }
-            : post
-        ));
-        break;
-    }
-  }, [setPosts]));
+  // Social events are now handled by broadcastSocialEvent function above
   
   // Send message function
   const sendMessage = useCallback((text: string, type: string = 'text') => {

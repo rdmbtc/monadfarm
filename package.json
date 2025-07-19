@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "analyze": "ANALYZE=true npm run build",
+    "bundle-size": "node scripts/analyze-bundle.js",
+    "build:analyze": "npm run build && npm run bundle-size"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
