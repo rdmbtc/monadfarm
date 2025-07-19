@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Users, MessageCircle, Zap } from 'lucide-react';
 
-export default function SocialTestPage() {
+export default function SocialFeedNewPage() {
   return (
     <ReactTogether
       apiKey={process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY || "demo-key"}
-      appId="monfarm.social.test"
+      appId="monfarm.social.feed"
       sessionParams={{
-        name: "monfarm-social-test",
+        name: "monfarm-social-feed",
         password: "public"
       }}
       userInfo={{
+        nickname: undefined, // Will be auto-generated
         color: "#22c55e" // Green theme
       }}
     >
@@ -24,7 +25,7 @@ export default function SocialTestPage() {
           {/* Header */}
           <div className="text-center">
             <h1 className="text-4xl font-bold text-green-400 mb-2">
-              🌾 MonFarm Social Feed Test
+              🌾 MonFarm Social Feed
             </h1>
             <p className="text-gray-400 mb-4">
               Real-time social feed powered by React Together
@@ -52,13 +53,14 @@ export default function SocialTestPage() {
           {/* Instructions */}
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white">How to Test</CardTitle>
+              <CardTitle className="text-white">How to Test Real-time Features</CardTitle>
             </CardHeader>
             <CardContent className="text-gray-300 space-y-2">
               <p>1. <strong>Open multiple tabs</strong> or windows with this page</p>
               <p>2. <strong>Create posts</strong> in one tab and see them appear in others instantly</p>
               <p>3. <strong>Like posts</strong> and watch the like count update in real-time</p>
               <p>4. <strong>Test with friends</strong> by sharing this URL</p>
+              <p>5. <strong>Watch user count</strong> change as people join/leave</p>
             </CardContent>
           </Card>
 
@@ -75,13 +77,34 @@ export default function SocialTestPage() {
             <CardContent className="text-gray-300 space-y-2 text-sm">
               <p><strong>Framework:</strong> React Together (built on Multisynq)</p>
               <p><strong>State Management:</strong> useStateTogether hook</p>
-              <p><strong>Real-time Sync:</strong> Automatic across all users</p>
-              <p><strong>Backend:</strong> None required!</p>
-              <p><strong>Features:</strong> Create posts, like posts, real-time updates</p>
+              <p><strong>User Management:</strong> useConnectedUsers + useMyId hooks</p>
+              <p><strong>Real-time Sync:</strong> Automatic across all connected users</p>
+              <p><strong>Backend:</strong> None required - handled by React Together</p>
+              <p><strong>Features:</strong> Create posts, like posts, real-time updates, user presence</p>
+            </CardContent>
+          </Card>
+
+          {/* Code Example */}
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white">How Simple It Is</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="text-sm text-gray-300 bg-gray-900 p-4 rounded overflow-x-auto">
+{`// Real-time synchronized state - that's it!
+const [posts, setPosts] = useStateTogether('social-posts', [])
+const connectedUsers = useConnectedUsers()
+const myId = useMyId()
+
+// Add a post - automatically syncs to all users
+const addPost = (content) => {
+  setPosts(prev => [newPost, ...prev])
+}`}
+              </pre>
             </CardContent>
           </Card>
         </div>
       </div>
     </ReactTogether>
-  )
+  );
 }
