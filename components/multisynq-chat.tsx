@@ -43,13 +43,15 @@ export function MultisynqChat({
 }: MultisynqChatProps) {
   const {
     isConnected,
+    isLoading,
+    error,
     currentUser,
     users,
     onlineCount,
     messages,
     sendMessage,
     setNickname
-  } = useMultisynq({ autoConnect: true, sessionName: sessionName || 'monfarm-chat' });
+  } = useReactTogether({ chatKey: sessionName || 'monfarm-chat' });
 
   const [messageInput, setMessageInput] = useState('');
   const [postInput, setPostInput] = useState('');

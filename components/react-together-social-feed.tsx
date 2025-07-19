@@ -7,21 +7,21 @@ import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { useMultisynq } from '../hooks/useMultisynq'
+import { useReactTogether } from '../hooks/useReactTogether'
 import toast from 'react-hot-toast'
 import { cn } from '../lib/utils'
 
-interface MultisynqSocialFeedProps {
+interface ReactTogetherSocialFeedProps {
   className?: string
   sessionName?: string
   showUserPresence?: boolean
 }
 
-export function MultisynqSocialFeed({
+export function ReactTogetherSocialFeed({
   className = "",
   sessionName = "monfarm-social-feed",
   showUserPresence = false
-}: MultisynqSocialFeedProps) {
+}: ReactTogetherSocialFeedProps) {
   const [newPostContent, setNewPostContent] = useState('')
   const [isPosting, setIsPosting] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -35,14 +35,15 @@ export function MultisynqSocialFeed({
   // Multisynq integration
   const {
     isConnected,
+    isLoading,
+    error,
     currentUser,
     users,
     onlineCount,
     posts,
     createPost,
     likePost,
-    setNickname,
-    allNicknames
+    setNickname
   } = useMultisynq({
     autoConnect: true,
     sessionName: `${sessionName}-chat`
@@ -104,7 +105,8 @@ export function MultisynqSocialFeed({
 
   // Get user nickname
   const getUserNickname = (userId: string) => {
-    return allNicknames[userId] || `Farmer ${userId.slice(0, 6)}`
+    const user = users.find(u => u.userId === userId)
+    return user?.nickname || `Farmer ${userId.slice(0, 6)}`
   }
 
   // Show loading state during SSR

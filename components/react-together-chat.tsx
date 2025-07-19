@@ -8,18 +8,18 @@ import { Input } from './ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
-import { useMultisynq } from '../hooks/useMultisynq'
+import { useReactTogether } from '../hooks/useReactTogether'
 import toast from 'react-hot-toast'
 
-interface MultisynqChatProps {
+interface ReactTogetherChatProps {
   className?: string
   sessionName?: string
 }
 
-export function MultisynqChat({
+export function ReactTogetherChat({
   className = "",
   sessionName = "monfarm-chat"
-}: MultisynqChatProps) {
+}: ReactTogetherChatProps) {
   const [messageInput, setMessageInput] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showQuickMessages, setShowQuickMessages] = useState(false)
@@ -34,13 +34,14 @@ export function MultisynqChat({
   // Multisynq integration
   const {
     isConnected,
+    isLoading,
+    error,
     currentUser,
     users,
     onlineCount,
     messages,
     sendMessage,
-    setNickname,
-    allNicknames
+    setNickname
   } = useMultisynq({
     autoConnect: true,
     sessionName: sessionName
@@ -100,7 +101,8 @@ export function MultisynqChat({
 
   // Get user nickname
   const getUserNickname = (userId: string) => {
-    return allNicknames[userId] || `User ${userId.slice(0, 6)}`
+    const user = users.find(u => u.userId === userId)
+    return user?.nickname || `User ${userId.slice(0, 6)}`
   }
 
   // Show loading state during SSR
