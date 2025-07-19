@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react';
-import { MultisynqChat } from './multisynq-chat';
+import { SimpleMultisynqChat } from './simple-multisynq-chat';
 import { RealTimeSocialFeed } from './real-time-social-feed';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -249,10 +249,8 @@ export function MonFarmSocialHub({
                     </CardHeader>
                   </Card>
                   
-                  <MultisynqChat 
-                    sessionName={sessionName}
-                    password={password}
-                    autoConnect={false}
+                  <SimpleMultisynqChat
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -286,10 +284,8 @@ export function MonFarmSocialHub({
             </TabsContent>
 
             <TabsContent value="chat">
-              <MultisynqChat 
-                sessionName={sessionName}
-                password={password}
-                autoConnect={false}
+              <SimpleMultisynqChat
+                className="w-full"
               />
             </TabsContent>
 

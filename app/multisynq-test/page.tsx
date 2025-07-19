@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 // Dynamically import components that use React Together hooks to avoid SSR issues
-const MultisynqChat = dynamic(() => import('../../components/multisynq-chat').then(mod => ({ default: mod.MultisynqChat })), {
+const MultisynqChat = dynamic(() => import('../../components/simple-multisynq-chat').then(mod => ({ default: mod.SimpleMultisynqChat })), {
   ssr: false,
   loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
 });
