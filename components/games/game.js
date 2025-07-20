@@ -1113,7 +1113,14 @@ export default function platformerSketch(p) {
   // --- Drawing Functions (now nested) ---
 
   const drawPlayer = () => {
-      if (!player || !nootIdleImg) return; // Guard clause for player and image
+      if (!player) {
+          console.warn("drawPlayer: No player object");
+          return;
+      }
+      if (!nootIdleImg) {
+          console.warn("drawPlayer: No nootIdleImg loaded");
+          return;
+      }
 
       p.push(); // Isolate drawing settings
       p.translate(player.x, player.y);
@@ -1172,7 +1179,14 @@ export default function platformerSketch(p) {
     const crumblingColor = p.color(200, 160, 120, 200); // Dusty brown for crumbling
     
     // Guard clause
-    if (!platforms) return;
+    if (!platforms) {
+        console.warn("drawPlatformsWithTexture: No platforms array");
+        return;
+    }
+    if (platforms.length === 0) {
+        console.warn("drawPlatformsWithTexture: Empty platforms array");
+        return;
+    }
     
     p.push(); // Isolate settings
     p.rectMode(p.CENTER);
@@ -1561,12 +1575,15 @@ export default function platformerSketch(p) {
     }
   };
 
-  // --- Parallax Background Function --- 
+  // --- Parallax Background Function ---
   const drawBackground = () => {
+      // Always draw a background color first
+      p.background(100, 150, 200); // Default blue sky color
+
       // Check the dynamically assigned bgLayer variables
       if (!bgLayer1 || !bgLayer2 || !bgLayer3 || !bgLayer4) {
-          // Optional: Draw a solid color if backgrounds failed to load
-          p.background(100, 150, 200); // Default blue sky color?
+          // If backgrounds failed to load, just use solid color but don't return
+          console.warn("Background layers not loaded, using solid color");
           return;
       }
 
