@@ -75,9 +75,16 @@ export default function MultiplayerPlatformerGame({
 
   // Join game when switching to online mode - STABLE VERSION
   useEffect(() => {
-    if (gameMode === 'online' && myId && currentNickname && !myPlayer && joinGame) {
+    if (gameMode === 'online' && myId && currentNickname && !myPlayer) {
       console.log('🌐 Joining online game as:', currentNickname, 'ID:', myId)
-      joinGame(myId, currentNickname)
+      // Add delay to ensure connection is stable
+      const joinTimeout = setTimeout(() => {
+        if (multiplayerData?.joinGame) {
+          multiplayerData.joinGame(myId, currentNickname)
+        }
+      }, 500) // 500ms delay
+
+      return () => clearTimeout(joinTimeout)
     }
   }, [gameMode, myId, currentNickname]) // Removed myPlayer and joinGame to prevent reconnections
 
@@ -145,12 +152,25 @@ export default function MultiplayerPlatformerGame({
     if (gameMode !== 'online' || !gameInstanceRef.current || !myId) return
 
     console.log('🌐 Starting position sync for player:', myId)
+    let syncAttempts = 0
+    const maxSyncAttempts = 3
+
     const syncInterval = setInterval(() => {
-      const localPlayerData = gameInstanceRef.current.getLocalPlayerData?.()
-      if (localPlayerData && updatePlayerPosition) {
-        updatePlayerPosition(myId, localPlayerData)
+      try {
+        const localPlayerData = gameInstanceRef.current.getLocalPlayerData?.()
+        if (localPlayerData && multiplayerData?.updatePlayerPosition) {
+          multiplayerData.updatePlayerPosition(myId, localPlayerData)
+          syncAttempts = 0 // Reset on success
+        }
+      } catch (error) {
+        syncAttempts++
+        console.warn(`🌐 Sync attempt ${syncAttempts}/${maxSyncAttempts} failed:`, error)
+        if (syncAttempts >= maxSyncAttempts) {
+          console.error('🌐 Max sync attempts reached, stopping sync')
+          clearInterval(syncInterval)
+        }
       }
-    }, 1000 / 10) // Reduced to 10 FPS sync rate to prevent spam
+    }, 1000 / 5) // Further reduced to 5 FPS to be more conservative
 
     return () => clearInterval(syncInterval)
   }, [gameMode, myId]) // Removed updatePlayerPosition to prevent reconnections
@@ -262,7 +282,17 @@ export default function MultiplayerPlatformerGame({
       {/* Debug Info */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-red-900 p-2 text-xs text-white">
-          Debug: Mode={gameMode}, MyId={myId}, PlayerCount={playerCount}, IsClient={isClient}
+          Debug: Mode={gameMode}, MyId={myId?.slice(0,8)}, PlayerCount={playerCount}, IsClient={isClient},
+          MyPlayer={myPlayer ? '✓' : '✗'}, OtherPlayers={otherPlayers.length}
+        </div>
+      )}
+
+      {/* Connection Status */}
+      {gameMode === 'online' && (
+        <div className="bg-blue-900 p-2 text-xs text-white">
+          🌐 Connection: {myId ? 'Connected' : 'Connecting...'} |
+          Players: {playerCount} |
+          Status: {myPlayer ? 'In Game' : 'Joining...'}
         </div>
       )}
 

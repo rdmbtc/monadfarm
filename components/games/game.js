@@ -149,32 +149,13 @@ export default function platformerSketch(p) {
     };
 
     // Player images
-    console.log('🖼️ Loading player image: /defense/noot idle.png');
-    nootIdleImg = p.loadImage('/defense/noot idle.png',
-      img => {
-        console.log('✅ Player image loaded successfully:', img.width, 'x', img.height);
-        checkImage(img, 'nootIdleImg');
-      },
-      err => {
-        console.error('❌ Failed to load player image:', err);
-      }
-    );
+    nootIdleImg = p.loadImage('/defense/noot idle.png', img => checkImage(img, 'nootIdleImg'));
 
     // Enemy images
     const enemyBasePath = '/characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/';
-    console.log('🖼️ Loading enemy images from:', enemyBasePath);
-    enemyFoxImg = p.loadImage(enemyBasePath + 'Icon9.png',
-      img => checkImage(img, 'enemyFoxImg'),
-      err => console.error('❌ Failed to load fox image:', err)
-    );
-    enemyRabbitImg = p.loadImage(enemyBasePath + 'Icon2.png',
-      img => checkImage(img, 'enemyRabbitImg'),
-      err => console.error('❌ Failed to load rabbit image:', err)
-    );
-    enemyBirdImg = p.loadImage(enemyBasePath + 'Icon1.png',
-      img => checkImage(img, 'enemyBirdImg'),
-      err => console.error('❌ Failed to load bird image:', err)
-    );
+    enemyFoxImg = p.loadImage(enemyBasePath + 'Icon9.png', img => checkImage(img, 'enemyFoxImg'));
+    enemyRabbitImg = p.loadImage(enemyBasePath + 'Icon2.png', img => checkImage(img, 'enemyRabbitImg'));
+    enemyBirdImg = p.loadImage(enemyBasePath + 'Icon1.png', img => checkImage(img, 'enemyBirdImg'));
 
     // Level Dressing Assets
     const assetBasePath = '/assets/platformer/sfx and backgrounds/Small Forest Asset Pack/Small Forest Asset Pack/';
@@ -281,7 +262,7 @@ export default function platformerSketch(p) {
         bgMusic = p.loadSound(oldSfxBasePath + 'bg_music.mp3', soundLoadedCallback, soundLoadError); 
         
       } else {
-        console.warn("p5.sound functions not available on 'p' instance during preload.");
+        console.log("p5.sound functions not available during preload - will load sounds in setup");
         soundsLoaded = false;
       }
     } catch (error) {
@@ -1677,11 +1658,33 @@ export default function platformerSketch(p) {
       console.log("🎮 Player after init:", player ? "exists" : "missing");
 
       // Initialize game objects by loading/generating the first level
-      console.log("🎮 Calling resetGame");
       resetGame(); // Calls loadLevelData(0) internally
-      console.log("🎮 Platforms after resetGame:", platforms ? platforms.length : "missing");
 
-      console.log("p5 setup complete. Procedural generation active. Interaction needed for audio context.");
+      // Load sounds if they weren't loaded in preload (multiplayer context)
+      if (!soundsLoaded && p.loadSound) {
+          console.log("🔊 Loading sounds in setup (fallback)");
+          try {
+              p.soundFormats('mp3', 'ogg', 'wav');
+              const sfxBasePath = '/assets/platformer/sfx and backgrounds/FreeSFX/FreeSFX/GameSFX/';
+              const oldSfxBasePath = '/assets/platformer/';
+
+              jumpSound = p.loadSound(sfxBasePath + 'Bounce Jump/Retro Jump Classic 08.wav');
+              coinSound = p.loadSound(sfxBasePath + 'PickUp/Retro PickUp Coin 04.wav');
+              landSound = p.loadSound(sfxBasePath + 'Impact/Retro Impact Punch Hurt 01.wav');
+              powerupCollectSound = p.loadSound(sfxBasePath + 'PickUp/Retro PickUp Coin 07.wav');
+              defeatSound = p.loadSound(oldSfxBasePath + 'enemy_defeat.mp3');
+              gameOverSound = p.loadSound(oldSfxBasePath + 'enemy_hit.mp3');
+              victorySound = p.loadSound(oldSfxBasePath + 'victory.mp3');
+              bgMusic = p.loadSound(oldSfxBasePath + 'bg_music.mp3');
+
+              soundsLoaded = true;
+              console.log("🔊 Sounds loaded in setup");
+          } catch (error) {
+              console.warn("🔊 Sound loading failed in setup:", error);
+          }
+      }
+
+      console.log("🎮 Setup complete - Player:", player ? "✓" : "✗", "Platforms:", platforms ? platforms.length : "✗");
   };
 
   // p5.js draw function: Called repeatedly to update and render the game frame.
