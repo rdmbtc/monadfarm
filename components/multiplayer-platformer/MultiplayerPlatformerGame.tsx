@@ -58,20 +58,28 @@ export default function MultiplayerPlatformerGame({
     isGameActive = false
   } = gameMode === 'online' ? (multiplayerData || {}) : {}
 
-  console.log('🎮 Game State:', { gameMode, playerCount, myId, isClient, hasMultiplayerData: !!multiplayerData })
+  console.log('🎮 Game State:', {
+    gameMode,
+    playerCount,
+    myId,
+    isClient,
+    hasMultiplayerData: !!multiplayerData,
+    myPlayer: myPlayer ? `${myPlayer.nickname} (${myPlayer.id})` : 'none',
+    otherPlayersCount: otherPlayers.length
+  })
 
   // Client-side initialization
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Join game when switching to online mode
+  // Join game when switching to online mode - STABLE VERSION
   useEffect(() => {
     if (gameMode === 'online' && myId && currentNickname && !myPlayer && joinGame) {
-      console.log('Joining online game as:', currentNickname)
+      console.log('🌐 Joining online game as:', currentNickname, 'ID:', myId)
       joinGame(myId, currentNickname)
     }
-  }, [gameMode, myId, currentNickname, myPlayer, joinGame])
+  }, [gameMode, myId, currentNickname]) // Removed myPlayer and joinGame to prevent reconnections
 
   // Leave game when switching to single player mode
   useEffect(() => {
@@ -83,62 +91,69 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, myId, leaveGame])
 
-  // Update multiplayer callbacks when dependencies change
+  // Update multiplayer callbacks when dependencies change - STABLE VERSION
   useEffect(() => {
     if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.setMultiplayerCallbacks) {
-      console.log('🔄 Updating multiplayer callbacks')
+      console.log('🔄 Setting up multiplayer callbacks')
       gameInstanceRef.current.setMultiplayerCallbacks({
         onPlayerUpdate: (playerData: any) => {
-          if (myId && updatePlayerPosition) {
-            updatePlayerPosition(myId, playerData)
+          if (myId && multiplayerData?.updatePlayerPosition) {
+            multiplayerData.updatePlayerPosition(myId, playerData)
           }
         },
         onPlayerAction: (action: string, data: any) => {
-          if (myId && performPlayerAction) {
-            performPlayerAction(myId, action, data)
+          if (myId && multiplayerData?.performPlayerAction) {
+            multiplayerData.performPlayerAction(myId, action, data)
           }
         }
       })
     }
-  }, [gameMode, myId, updatePlayerPosition, performPlayerAction])
+  }, [gameMode, myId]) // Removed unstable dependencies
 
-  // Sync remote players with the multiplayer game (only in online mode)
+  // Sync remote players with the multiplayer game (only in online mode) - THROTTLED
   useEffect(() => {
     if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
-      console.log('🌐 Syncing remote players:', otherPlayers.length)
-      // Update all remote players in the game
-      otherPlayers.forEach((player: any) => {
-        gameInstanceRef.current.updateRemotePlayer(player.id, {
-          x: player.x,
-          y: player.y,
-          velocityX: player.velocityX,
-          velocityY: player.velocityY,
-          isOnGround: player.isOnGround,
-          isJumping: player.isJumping,
-          canDoubleJump: player.canDoubleJump,
-          state: player.state,
-          nickname: player.nickname,
-          color: player.color,
-          isActive: player.isActive
+      // Throttle remote player updates to prevent spam
+      const throttleTimeout = setTimeout(() => {
+        console.log('🌐 Syncing remote players:', otherPlayers.length)
+        // Update all remote players in the game
+        otherPlayers.forEach((player: any) => {
+          if (gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
+            gameInstanceRef.current.updateRemotePlayer(player.id, {
+              x: player.x,
+              y: player.y,
+              velocityX: player.velocityX,
+              velocityY: player.velocityY,
+              isOnGround: player.isOnGround,
+              isJumping: player.isJumping,
+              canDoubleJump: player.canDoubleJump,
+              state: player.state,
+              nickname: player.nickname,
+              color: player.color,
+              isActive: player.isActive
+            })
+          }
         })
-      })
+      }, 100) // 100ms throttle
+
+      return () => clearTimeout(throttleTimeout)
     }
   }, [gameMode, otherPlayers])
 
-  // Sync local player position periodically (only in online mode)
+  // Sync local player position periodically (only in online mode) - REDUCED FREQUENCY
   useEffect(() => {
     if (gameMode !== 'online' || !gameInstanceRef.current || !myId) return
 
     console.log('🌐 Starting position sync for player:', myId)
     const syncInterval = setInterval(() => {
       const localPlayerData = gameInstanceRef.current.getLocalPlayerData?.()
-      if (localPlayerData) {
+      if (localPlayerData && updatePlayerPosition) {
         updatePlayerPosition(myId, localPlayerData)
       }
-    }, 1000 / 30) // 30 FPS sync rate
+    }, 1000 / 10) // Reduced to 10 FPS sync rate to prevent spam
 
     return () => clearInterval(syncInterval)
-  }, [gameMode, myId, updatePlayerPosition])
+  }, [gameMode, myId]) // Removed updatePlayerPosition to prevent reconnections
 
   // Handle chat message submission
   const handleSendChatMessage = useCallback((e: React.FormEvent) => {

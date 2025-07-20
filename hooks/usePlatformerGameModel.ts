@@ -375,11 +375,11 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
   const isPlayerActive = useCallback((playerId: string): boolean => {
     const player = players[playerId]
     if (!player) return false
-    
-    // Consider player active if they've updated within the last 5 seconds
+
+    // Consider player active if they've updated within the last 30 seconds (increased from 5)
     const now = Date.now()
     const timeSinceUpdate = now - (player.lastUpdate || 0)
-    return timeSinceUpdate < 5000
+    return timeSinceUpdate < 30000
   }, [players])
 
   return {
