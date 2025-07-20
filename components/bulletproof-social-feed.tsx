@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useStateTogether, useConnectedUsers, useMyId } from 'react-together';
+import { useStateTogether, useConnectedUsers, useMyId, useFunctionTogether } from 'react-together';
 import { useUnifiedNickname } from '../hooks/useUnifiedNickname';
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
@@ -62,8 +62,52 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
   const myId = useMyId();
   const connectedUsers = useConnectedUsers();
 
+  // Real-time event broadcasting
+  const broadcastSocialEvent = useFunctionTogether('broadcastSocialEvent', (event: any) => {
+    console.log('BulletproofSocialFeed: Broadcasting social event:', event);
+    if (event.type === 'newPost') {
+      setSyncedPosts(prev => {
+        const currentPosts = safeArray<SocialPost>(prev);
+        const exists = currentPosts.some(p => p.id === event.post.id);
+        if (exists) return prev;
+        return [event.post, ...currentPosts].slice(0, 50);
+      });
+    } else if (event.type === 'likePost') {
+      setSyncedPosts(prev => {
+        const currentPosts = safeArray<SocialPost>(prev);
+        return currentPosts.map(post => {
+          if (post.id === event.postId) {
+            const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+            const hasLiked = likedBy.includes(event.userId);
+            if (hasLiked) {
+              return {
+                ...post,
+                likes: Math.max(0, (post.likes || 0) - 1),
+                likedBy: likedBy.filter(id => id !== event.userId)
+              };
+            } else {
+              return {
+                ...post,
+                likes: (post.likes || 0) + 1,
+                likedBy: [...likedBy, event.userId]
+              };
+            }
+          }
+          return post;
+        });
+      });
+    }
+  });
+
   // Use the unified nickname system
   const { nickname: myNickname, updateNickname } = useUnifiedNickname();
+
+  // Debug React Together connection
+  useEffect(() => {
+    console.log('BulletproofSocialFeed: React Together status - myId:', myId, 'connectedUsers:', connectedUsers.length);
+    console.log('BulletproofSocialFeed: API Key available:', !!process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY);
+    console.log('BulletproofSocialFeed: Current nickname:', myNickname);
+  }, [myId, connectedUsers, myNickname]);
 
   // For compatibility with existing post display logic, create allNicknames object
   const allNicknames = { [myId || 'offline-user']: myNickname };
@@ -102,15 +146,17 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     }
   }, [myId, myNickname, generateFarmerName, updateNickname]);
 
-  // Monitor connection status
+  // Monitor connection status - check if properly connected to Multisynq
   useEffect(() => {
     const checkConnection = () => {
-      console.log('BulletproofSocialFeed: Connection check - myId:', myId, 'connectedUsers:', connectedUsers.length);
-      setIsOnline(!!myId && connectedUsers.length > 0);
+      // Check if we have a valid myId and are connected to React Together
+      const online = !!(myId && myId.trim() !== '' && connectedUsers.length >= 0);
+      console.log('BulletproofSocialFeed: Connection check - myId:', myId, 'connectedUsers:', connectedUsers.length, 'online:', online);
+      setIsOnline(online);
     };
 
     checkConnection();
-    const interval = setInterval(checkConnection, 1000);
+    const interval = setInterval(checkConnection, 2000); // Check less frequently
 
     return () => clearInterval(interval);
   }, [myId, connectedUsers]);
@@ -122,7 +168,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     setIsPosting(true);
     
     const newPost: SocialPost = {
-      id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       userId: myId || 'offline-user',
       nickname: safeString(myNickname),
       content: (newPostContent || '').trim(),
@@ -134,16 +180,18 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
 
     try {
       if (isOnline && myId) {
-        // Try to sync online
-        setSyncedPosts(prev => {
-          const currentPosts = safeArray<SocialPost>(prev);
-          return [newPost, ...currentPosts].slice(0, 50);
+        // Broadcast the new post event for real-time sync
+        broadcastSocialEvent({
+          type: 'newPost',
+          post: newPost,
+          userId: myId,
+          nickname: myNickname
         });
       } else {
         // Fallback to local state
         setLocalPosts(prev => [newPost, ...prev].slice(0, 50));
       }
-      
+
       setNewPostContent('');
       setShowCreatePost(false);
       toast.success(isOnline ? 'Post shared with the farming community! 🌾' : 'Post created (offline mode) 🌾');
@@ -156,7 +204,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     } finally {
       setIsPosting(false);
     }
-  }, [newPostContent, isPosting, myId, myNickname, isOnline, setSyncedPosts]);
+  }, [newPostContent, isPosting, myId, myNickname, isOnline, setSyncedPosts, broadcastSocialEvent]);
 
   // Safe like handling
   const handleLikePost = useCallback((postId: string) => {
@@ -189,7 +237,13 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
 
     try {
       if (isOnline && myId) {
-        setSyncedPosts(updatePosts);
+        // Broadcast the like event for real-time sync
+        broadcastSocialEvent({
+          type: 'likePost',
+          postId: postId,
+          userId: currentUserId,
+          nickname: myNickname
+        });
       } else {
         setLocalPosts(updatePosts);
       }
@@ -197,7 +251,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
       console.warn('Failed to like post online, using local state:', error);
       setLocalPosts(updatePosts);
     }
-  }, [myId, isOnline, setSyncedPosts]);
+  }, [myId, isOnline, setSyncedPosts, broadcastSocialEvent, myNickname]);
 
   // Nickname change function
   const changeNickname = useCallback((newNickname: string) => {
@@ -290,14 +344,21 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-green-400" />
           <span className="text-sm text-white">
-            {isOnline ? `${connectedUsers.length} farmers online` : 'Offline mode'}
+            {isOnline ? `${connectedUsers.length} farmers online` : 'Offline mode - Connect to sync with others'}
           </span>
           <div className={cn(
             "w-2 h-2 rounded-full ml-2",
-            isOnline ? "bg-green-500" : "bg-yellow-500"
+            isOnline ? "bg-green-500 animate-pulse" : "bg-yellow-500"
           )} />
         </div>
-        <span className="text-xs text-gray-400">Welcome, {myNickname}!</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">Welcome, {myNickname}!</span>
+          {isOnline && (
+            <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded">
+              🌾 Live
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Post creation area */}

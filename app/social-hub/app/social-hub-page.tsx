@@ -87,7 +87,8 @@ export function SocialHubPage({
     show: { opacity: 1, y: 0 },
   }
 
-  // API key check is now handled by the main ReactTogether provider in app/providers.tsx
+  // Real-time synchronization is handled by the ReactTogether provider in app/providers.tsx
+  // The BulletproofSocialFeed component uses Multisynq for live updates
 
   return (
     <div className="min-h-screen bg-black">
