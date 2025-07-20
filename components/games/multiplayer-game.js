@@ -29,43 +29,35 @@ export default function multiplayerPlatformerSketch(p) {
     return baseGame
   }
   
-  // Override the base game's setup function
-  p.setup = () => {
-    console.log('MultiplayerGame: Setting up multiplayer game')
-    
-    // Initialize base game first
-    if (!baseGame) {
-      baseGame = initializeBaseGame()
-    }
-    
-    // Call base setup if it exists
-    if (baseGame && baseGame.setup) {
-      baseGame.setup()
-    } else {
-      // Fallback setup
-      p.createCanvas(800, 600)
-      p.background(100, 150, 200)
-    }
+  // Initialize the base game - this sets up p.setup and p.draw
+  console.log('MultiplayerGame: Initializing base game')
+  if (!baseGame) {
+    baseGame = initializeBaseGame()
   }
-  
-  // Override the base game's draw function
-  p.draw = () => {
-    // Call base draw if it exists
-    if (baseGame && baseGame.draw) {
-      baseGame.draw()
-    } else {
-      // Fallback draw
-      p.background(100, 150, 200)
-      p.fill(255)
-      p.textAlign(p.CENTER)
-      p.textSize(24)
-      p.text('Multiplayer Platformer Loading...', p.width/2, p.height/2)
+
+  // Store the original setup and draw functions
+  const originalSetup = p.setup
+  const originalDraw = p.draw
+
+  // Override setup to add multiplayer functionality
+  p.setup = () => {
+    console.log('MultiplayerGame: Setup called')
+    // The base game has already set up p.setup, so we call it
+    if (originalSetup) {
+      originalSetup()
     }
-    
-    // Draw remote players
+    console.log('MultiplayerGame: Base setup complete')
+  }
+
+  // Override draw to add multiplayer functionality
+  p.draw = () => {
+    // The base game has already set up p.draw, so we call it
+    if (originalDraw) {
+      originalDraw()
+    }
+
+    // Add multiplayer elements on top
     drawRemotePlayers()
-    
-    // Draw multiplayer UI
     drawMultiplayerUI()
   }
   

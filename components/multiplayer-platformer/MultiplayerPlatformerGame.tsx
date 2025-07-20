@@ -39,10 +39,10 @@ export default function MultiplayerPlatformerGame({
   const gameInstanceRef = useRef<any>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
 
-  // Conditionally use multiplayer model only in online mode
-  const multiplayerData = gameMode === 'online' ? usePlatformerGameModel(myId || undefined) : null
+  // Always use multiplayer model (hooks must be called unconditionally)
+  const multiplayerData = usePlatformerGameModel(myId || undefined)
 
-  // Extract multiplayer data with fallbacks
+  // Extract multiplayer data with fallbacks - only use in online mode
   const {
     chatMessages = [],
     myPlayer = null,
@@ -56,7 +56,7 @@ export default function MultiplayerPlatformerGame({
     updatePlayerPosition = () => {},
     performPlayerAction = () => {},
     isGameActive = false
-  } = multiplayerData || {}
+  } = gameMode === 'online' ? (multiplayerData || {}) : {}
 
   console.log('🎮 Game State:', { gameMode, playerCount, myId, isClient, hasMultiplayerData: !!multiplayerData })
 
