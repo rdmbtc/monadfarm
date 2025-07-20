@@ -1,13 +1,56 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
-import { useNicknames } from 'react-together';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useUnifiedNickname() {
-  // React Together nickname system (now properly configured with deriveNickname)
-  const [nickname, setNickname] = useNicknames();
+  // Local state for nickname when ReactTogether is not available
+  const [localNickname, setLocalNickname] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
 
-  console.log('useUnifiedNickname: Current nickname:', nickname);
+  // Try to use ReactTogether nickname system if available
+  let reactTogetherNickname: string = ''
+  let setReactTogetherNickname: ((nickname: string) => void) | null = null
+  let hasReactTogether = false
+
+  try {
+    const { useNicknames } = require('react-together')
+    const [rtNickname, setRtNickname] = useNicknames()
+    reactTogetherNickname = rtNickname
+    setReactTogetherNickname = setRtNickname
+    hasReactTogether = true
+  } catch (error) {
+    console.log('useUnifiedNickname: ReactTogether not available, using local storage')
+    hasReactTogether = false
+  }
+
+  // Use ReactTogether nickname if available, otherwise use local
+  const nickname = hasReactTogether ? reactTogetherNickname : localNickname
+
+  console.log('useUnifiedNickname: Current nickname:', nickname, 'hasReactTogether:', hasReactTogether);
+
+  // Load nickname from localStorage on mount if ReactTogether is not available
+  useEffect(() => {
+    if (!hasReactTogether && typeof window !== "undefined") {
+      const stored = localStorage.getItem('player-nickname')
+      if (stored && stored.trim() !== '') {
+        console.log('useUnifiedNickname: Loading nickname from localStorage:', stored)
+        setLocalNickname(stored)
+      } else {
+        // Generate a fallback nickname
+        const adjectives = ["Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden"]
+        const farmTerms = ["Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher"]
+        const adj = adjectives[Math.floor(Math.random() * adjectives.length)]
+        const term = farmTerms[Math.floor(Math.random() * farmTerms.length)]
+        const fallbackName = `${adj} ${term}`
+        console.log('useUnifiedNickname: Using fallback nickname:', fallbackName)
+        setLocalNickname(fallbackName)
+        localStorage.setItem('player-nickname', fallbackName)
+      }
+      setIsLoading(false)
+    } else if (hasReactTogether) {
+      setIsLoading(false)
+    }
+  }, [hasReactTogether])
 
   // Sync nickname changes to localStorage
   useEffect(() => {
@@ -29,8 +72,19 @@ export function useUnifiedNickname() {
     const trimmedNickname = newNickname.trim();
 
     try {
-      // Update React Together (localStorage sync happens automatically via useEffect)
-      setNickname(trimmedNickname);
+      if (hasReactTogether && setReactTogetherNickname) {
+        // Update React Together nickname
+        setReactTogetherNickname(trimmedNickname);
+      } else {
+        // Update local nickname
+        setLocalNickname(trimmedNickname);
+      }
+
+      // Also sync to localStorage immediately
+      if (typeof window !== "undefined") {
+        localStorage.setItem('player-nickname', trimmedNickname);
+        console.log('useUnifiedNickname: Nickname saved to localStorage:', trimmedNickname);
+      }
 
       console.log('useUnifiedNickname: Successfully updated nickname to:', trimmedNickname);
       return true;
@@ -38,11 +92,11 @@ export function useUnifiedNickname() {
       console.error('useUnifiedNickname: Failed to update nickname:', error);
       return false;
     }
-  }, [setNickname]);
+  }, [hasReactTogether, setReactTogetherNickname]);
 
   return {
-    nickname,
+    nickname: nickname || '',
     updateNickname,
-    isLoading: false // No longer needed since deriveNickname handles initialization
+    isLoading
   };
 }
