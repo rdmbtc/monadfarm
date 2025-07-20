@@ -30,6 +30,8 @@ import BulletproofSocialFeed from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
 import { useUnifiedNickname } from "../../../hooks/useUnifiedNickname"
 import ProfileEditModal from "../../../components/profile-edit-modal"
+import { useFarmInventory } from "../../../hooks/useFarmInventory"
+import { TradingSystem } from "../../../components/trading-system"
 
 interface SocialHubPageProps {
   farmCoins?: number;
@@ -55,10 +57,14 @@ function SocialHubPageContent({
   playerLevel = 42
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
+  const [activeTab, setActiveTab] = useState<'social' | 'trading'>('social')
   const { toast } = useToast()
 
   // Use the unified nickname system
   const { nickname: currentNickname, updateNickname } = useUnifiedNickname();
+
+  // Get real farm inventory data
+  const farmInventory = useFarmInventory();
 
   // The unified hook handles all synchronization automatically
 
@@ -118,9 +124,9 @@ function SocialHubPageContent({
       {/* Header */}
       <header className="border-b border-[#333] py-3 px-4 flex justify-between items-center bg-[#111]">
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             className="bg-transparent border-[#333] hover:bg-[#222] hover:border-[#444] text-white rounded-none"
           >
             <Menu className="h-5 w-5" />
@@ -129,14 +135,40 @@ function SocialHubPageContent({
         </div>
         <div className="flex items-center gap-2">
           <NotificationDropdown />
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="bg-transparent border-[#333] hover:bg-[#222] hover:border-[#444] text-white rounded-none"
           >
             {farmCoins} 🪙
           </Button>
         </div>
       </header>
+
+      {/* Tab Navigation */}
+      <div className="border-b border-[#333] bg-[#111]">
+        <div className="px-4 py-2 flex gap-2">
+          <Button
+            variant={activeTab === 'social' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('social')}
+            className={activeTab === 'social'
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-transparent border-[#333] hover:bg-[#222] text-white"
+            }
+          >
+            💬 Social Feed
+          </Button>
+          <Button
+            variant={activeTab === 'trading' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('trading')}
+            className={activeTab === 'trading'
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-transparent border-[#333] hover:bg-[#222] text-white"
+            }
+          >
+            🤝 Trading Hub
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="px-4 py-6">
@@ -177,20 +209,23 @@ function SocialHubPageContent({
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     className="bg-[#111] p-2 border border-[#333] rounded-none"
+                    title={`Total crops harvested: ${farmInventory.totalCrops}`}
                   >
                     <p className="text-sm text-white/60">Crops</p>
-                    <p className="text-lg font-bold text-white">128</p>
+                    <p className="text-lg font-bold text-white">{farmInventory.totalCrops}</p>
                   </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     className="bg-[#111] p-2 border border-[#333] rounded-none"
+                    title={`Animals owned: ${farmInventory.totalAnimals}`}
                   >
                     <p className="text-sm text-white/60">Animals</p>
-                    <p className="text-lg font-bold text-white">64</p>
+                    <p className="text-lg font-bold text-white">{farmInventory.totalAnimals}</p>
                   </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     className="bg-[#111] p-2 border border-[#333] rounded-none"
+                    title="Friends connected (placeholder)"
                   >
                     <p className="text-sm text-white/60">Friends</p>
                     <p className="text-lg font-bold text-white">12</p>
@@ -249,16 +284,30 @@ function SocialHubPageContent({
 
           {/* Middle - Content Feed */}
           <motion.div variants={item} className="lg:col-span-2 space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-4"
-            >
-              <EventsCarousel />
-            </motion.div>
+            {activeTab === 'social' && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="mb-4"
+                >
+                  <EventsCarousel />
+                </motion.div>
 
-            <BulletproofSocialFeed />
+                <BulletproofSocialFeed />
+              </>
+            )}
+
+            {activeTab === 'trading' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <TradingSystem />
+              </motion.div>
+            )}
           </motion.div>
         </motion.div>
       </main>

@@ -6,7 +6,7 @@ import { useUnifiedNickname } from '../hooks/useUnifiedNickname';
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
-import { HeartIcon, MessageCircle, Share2, Bookmark, Send, Plus, Users, MoreHorizontal } from "lucide-react"
+import { HeartIcon, MessageCircle, Share2, Bookmark, Send, Plus, Users, MoreHorizontal, Hash, X, Upload } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "./ui/badge"
 import { cn } from "../lib/utils"
@@ -117,6 +117,8 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [hashtagFilter, setHashtagFilter] = useState<string | null>(null);
 
   // Safe state management - always use local state as fallback with additional safety checks
   const posts = React.useMemo(() => {
@@ -360,6 +362,25 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
           )}
         </div>
       </div>
+
+      {/* Hashtag Filter Display */}
+      {hashtagFilter && (
+        <div className="flex items-center gap-2 bg-[#171717] border border-[#333] p-3 rounded-none">
+          <Badge variant="outline" className="border-blue-400 text-blue-400">
+            <Hash className="h-3 w-3 mr-1" />
+            Filtering by: {hashtagFilter}
+          </Badge>
+          <Button
+            onClick={() => setHashtagFilter(null)}
+            variant="outline"
+            size="sm"
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            <X className="h-3 w-3 mr-1" />
+            Clear Filter
+          </Button>
+        </div>
+      )}
 
       {/* Post creation area */}
       {!showCreatePost ? (
