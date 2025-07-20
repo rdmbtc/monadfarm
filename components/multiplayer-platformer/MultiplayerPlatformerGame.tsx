@@ -154,31 +154,48 @@ export default function MultiplayerPlatformerGame({
     // Store p5 instance
     p5InstanceRef.current = p
 
-    // Always create the multiplayer-enhanced game (it works for both modes)
-    const game = multiplayerPlatformerSketch(p)
-    console.log('Game created:', game)
+    try {
+      // Always create the multiplayer-enhanced game (it works for both modes)
+      const game = multiplayerPlatformerSketch(p)
+      console.log('Game created successfully:', !!game)
 
-    // Store game instance
-    gameInstanceRef.current = game
+      // Store game instance
+      gameInstanceRef.current = game
 
-    // Set up multiplayer callbacks only in online mode
-    if (gameMode === 'online' && game && game.setMultiplayerCallbacks) {
-      console.log('Setting up multiplayer callbacks')
-      game.setMultiplayerCallbacks({
-        onPlayerUpdate: (playerData: any) => {
-          if (myId && updatePlayerPosition) {
-            updatePlayerPosition(myId, playerData)
+      // Set up multiplayer callbacks only in online mode
+      if (gameMode === 'online' && game && game.setMultiplayerCallbacks) {
+        console.log('Setting up multiplayer callbacks')
+        game.setMultiplayerCallbacks({
+          onPlayerUpdate: (playerData: any) => {
+            if (myId && updatePlayerPosition) {
+              updatePlayerPosition(myId, playerData)
+            }
+          },
+          onPlayerAction: (action: string, data: any) => {
+            if (myId && performPlayerAction) {
+              performPlayerAction(myId, action, data)
+            }
           }
-        },
-        onPlayerAction: (action: string, data: any) => {
-          if (myId && performPlayerAction) {
-            performPlayerAction(myId, action, data)
-          }
+        })
+      }
+
+      return game
+    } catch (error) {
+      console.error('Error creating game:', error)
+      // Fallback: create a simple sketch
+      return (p: any) => {
+        p.setup = () => {
+          p.createCanvas(800, 600)
         }
-      })
+        p.draw = () => {
+          p.background(100, 150, 200)
+          p.fill(255)
+          p.textAlign(p.CENTER)
+          p.textSize(24)
+          p.text('Game Loading...', p.width/2, p.height/2)
+        }
+      }
     }
-
-    return game
   }, [gameMode, myId, updatePlayerPosition, performPlayerAction])
 
   if (!isClient) {
@@ -190,7 +207,7 @@ export default function MultiplayerPlatformerGame({
   }
 
   return (
-    <div className="w-full bg-black rounded-lg overflow-hidden">
+    <div className="w-full bg-black rounded-lg overflow-hidden relative">
       {/* Debug Info */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-red-900 p-2 text-xs text-white">
@@ -272,80 +289,61 @@ export default function MultiplayerPlatformerGame({
         </div>
       </div>
 
-      <div className="flex">
-        {/* Game Canvas */}
-        <div className={`${gameMode === 'online' && showChat ? 'flex-1' : 'w-full'}`}>
-          <ReactP5Wrapper
-            key={`game-${gameMode}`}
-            sketch={createGameSketch}
-            volume={masterVolume}
-            isActive={true}
-          />
-        </div>
+      {/* Game Canvas - Full Width */}
+      <div className="w-full">
+        <ReactP5Wrapper
+          key={`game-${gameMode}`}
+          sketch={createGameSketch}
+          volume={masterVolume}
+          isActive={true}
+        />
+      </div>
 
-        {/* Chat Panel (only in online mode) */}
-        {gameMode === 'online' && showChat && (
-          <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
-            <div className="p-3 border-b border-gray-700">
-              <h4 className="text-white font-semibold">Game Chat</h4>
-            </div>
-            
-            {/* Chat Messages */}
-            <div className="flex-1 p-3 overflow-y-auto max-h-64">
-              {chatMessages.map((message) => (
-                <div key={message.id} className="mb-2">
-                  <div className="text-xs text-gray-400">
-                    {message.type === 'system' ? (
-                      <span className="text-yellow-400">System</span>
-                    ) : (
-                      <span className="text-blue-400">{message.nickname}</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-white">{message.text}</div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Chat Input */}
-            <form onSubmit={handleSendChatMessage} className="p-3 border-t border-gray-700">
-              <div className="flex gap-2">
-                <input
-                  ref={chatInputRef}
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-2 py-1 bg-gray-700 text-white rounded text-sm"
-                  maxLength={100}
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
-                >
-                  Send
-                </button>
-              </div>
-            </form>
+      {/* Chat Panel (only in online mode) - Overlay */}
+      {gameMode === 'online' && showChat && (
+        <div className="absolute top-16 right-4 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
+          <div className="p-3 border-b border-gray-700">
+            <h4 className="text-white font-semibold">Game Chat</h4>
           </div>
-        )}
-      </div>
 
-      {/* Volume Control */}
-      <div className="bg-gray-900 p-2 border-t border-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-300">Volume:</span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={masterVolume}
-            onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-            className="flex-1 max-w-32"
-          />
-          <span className="text-sm text-gray-300">{Math.round(masterVolume * 100)}%</span>
+          {/* Chat Messages */}
+          <div className="p-3 overflow-y-auto max-h-64">
+            {chatMessages.map((message) => (
+              <div key={message.id} className="mb-2">
+                <div className="text-xs text-gray-400">
+                  {message.type === 'system' ? (
+                    <span className="text-yellow-400">System</span>
+                  ) : (
+                    <span className="text-blue-400">{message.nickname}</span>
+                  )}
+                </div>
+                <div className="text-sm text-white">{message.text}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Chat Input */}
+          <form onSubmit={handleSendChatMessage} className="p-3 border-t border-gray-700">
+            <div className="flex gap-2">
+              <input
+                ref={chatInputRef}
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 px-2 py-1 bg-gray-700 text-white rounded text-sm"
+                maxLength={100}
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+              >
+                Send
+              </button>
+            </div>
+          </form>
         </div>
-      </div>
+      )}
     </div>
   )
 }
