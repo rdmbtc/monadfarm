@@ -26,12 +26,28 @@ interface SocialPost {
 const safeArray = <T>(value: any): T[] => {
   if (Array.isArray(value)) return value;
   if (value === null || value === undefined) return [];
+  // Handle edge cases where React Together might return unexpected types
+  if (typeof value === 'object' && value !== null) {
+    // If it's an object with numeric keys, try to convert to array
+    const keys = Object.keys(value);
+    if (keys.every(key => /^\d+$/.test(key))) {
+      return Object.values(value) as T[];
+    }
+  }
+  console.warn('safeArray: Unexpected value type, returning empty array:', typeof value, value);
   return [];
 };
 
 const safeObject = (value: any): Record<string, any> => {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
   return {};
+};
+
+// Safe string helper function
+const safeString = (value: any): string => {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  return String(value);
 };
 
 export function BulletproofSocialFeed() {
@@ -53,9 +69,26 @@ export function BulletproofSocialFeed() {
   const [isPosting, setIsPosting] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
 
-  // Safe state management - always use local state as fallback
-  const posts = isOnline ? safeArray<SocialPost>(syncedPosts) : localPosts;
-  const nicknames = isOnline ? safeObject(syncedNicknames) : localNicknames;
+  // Safe state management - always use local state as fallback with additional safety checks
+  const posts = React.useMemo(() => {
+    const result = isOnline ? safeArray<SocialPost>(syncedPosts) : localPosts;
+    // Double-check that result is actually an array
+    if (!Array.isArray(result)) {
+      console.warn('Posts is not an array, falling back to empty array:', result);
+      return [];
+    }
+    return result;
+  }, [isOnline, syncedPosts, localPosts]);
+
+  const nicknames = React.useMemo(() => {
+    const result = isOnline ? safeObject(syncedNicknames) : localNicknames;
+    // Double-check that result is actually an object
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+      console.warn('Nicknames is not an object, falling back to empty object:', result);
+      return {};
+    }
+    return result;
+  }, [isOnline, syncedNicknames, localNicknames]);
 
   // Generate farmer name
   const generateFarmerName = useCallback(() => {
@@ -66,8 +99,11 @@ export function BulletproofSocialFeed() {
     return `${adj} ${term}`;
   }, []);
 
-  // Get current user nickname
-  const myNickname = (myId && nicknames[myId]) || generateFarmerName();
+  // Get current user nickname with safe string handling
+  const myNickname = React.useMemo(() => {
+    const nickname = (myId && nicknames[myId]) || generateFarmerName();
+    return safeString(nickname);
+  }, [myId, nicknames, generateFarmerName]);
 
   // Initialize user nickname
   useEffect(() => {
@@ -154,23 +190,25 @@ export function BulletproofSocialFeed() {
   // Safe like handling
   const handleLikePost = useCallback((postId: string) => {
     const currentUserId = myId || 'offline-user';
-    
+
     const updatePosts = (prevPosts: SocialPost[]) => {
       return safeArray<SocialPost>(prevPosts).map(post => {
         if (post.id === postId) {
-          const hasLiked = post.likedBy.includes(currentUserId);
-          
+          // Ensure likedBy is always an array
+          const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+          const hasLiked = likedBy.includes(currentUserId);
+
           if (hasLiked) {
             return {
               ...post,
-              likes: Math.max(0, post.likes - 1),
-              likedBy: post.likedBy.filter(id => id !== currentUserId)
+              likes: Math.max(0, (post.likes || 0) - 1),
+              likedBy: likedBy.filter(id => id !== currentUserId)
             };
           } else {
             return {
               ...post,
-              likes: post.likes + 1,
-              likedBy: [...post.likedBy, currentUserId]
+              likes: (post.likes || 0) + 1,
+              likedBy: [...likedBy, currentUserId]
             };
           }
         }
@@ -236,7 +274,7 @@ export function BulletproofSocialFeed() {
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10 border border-[#333]">
                 <AvatarFallback className="bg-green-600 text-white text-xs">
-                  {myNickname.slice(0, 2).toUpperCase()}
+                  {safeString(myNickname).slice(0, 2).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm text-gray-300">{myNickname}</span>
@@ -283,7 +321,14 @@ export function BulletproofSocialFeed() {
 
       {/* Feed posts */}
       <AnimatePresence>
-        {posts.map((post) => (
+        {Array.isArray(posts) && posts.map((post) => {
+          // Additional safety check for each post
+          if (!post || typeof post !== 'object') {
+            console.warn('Invalid post object:', post);
+            return null;
+          }
+
+          return (
           <motion.div
             key={post.id}
             initial={{ opacity: 0, y: 20 }}
@@ -297,12 +342,12 @@ export function BulletproofSocialFeed() {
               <div className="flex items-center gap-3">
                 <Avatar className="border border-[#333]">
                   <AvatarFallback className="bg-blue-600 text-white text-sm">
-                    {post.nickname.slice(0, 2).toUpperCase()}
+                    {safeString(post.nickname).slice(0, 2).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-white">{post.nickname}</span>
+                    <span className="font-semibold text-white">{safeString(post.nickname) || 'Anonymous'}</span>
                     {isOnline && (
                       <Badge variant="secondary" className="text-xs bg-green-600/20 text-green-400 ml-2">
                         Online
@@ -310,7 +355,7 @@ export function BulletproofSocialFeed() {
                     )}
                   </div>
                   <span className="text-xs text-white/60">
-                    {new Date(post.timestamp).toLocaleString()}
+                    {new Date(post.timestamp || Date.now()).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -321,14 +366,14 @@ export function BulletproofSocialFeed() {
             
             {/* Post content */}
             <div className="p-4">
-              <p className="text-white mb-3 whitespace-pre-wrap">{post.content}</p>
-              
+              <p className="text-white mb-3 whitespace-pre-wrap">{safeString(post.content)}</p>
+
               {/* Tags */}
-              {post.tags.length > 0 && (
+              {Array.isArray(post.tags) && post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-3">
                   {post.tags.map((tag, index) => (
                     <Badge key={index} variant="outline" className="text-xs border-[#444] text-white/70 rounded-none">
-                      #{tag}
+                      #{safeString(tag)}
                     </Badge>
                   ))}
                 </div>
@@ -338,20 +383,20 @@ export function BulletproofSocialFeed() {
             {/* Post actions */}
             <div className="px-4 py-2 border-t border-[#333] flex justify-between">
               <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => handleLikePost(post.id)} 
+                <button
+                  onClick={() => handleLikePost(post.id)}
                   className={cn(
                     "flex items-center gap-1 text-white/70 hover:text-white",
-                    post.likedBy.includes(myId || 'offline-user') && "text-red-400"
+                    Array.isArray(post.likedBy) && post.likedBy.includes(myId || 'offline-user') && "text-red-400"
                   )}
                 >
-                  <HeartIcon 
+                  <HeartIcon
                     className={cn(
-                      "h-5 w-5", 
-                      post.likedBy.includes(myId || 'offline-user') && "fill-red-400 text-red-400"
-                    )} 
+                      "h-5 w-5",
+                      Array.isArray(post.likedBy) && post.likedBy.includes(myId || 'offline-user') && "fill-red-400 text-red-400"
+                    )}
                   />
-                  <span>{post.likes}</span>
+                  <span>{post.likes || 0}</span>
                 </button>
                 <button className="flex items-center gap-1 text-white/70 hover:text-white">
                   <MessageCircle className="h-5 w-5" />
@@ -366,7 +411,8 @@ export function BulletproofSocialFeed() {
               </button>
             </div>
           </motion.div>
-        ))}
+          );
+        }).filter(Boolean)}
       </AnimatePresence>
       
       {posts.length === 0 && (

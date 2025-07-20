@@ -112,21 +112,23 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
       const currentPosts = Array.isArray(prev) ? prev : [];
       return currentPosts.map(post => {
       if (post.id === postId) {
-        const hasLiked = post.likedBy.includes(myId);
-        
+        // Ensure likedBy is always an array
+        const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+        const hasLiked = likedBy.includes(myId);
+
         if (hasLiked) {
           // Unlike
           return {
             ...post,
-            likes: Math.max(0, post.likes - 1),
-            likedBy: post.likedBy.filter(id => id !== myId)
+            likes: Math.max(0, (post.likes || 0) - 1),
+            likedBy: likedBy.filter(id => id !== myId)
           };
         } else {
           // Like
           return {
             ...post,
-            likes: post.likes + 1,
-            likedBy: [...post.likedBy, myId]
+            likes: (post.likes || 0) + 1,
+            likedBy: [...likedBy, myId]
           };
         }
       }
@@ -187,7 +189,7 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-green-600 text-white text-xs">
-                      {myNickname.slice(0, 2).toUpperCase()}
+                      {(myNickname || '').slice(0, 2).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-gray-300">{myNickname}</span>
@@ -249,7 +251,7 @@ export function ReactTogetherSocialFeedNew({ className }: ReactTogetherSocialFee
                     <div className="flex items-center gap-3 mb-3">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-blue-600 text-white text-sm">
-                          {post.nickname.slice(0, 2).toUpperCase()}
+                          {(post.nickname || '').slice(0, 2).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">

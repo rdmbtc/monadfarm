@@ -118,7 +118,7 @@ export function MultisynqSocialFeed({ className }: MultisynqSocialFeedProps) {
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-green-600 text-white text-xs">
-                      {nickname?.slice(0, 2).toUpperCase() || 'U'}
+                      {(nickname || '').slice(0, 2).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-gray-300">{nickname || 'Anonymous Farmer'}</span>
@@ -178,7 +178,13 @@ export function MultisynqSocialFeed({ className }: MultisynqSocialFeedProps) {
           <ScrollArea className="h-96">
             <div className="space-y-4 pr-4">
               <AnimatePresence>
-                {socialPosts.map((post) => (
+                {Array.isArray(socialPosts) && socialPosts.map((post) => {
+                  // Safety check for each post
+                  if (!post || typeof post !== 'object') {
+                    return null;
+                  }
+
+                  return (
                   <motion.div
                     key={post.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -190,7 +196,7 @@ export function MultisynqSocialFeed({ className }: MultisynqSocialFeedProps) {
                     <div className="flex items-center gap-3 mb-3">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-blue-600 text-white text-sm">
-                          {post.nickname.slice(0, 2).toUpperCase()}
+                          {(post.nickname || '').slice(0, 2).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
@@ -214,11 +220,11 @@ export function MultisynqSocialFeed({ className }: MultisynqSocialFeedProps) {
                     </div>
 
                     {/* Post Tags */}
-                    {post.tags.length > 0 && (
+                    {Array.isArray(post.tags) && post.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-3">
                         {post.tags.map((tag) => (
                           <Badge key={tag} variant="outline" className="text-xs border-gray-600 text-gray-400">
-                            #{tag}
+                            #{tag || ''}
                           </Badge>
                         ))}
                       </div>
@@ -256,7 +262,8 @@ export function MultisynqSocialFeed({ className }: MultisynqSocialFeedProps) {
                       </Button>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                }).filter(Boolean)}
               </AnimatePresence>
               
               {socialPosts.length === 0 && (
