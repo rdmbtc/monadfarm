@@ -1118,7 +1118,16 @@ export default function platformerSketch(p) {
           return;
       }
       if (!nootIdleImg) {
-          console.warn("drawPlayer: No nootIdleImg loaded");
+          console.warn("drawPlayer: No nootIdleImg loaded, drawing fallback rectangle");
+          // Draw fallback rectangle instead of returning
+          p.push();
+          p.translate(player.x, player.y);
+          p.fill(255, 100, 100); // Red color for player
+          p.stroke(255);
+          p.strokeWeight(2);
+          p.rectMode(p.CENTER);
+          p.rect(0, 0, player.width, player.height);
+          p.pop();
           return;
       }
 
@@ -1651,7 +1660,15 @@ export default function platformerSketch(p) {
 
   // p5.js draw function: Called repeatedly to update and render the game frame.
   p.draw = () => {
-      // --- Camera Update --- 
+      // Debug: Log once every 5 seconds to confirm draw is running
+      if (p.frameCount === 1) {
+          console.log("🎮 Game draw function started");
+      }
+      if (p.frameCount % 300 === 0) {
+          console.log(`🎮 Game running - Frame: ${p.frameCount}, Player: ${player ? 'exists' : 'missing'}, Platforms: ${platforms ? platforms.length : 'missing'}`);
+      }
+
+      // --- Camera Update ---
       // Simple horizontal follow, centered on player, clamped to level bounds
       let targetCameraX = player ? player.x : p.width / 2;
       // Clamp camera between start (half screen width) and estimated end (levelEnd - half screen width)
