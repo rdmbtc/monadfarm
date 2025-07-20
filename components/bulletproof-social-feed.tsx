@@ -23,7 +23,7 @@ interface SocialPost {
 }
 
 // Safe array helper functions
-const safeArray = <T>(value: any): T[] => {
+function safeArray<T>(value: any): T[] {
   if (Array.isArray(value)) return value;
   if (value === null || value === undefined) return [];
   // Handle edge cases where React Together might return unexpected types
@@ -36,21 +36,21 @@ const safeArray = <T>(value: any): T[] => {
   }
   console.warn('safeArray: Unexpected value type, returning empty array:', typeof value, value);
   return [];
-};
+}
 
-const safeObject = (value: any): Record<string, any> => {
+function safeObject(value: any): Record<string, any> {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
   return {};
-};
+}
 
 // Safe string helper function
-const safeString = (value: any): string => {
+function safeString(value: any): string {
   if (typeof value === 'string') return value;
   if (value === null || value === undefined) return '';
   return String(value);
-};
+}
 
-function BulletproofSocialFeed() {
+export function BulletproofSocialFeed() {
   // Local state first - safer approach
   const [localPosts, setLocalPosts] = useState<SocialPost[]>([]);
   const [localNicknames, setLocalNicknames] = useState<Record<string, string>>({});
@@ -329,7 +329,7 @@ function BulletproofSocialFeed() {
           }
 
           return (
-          <motion.div
+            <motion.div
             key={post.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -410,7 +410,7 @@ function BulletproofSocialFeed() {
                 <Bookmark className="h-5 w-5" />
               </button>
             </div>
-          </motion.div>
+            </motion.div>
           );
         }).filter(Boolean)}
       </AnimatePresence>
@@ -428,5 +428,5 @@ function BulletproofSocialFeed() {
   );
 }
 
-export { BulletproofSocialFeed };
+// Export as default for compatibility
 export default BulletproofSocialFeed;
