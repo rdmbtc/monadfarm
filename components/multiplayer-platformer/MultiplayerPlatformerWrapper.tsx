@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { ReactTogether } from 'react-together'
-import { ErrorBoundary } from '../error-boundary'
-import { PlatformerGameModel } from '../../models/platformer-game-model'
+import { ReactTogetherErrorBoundary } from './ReactTogetherErrorBoundary'
 import MultiplayerPlatformerGame from './MultiplayerPlatformerGame'
 
 interface MultiplayerPlatformerWrapperProps {
@@ -13,14 +12,7 @@ interface MultiplayerPlatformerWrapperProps {
   playerLevel?: number
 }
 
-// Error boundary component for ReactTogether
-function ReactTogetherErrorBoundary({ children }: { children: React.ReactNode }) {
-  return (
-    <ErrorBoundary>
-      {children}
-    </ErrorBoundary>
-  )
-}
+
 
 // Main wrapper component with API key check and ReactTogether setup
 export default function MultiplayerPlatformerWrapper(props: MultiplayerPlatformerWrapperProps) {
@@ -57,8 +49,7 @@ export default function MultiplayerPlatformerWrapper(props: MultiplayerPlatforme
           apiKey: apiKey,
           appId: "monfarm.platformer.multiplayer",
           name: "monfarm-platformer-session",
-          password: "public",
-          model: PlatformerGameModel
+          password: "public"
         }}
         rememberUsers={true}
         deriveNickname={(userId) => {

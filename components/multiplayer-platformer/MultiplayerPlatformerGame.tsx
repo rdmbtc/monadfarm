@@ -21,17 +21,9 @@ export default function MultiplayerPlatformerGame({
   nickname = "Player",
   playerLevel = 1
 }: MultiplayerPlatformerGameProps) {
-  // ReactTogether hooks with error handling
-  let myId: string | null = null
-  let connectedUsers: any[] = []
-
-  try {
-    myId = useMyId()
-    connectedUsers = useConnectedUsers()
-  } catch (error) {
-    console.warn('MultiplayerPlatformerGame: ReactTogether hooks not available:', error)
-    // Fallback values are already set above
-  }
+  // ReactTogether hooks
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
 
   const { nickname: currentNickname } = useUnifiedNickname()
   
@@ -64,7 +56,7 @@ export default function MultiplayerPlatformerGame({
     sendChatMessage,
     startGame,
     resetGame
-  } = usePlatformerGameModel(myId, currentNickname || nickname)
+  } = usePlatformerGameModel(myId || undefined, currentNickname || nickname)
 
   // Client-side initialization
   useEffect(() => {

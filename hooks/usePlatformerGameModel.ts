@@ -1,17 +1,55 @@
 'use client'
 
 import { useCallback } from 'react'
-import { MultisynqReact } from 'react-together'
-import { useModel } from 'react-together'
-import type { 
-  PlatformerGameModel, 
-  PlatformerPlayer, 
-  GameEvent, 
-  GameSession, 
-  ChatMessage 
-} from '../models/platformer-game-model'
+import { useStateTogether, useConnectedUsers, useMyId } from 'react-together'
 
-const { usePublish, useModelSelector } = MultisynqReact
+// Type definitions for the platformer game
+export interface PlatformerPlayer {
+  id: string
+  nickname: string
+  x: number
+  y: number
+  velocityX: number
+  velocityY: number
+  isOnGround: boolean
+  isJumping: boolean
+  canDoubleJump: boolean
+  state: 'idle' | 'run' | 'jump' | 'fall'
+  score: number
+  lives: number
+  level: number
+  powerups: string[]
+  lastUpdate: number
+  isActive: boolean
+  color: string // Visual identifier for multiplayer
+}
+
+export interface GameEvent {
+  id: string
+  type: 'player-jump' | 'player-land' | 'collect-star' | 'defeat-enemy' | 'level-complete' | 'player-death' | 'powerup-collect'
+  playerId: string
+  timestamp: number
+  data: any
+}
+
+export interface GameSession {
+  id: string
+  currentLevel: number
+  isActive: boolean
+  maxPlayers: number
+  gameMode: 'cooperative' | 'competitive'
+  startTime: number
+  levelData?: any
+}
+
+export interface ChatMessage {
+  id: string
+  playerId: string
+  nickname: string
+  text: string
+  timestamp: number
+  type: 'text' | 'system' | 'achievement'
+}
 
 export interface UsePlatformerGameModelReturn {
   // State
@@ -35,7 +73,7 @@ export interface UsePlatformerGameModelReturn {
     isOnGround: boolean
     isJumping: boolean
     canDoubleJump: boolean
-    state: string
+    state: 'idle' | 'run' | 'jump' | 'fall'
   }) => void
   performPlayerAction: (playerId: string, action: string, data?: any) => void
   sendChatMessage: (playerId: string, nickname: string, text: string, type?: string) => void
@@ -48,106 +86,112 @@ export interface UsePlatformerGameModelReturn {
 }
 
 export function usePlatformerGameModel(userId?: string, nickname?: string): UsePlatformerGameModelReturn {
-  // Get the model instance with error handling
-  let model: PlatformerGameModel | null = null
-  let players: Record<string, PlatformerPlayer> = {}
-  let gameSession: GameSession | null = null
-  let gameEvents: GameEvent[] = []
-  let chatMessages: ChatMessage[] = []
+  // ReactTogether hooks - following the same pattern as social hub
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
 
-  try {
-    model = useModel() as PlatformerGameModel | null
-
-    // State selectors using useModelSelector
-    players = useModelSelector((state: any) => state.players || {})
-    gameSession = useModelSelector((state: any) => state.gameSession || null)
-    gameEvents = useModelSelector((state: any) => state.gameEvents || [])
-    chatMessages = useModelSelector((state: any) => state.chatMessages || [])
-  } catch (error) {
-    console.warn('usePlatformerGameModel: ReactTogether context not available, using fallback values:', error)
-    // Fallback values are already set above
-  }
+  // Shared state for multiplayer platformer game
+  const [players, setPlayers] = useStateTogether<Record<string, PlatformerPlayer>>('platformer-players', {})
+  const [gameSession, setGameSession] = useStateTogether<GameSession | null>('platformer-session', null)
+  const [gameEvents, setGameEvents] = useStateTogether<GameEvent[]>('platformer-events', [])
+  const [chatMessages, setChatMessages] = useStateTogether<ChatMessage[]>('platformer-chat', [])
 
   // Get current player
-  const myPlayer = userId ? players[userId] || null : null
-  
+  const myPlayer = (userId || myId) ? players[userId || myId || ''] || null : null
+
   // Get other players
-  const otherPlayers = Object.values(players).filter((player: any) => player.id !== userId)
-  
+  const otherPlayers = Object.values(players).filter((player: PlatformerPlayer) => player.id !== (userId || myId))
+
   // Game state
   const isGameActive = gameSession?.isActive || false
   const playerCount = Object.keys(players).length
 
-  // Event publishers with error handling
-  let publishPlayerJoin: any = () => {}
-  let publishPlayerLeave: any = () => {}
-  let publishPlayerUpdate: any = () => {}
-  let publishPlayerAction: any = () => {}
-  let publishChatMessage: any = () => {}
-  let publishStartGame: any = () => {}
-  let publishResetGame: any = () => {}
-
-  try {
-    publishPlayerJoin = usePublish((data: { playerId: string; nickname: string }) =>
-      [model?.id, 'player-join', data]
-    )
-
-    publishPlayerLeave = usePublish((data: { playerId: string }) =>
-      [model?.id, 'player-leave', data]
-    )
-
-    publishPlayerUpdate = usePublish((data: {
-      playerId: string
-      x: number
-      y: number
-      velocityX: number
-      velocityY: number
-      isOnGround: boolean
-      isJumping: boolean
-      canDoubleJump: boolean
-      state: string
-    }) => [model?.id, 'player-update', data])
-
-    publishPlayerAction = usePublish((data: {
-      playerId: string
-      action: string
-      data?: any
-    }) => [model?.id, 'player-action', data])
-
-    publishChatMessage = usePublish((data: {
-      playerId: string
-      nickname: string
-      text: string
-      type?: string
-    }) => [model?.id, 'chat-message', data])
-
-    publishStartGame = usePublish((data: { level?: number; gameMode?: string }) =>
-      [model?.id, 'start-game', data]
-    )
-
-    publishResetGame = usePublish(() =>
-      [model?.id, 'reset-game', {}]
-    )
-  } catch (error) {
-    console.warn('usePlatformerGameModel: ReactTogether publish hooks not available, using no-op functions:', error)
-    // No-op functions are already set above
-  }
-
-  // Action functions
+  // Action functions using state setters
   const joinGame = useCallback((playerId: string, nickname: string) => {
-    if (!model) return
     console.log('usePlatformerGameModel: Joining game:', { playerId, nickname })
-    publishPlayerJoin({ playerId, nickname })
-  }, [model, publishPlayerJoin])
+
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
+    const playerColor = colors[Object.keys(players).length % colors.length]
+
+    const newPlayer: PlatformerPlayer = {
+      id: playerId,
+      nickname: nickname,
+      x: 100 + (Object.keys(players).length * 50), // Spread players out
+      y: 400,
+      velocityX: 0,
+      velocityY: 0,
+      isOnGround: false,
+      isJumping: false,
+      canDoubleJump: false,
+      state: 'idle',
+      score: 0,
+      lives: 3,
+      level: 1,
+      powerups: [],
+      lastUpdate: Date.now(),
+      isActive: true,
+      color: playerColor
+    }
+
+    setPlayers(prev => ({ ...prev, [playerId]: newPlayer }))
+
+    // Add welcome message
+    const welcomeMessage: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      playerId: 'system',
+      nickname: 'System',
+      text: `${nickname} joined the game!`,
+      timestamp: Date.now(),
+      type: 'system'
+    }
+    setChatMessages(prev => [...prev.slice(-49), welcomeMessage])
+
+    // Start game session if this is the first player
+    if (Object.keys(players).length === 0 && !gameSession) {
+      const newSession: GameSession = {
+        id: `session_${Date.now()}`,
+        currentLevel: 1,
+        isActive: false,
+        maxPlayers: 4,
+        gameMode: 'cooperative',
+        startTime: Date.now()
+      }
+      setGameSession(newSession)
+    }
+  }, [players, gameSession, setPlayers, setChatMessages, setGameSession])
 
   const leaveGame = useCallback((playerId: string) => {
-    if (!model) return
     console.log('usePlatformerGameModel: Leaving game:', { playerId })
-    publishPlayerLeave({ playerId })
-  }, [model, publishPlayerLeave])
+
+    const player = players[playerId]
+    if (player) {
+      // Add leave message
+      const leaveMessage: ChatMessage = {
+        id: `msg_${Date.now()}`,
+        playerId: 'system',
+        nickname: 'System',
+        text: `${player.nickname} left the game`,
+        timestamp: Date.now(),
+        type: 'system'
+      }
+      setChatMessages(prev => [...prev.slice(-49), leaveMessage])
+
+      // Remove player
+      setPlayers(prev => {
+        const newPlayers = { ...prev }
+        delete newPlayers[playerId]
+        return newPlayers
+      })
+    }
+
+    // End game session if no players left
+    if (Object.keys(players).length <= 1) {
+      setGameSession(null)
+    }
+  }, [players, setPlayers, setChatMessages, setGameSession])
 
   const updatePlayerPosition = useCallback((
-    playerId: string, 
+    playerId: string,
     position: {
       x: number
       y: number
@@ -156,45 +200,172 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
       isOnGround: boolean
       isJumping: boolean
       canDoubleJump: boolean
-      state: string
+      state: 'idle' | 'run' | 'jump' | 'fall'
     }
   ) => {
-    if (!model) return
-    publishPlayerUpdate({ playerId, ...position })
-  }, [model, publishPlayerUpdate])
+    setPlayers(prev => {
+      const player = prev[playerId]
+      if (player) {
+        return {
+          ...prev,
+          [playerId]: {
+            ...player,
+            ...position,
+            lastUpdate: Date.now(),
+            isActive: true
+          }
+        }
+      }
+      return prev
+    })
+  }, [setPlayers])
 
   const performPlayerAction = useCallback((
-    playerId: string, 
-    action: string, 
+    playerId: string,
+    action: string,
     data?: any
   ) => {
-    if (!model) return
     console.log('usePlatformerGameModel: Player action:', { playerId, action, data })
-    publishPlayerAction({ playerId, action, data })
-  }, [model, publishPlayerAction])
+
+    // Update player based on action
+    setPlayers(prev => {
+      const player = prev[playerId]
+      if (!player) return prev
+
+      let updatedPlayer = { ...player }
+
+      switch (action) {
+        case 'collect-star':
+          updatedPlayer.score += data?.points || 10
+          break
+        case 'defeat-enemy':
+          updatedPlayer.score += data?.points || 50
+          break
+        case 'collect-powerup':
+          if (data?.powerupType) {
+            updatedPlayer.powerups = [...updatedPlayer.powerups, data.powerupType]
+          }
+          break
+        case 'player-death':
+          updatedPlayer.lives = Math.max(0, updatedPlayer.lives - 1)
+          updatedPlayer.x = 100 // Reset position
+          updatedPlayer.y = 400
+          break
+      }
+
+      return { ...prev, [playerId]: updatedPlayer }
+    })
+
+    // Add game event
+    const event: GameEvent = {
+      id: `event_${Date.now()}`,
+      type: action as any,
+      playerId,
+      timestamp: Date.now(),
+      data
+    }
+    setGameEvents(prev => [...prev.slice(-99), event])
+  }, [setPlayers, setGameEvents])
 
   const sendChatMessage = useCallback((
-    playerId: string, 
-    nickname: string, 
-    text: string, 
+    playerId: string,
+    nickname: string,
+    text: string,
     type = 'text'
   ) => {
-    if (!model || !text.trim()) return
+    if (!text.trim()) return
     console.log('usePlatformerGameModel: Sending chat message:', { playerId, nickname, text, type })
-    publishChatMessage({ playerId, nickname, text, type })
-  }, [model, publishChatMessage])
+
+    const message: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      playerId,
+      nickname,
+      text,
+      timestamp: Date.now(),
+      type: type as any
+    }
+
+    setChatMessages(prev => [...prev.slice(-49), message])
+  }, [setChatMessages])
 
   const startGame = useCallback((level = 1, gameMode = 'cooperative') => {
-    if (!model) return
     console.log('usePlatformerGameModel: Starting game:', { level, gameMode })
-    publishStartGame({ level, gameMode })
-  }, [model, publishStartGame])
+
+    setGameSession(prev => {
+      if (!prev) {
+        return {
+          id: `session_${Date.now()}`,
+          currentLevel: level,
+          isActive: true,
+          maxPlayers: 4,
+          gameMode: gameMode as any,
+          startTime: Date.now()
+        }
+      }
+      return {
+        ...prev,
+        currentLevel: level,
+        gameMode: gameMode as any,
+        isActive: true,
+        startTime: Date.now()
+      }
+    })
+
+    // Add system message
+    const message: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      playerId: 'system',
+      nickname: 'System',
+      text: `Game started! Level ${level}`,
+      timestamp: Date.now(),
+      type: 'system'
+    }
+    setChatMessages(prev => [...prev.slice(-49), message])
+  }, [setGameSession, setChatMessages])
 
   const resetGame = useCallback(() => {
-    if (!model) return
     console.log('usePlatformerGameModel: Resetting game')
-    publishResetGame()
-  }, [model, publishResetGame])
+
+    // Reset all players
+    setPlayers(prev => {
+      const resetPlayers: Record<string, PlatformerPlayer> = {}
+      Object.entries(prev).forEach(([id, player], index) => {
+        resetPlayers[id] = {
+          ...player,
+          x: 100 + (index * 50),
+          y: 400,
+          velocityX: 0,
+          velocityY: 0,
+          score: 0,
+          lives: 3,
+          level: 1,
+          powerups: [],
+          state: 'idle'
+        }
+      })
+      return resetPlayers
+    })
+
+    // Reset game session
+    setGameSession(prev => prev ? {
+      ...prev,
+      currentLevel: 1,
+      isActive: false,
+      startTime: Date.now()
+    } : null)
+
+    // Clear events and add reset message
+    setGameEvents([])
+    const message: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      playerId: 'system',
+      nickname: 'System',
+      text: 'Game reset!',
+      timestamp: Date.now(),
+      type: 'system'
+    }
+    setChatMessages(prev => [...prev.slice(-49), message])
+  }, [setPlayers, setGameSession, setGameEvents, setChatMessages])
 
   // Utility functions
   const getPlayerById = useCallback((playerId: string): PlatformerPlayer | null => {
