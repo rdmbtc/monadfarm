@@ -2065,7 +2065,7 @@ export default function platformerSketch(p) {
       // return false; // Optionally add if needed
   };
 
-   // --- Prop Handling --- 
+   // --- Prop Handling ---
    p.updateWithProps = props => {
      if (props.volume !== undefined && props.volume !== internalMasterVolume) {
          if (typeof props.volume === 'number') {
@@ -2094,13 +2094,6 @@ export default function platformerSketch(p) {
      console.log("p5 sketch cleanup complete.");
    };
 
-   // Return API for multiplayer integration
-   return {
-     getPlayer: () => player,
-     getScore: () => score,
-     resetGame: resetGame,
-     isGameOver: () => isGameOver,
-     isGameWon: () => isGameWon,
-     getCurrentLevel: () => currentLevelIndex
-   };
-}
+  
+  }
+ }
