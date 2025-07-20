@@ -50,7 +50,7 @@ function safeString(value: any): string {
   return String(value);
 }
 
-export function BulletproofSocialFeed() {
+export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?: (changeNickname: (newNickname: string) => boolean) => void } = {}) {
   // Local state first - safer approach
   const [localPosts, setLocalPosts] = useState<SocialPost[]>([]);
   const [localNicknames, setLocalNicknames] = useState<Record<string, string>>({});
@@ -228,6 +228,41 @@ export function BulletproofSocialFeed() {
     }
   }, [myId, isOnline, setSyncedPosts]);
 
+  // Nickname change function
+  const changeNickname = useCallback((newNickname: string) => {
+    if (!newNickname.trim() || !myId) return false;
+
+    const trimmedNickname = newNickname.trim();
+
+    try {
+      if (isOnline) {
+        setSyncedNicknames(prev => ({
+          ...safeObject(prev),
+          [myId]: trimmedNickname
+        }));
+      } else {
+        setLocalNicknames(prev => ({
+          ...prev,
+          [myId]: trimmedNickname
+        }));
+      }
+
+      toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
+      return true;
+    } catch (error) {
+      console.warn('Failed to change nickname:', error);
+      toast.error('Failed to change nickname. Please try again.');
+      return false;
+    }
+  }, [myId, isOnline, setSyncedNicknames, setLocalNicknames]);
+
+  // Expose nickname change function to parent component
+  useEffect(() => {
+    if (onNicknameChange) {
+      onNicknameChange(changeNickname);
+    }
+  }, [onNicknameChange, changeNickname]);
+
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -283,7 +318,7 @@ export function BulletproofSocialFeed() {
             <Textarea
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="What's happening on your farm? Share your harvest, discoveries, or farming tips..."
               className="min-h-[100px] bg-[#222] border-[#333] focus:border-[#444] text-white rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
               maxLength={1000}

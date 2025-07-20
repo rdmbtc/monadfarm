@@ -28,6 +28,7 @@ import BulletproofSocialFeed from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
 import { ReactTogether } from 'react-together'
 import { ReactTogetherErrorBoundary } from "../../../components/react-together-error-boundary"
+import ProfileEditModal from "../../../components/profile-edit-modal"
 
 interface SocialHubPageProps {
   farmCoins?: number;
@@ -36,13 +37,15 @@ interface SocialHubPageProps {
   playerLevel?: number;
 }
 
-export function SocialHubPage({ 
-  farmCoins = 1000, 
-  addFarmCoins = (amount: number) => {console.log(`Added ${amount} coins`)}, 
+export function SocialHubPage({
+  farmCoins = 1000,
+  addFarmCoins = (amount: number) => {console.log(`Added ${amount} coins`)},
   nickname = "FarmerJoe123",
   playerLevel = 42
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
+  const [currentNickname, setCurrentNickname] = useState(nickname)
+  const [nicknameChangeFunction, setNicknameChangeFunction] = useState<((newNickname: string) => boolean) | null>(null)
   const { toast } = useToast()
 
   // Show daily reward popup after a short delay
@@ -176,7 +179,7 @@ export function SocialHubPage({
                     />
                   </motion.div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">{nickname}</h3>
+                    <h3 className="text-lg font-bold text-white">{currentNickname}</h3>
                     <p className="text-sm text-white/60">Level {playerLevel} • Premium Farmer</p>
                   </div>
                 </div>
@@ -205,13 +208,27 @@ export function SocialHubPage({
                   </motion.div>
                 </div>
                 
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full p-2 bg-white text-black hover:bg-white/90 rounded-none font-medium"
+                <ProfileEditModal
+                  currentNickname={currentNickname}
+                  onNicknameChange={(newNickname) => {
+                    if (nicknameChangeFunction) {
+                      const success = nicknameChangeFunction(newNickname);
+                      if (success) {
+                        setCurrentNickname(newNickname);
+                      }
+                      return success;
+                    }
+                    return false;
+                  }}
                 >
-                  Edit Profile
-                </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full p-2 bg-white text-black hover:bg-white/90 rounded-none font-medium"
+                  >
+                    Edit Profile
+                  </motion.button>
+                </ProfileEditModal>
               </div>
             </motion.div>
 
@@ -230,7 +247,9 @@ export function SocialHubPage({
               <EventsCarousel />
             </motion.div>
 
-            <BulletproofSocialFeed />
+            <BulletproofSocialFeed
+              onNicknameChange={setNicknameChangeFunction}
+            />
           </motion.div>
         </motion.div>
       </main>
