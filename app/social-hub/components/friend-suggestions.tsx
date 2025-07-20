@@ -9,70 +9,127 @@ import { Avatar } from "@/components/ui/avatar"
 import { AvatarImage } from "@/components/ui/avatar"
 import { AvatarFallback } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect, useContext } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ShimmerButton } from "@/components/ui/shimmer-button"
+import { useConnectedUsers, useMyId, useStateTogether, useFunctionTogether } from 'react-together'
+import { useUnifiedNickname } from "../../../hooks/useUnifiedNickname"
+import { GameContext } from "../../../context/game-context"
 
-// Sample friend suggestions data
-const friendSuggestionsData = [
-  {
-    id: 1,
-    name: "FarmExpert",
-    avatar: "/images/nooter.png",
-    level: 92,
-    mutualFriends: 5,
-  },
-  {
-    id: 2,
-    name: "CropWizard",
-    avatar: "/images/nooter.png",
-    level: 78,
-    mutualFriends: 3,
-  },
-  {
-    id: 3,
-    name: "NooterTamer",
-    avatar: "/images/nooter.png",
-    level: 65,
-    mutualFriends: 8,
-  },
-  {
-    id: 4,
-    name: "HarvestKing",
-    avatar: "/images/nooter.png",
-    level: 120,
-    mutualFriends: 2,
-  },
-  {
-    id: 5,
-    name: "FarmQueen",
-    avatar: "/images/nooter.png",
-    level: 105,
-    mutualFriends: 6,
-  },
-]
+interface FriendSuggestion {
+  id: string;
+  name: string;
+  avatar: string;
+  level: number;
+  mutualFriends: number;
+  isOnline: boolean;
+  userId: string;
+}
+
+interface FriendRequest {
+  id: string;
+  fromUserId: string;
+  fromNickname: string;
+  toUserId: string;
+  timestamp: number;
+  status: 'pending' | 'accepted' | 'declined';
+}
 
 export default function FriendSuggestions() {
-  const [friendSuggestions, setFriendSuggestions] = useState(friendSuggestionsData)
-  const [addedFriends, setAddedFriends] = useState<number[]>([])
-  const [dismissedFriends, setDismissedFriends] = useState<number[]>([])
+  const [addedFriends, setAddedFriends] = useState<string[]>([])
+  const [dismissedFriends, setDismissedFriends] = useState<string[]>([])
   const { toast } = useToast()
 
-  const handleAddFriend = (id: number) => {
-    setAddedFriends([...addedFriends, id])
-    toast({
-      title: "Friend Request Sent!",
-      description: `You sent a friend request to ${friendSuggestions.find((f) => f.id === id)?.name}!`,
-      variant: "default",
+  // React Together hooks
+  const connectedUsers = useConnectedUsers()
+  const myId = useMyId()
+  const { nickname: myNickname } = useUnifiedNickname()
+  const { playerLevel } = useContext(GameContext)
+
+  // Shared state for friend requests
+  const [friendRequests, setFriendRequests] = useStateTogether<FriendRequest[]>('friend-requests', [])
+
+  // Function to broadcast friend request events
+  const broadcastFriendEvent = useFunctionTogether('broadcastFriendEvent', (event: any) => {
+    console.log('FriendSuggestions: Broadcasting friend event:', event)
+
+    if (event.type === 'friendRequest') {
+      setFriendRequests(prev => {
+        const existing = prev.find(req =>
+          req.fromUserId === event.fromUserId && req.toUserId === event.toUserId
+        )
+        if (existing) return prev
+
+        return [...prev, event.request]
+      })
+    }
+  })
+
+  // Generate friend suggestions from connected users
+  const friendSuggestions: FriendSuggestion[] = connectedUsers
+    .filter(user => user.userId !== myId) // Exclude self
+    .filter(user => !addedFriends.includes(user.userId)) // Exclude already added
+    .filter(user => !dismissedFriends.includes(user.userId)) // Exclude dismissed
+    .filter(user => {
+      // Exclude users we already sent requests to
+      return !friendRequests.some(req =>
+        req.fromUserId === myId && req.toUserId === user.userId && req.status === 'pending'
+      )
     })
+    .map(user => ({
+      id: user.userId,
+      name: user.nickname || `Farmer${user.userId.slice(-4)}`,
+      avatar: "/images/nooter.png",
+      level: Math.floor(Math.random() * 50) + 20, // Random level for demo
+      mutualFriends: Math.floor(Math.random() * 10),
+      isOnline: true,
+      userId: user.userId
+    }))
+    .slice(0, 5) // Limit to 5 suggestions
+
+  const handleAddFriend = (userId: string) => {
+    const friend = friendSuggestions.find(f => f.userId === userId)
+    if (!friend) return
+
+    const friendRequest: FriendRequest = {
+      id: `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      fromUserId: myId || 'offline-user',
+      fromNickname: myNickname || 'Anonymous Farmer',
+      toUserId: userId,
+      timestamp: Date.now(),
+      status: 'pending'
+    }
+
+    try {
+      broadcastFriendEvent({
+        type: 'friendRequest',
+        request: friendRequest,
+        fromUserId: myId,
+        fromNickname: myNickname
+      })
+
+      setAddedFriends([...addedFriends, userId])
+      toast({
+        title: "Friend Request Sent!",
+        description: `You sent a friend request to ${friend.name}!`,
+        variant: "default",
+      })
+    } catch (error) {
+      console.error('Failed to send friend request:', error)
+      toast({
+        title: "Error",
+        description: "Failed to send friend request",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleDismiss = (id: number) => {
-    setDismissedFriends([...dismissedFriends, id])
+  const handleDismiss = (userId: string) => {
+    setDismissedFriends([...dismissedFriends, userId])
   }
 
   const visibleSuggestions = friendSuggestions.filter(
-    (friend) => !addedFriends.includes(friend.id) && !dismissedFriends.includes(friend.id),
+    (friend) => !addedFriends.includes(friend.userId) && !dismissedFriends.includes(friend.userId),
   )
 
   return (
@@ -89,7 +146,7 @@ export default function FriendSuggestions() {
             <motion.div className="space-y-4">
               {visibleSuggestions.slice(0, 3).map((friend, index) => (
                 <motion.div
-                  key={friend.id}
+                  key={friend.userId}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
@@ -98,10 +155,15 @@ export default function FriendSuggestions() {
                 >
                   <div className="flex items-center gap-3">
                     <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                      <Avatar>
-                        <AvatarImage src={friend.avatar || "/images/logo mark/Monad Logo - Default - Logo Mark.png"} alt={friend.name} />
-                        <AvatarFallback>{friend.name.substring(0, 2)}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar>
+                          <AvatarImage src={friend.avatar || "/images/logo mark/Monad Logo - Default - Logo Mark.png"} alt={friend.name} />
+                          <AvatarFallback>{friend.name.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                        {friend.isOnline && (
+                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"></span>
+                        )}
+                      </div>
                     </motion.div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -109,16 +171,19 @@ export default function FriendSuggestions() {
                         <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-100">
                           Lvl {friend.level}
                         </span>
+                        {friend.isOnline && (
+                          <span className="text-xs text-green-600 dark:text-green-400">Online</span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">{friend.mutualFriends} mutual friends</p>
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <ShimmerButton className="h-8 px-2 py-1 text-xs" onClick={() => handleAddFriend(friend.id)}>
+                    <ShimmerButton className="h-8 px-2 py-1 text-xs" onClick={() => handleAddFriend(friend.userId)}>
                       <UserPlus className="h-3 w-3 mr-1" />
                       Add
                     </ShimmerButton>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDismiss(friend.id)}>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDismiss(friend.userId)}>
                       <X className="h-3 w-3" />
                     </Button>
                   </div>

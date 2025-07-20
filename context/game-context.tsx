@@ -161,6 +161,13 @@ export interface GameContextType {
   craftItem: (itemType: string) => void;
   sellCraftedItem: (itemType: string, count: number) => void;
   sellAllCraftedItems: () => void;
+  // Trading-related inventory management
+  removeCropFromInventory: (cropType: string, count: number) => boolean;
+  addCropToInventoryDirect: (cropType: string, count: number, marketValue: number) => void;
+  removeAnimalProductFromInventory: (productType: string, count: number) => boolean;
+  addAnimalProductToInventoryDirect: (productType: string, count: number, marketValue: number) => void;
+  removeCraftedItemFromInventory: (itemType: string, count: number) => boolean;
+  addCraftedItemToInventoryDirect: (itemType: string, count: number, marketValue: number) => void;
   // Booster-related properties and methods
   boosters: Booster[];
   boostedPlots: BoostedPlot[];
@@ -226,6 +233,13 @@ export const GameContext = createContext<GameContextType>({
   craftItem: () => {},
   sellCraftedItem: () => {},
   sellAllCraftedItems: () => {},
+  // Trading inventory management defaults
+  removeCropFromInventory: () => false,
+  addCropToInventoryDirect: () => {},
+  removeAnimalProductFromInventory: () => false,
+  addAnimalProductToInventoryDirect: () => {},
+  removeCraftedItemFromInventory: () => false,
+  addCraftedItemToInventoryDirect: () => {},
   // Booster-related defaults
   boosters: [],
   boostedPlots: [],
@@ -1601,10 +1615,146 @@ export const GameProvider = ({ children }: GameProviderProps) => {
   // Modify resetGame to also reset boosters
   const resetGameWithBoosters = () => {
     // ... existing reset code ...
-    
+
     // Reset boosters
     setOwnedBoosters({});
     setBoostedPlots([]);
+  };
+
+  // Trading-specific inventory management functions
+  const removeCropFromInventory = (cropType: string, count: number): boolean => {
+    const currentCrop = cropInventory[cropType];
+    if (!currentCrop || currentCrop.count < count) {
+      return false; // Not enough items
+    }
+
+    setCropInventory(prev => {
+      const newInventory = { ...prev };
+      const newCount = newInventory[cropType].count - count;
+
+      if (newCount <= 0) {
+        delete newInventory[cropType];
+      } else {
+        newInventory[cropType] = {
+          ...newInventory[cropType],
+          count: newCount
+        };
+      }
+
+      return newInventory;
+    });
+
+    return true;
+  };
+
+  const addCropToInventoryDirect = (cropType: string, count: number, marketValue: number) => {
+    setCropInventory(prev => {
+      const updatedInventory = { ...prev };
+
+      if (updatedInventory[cropType]) {
+        updatedInventory[cropType] = {
+          ...updatedInventory[cropType],
+          count: updatedInventory[cropType].count + count
+        };
+      } else {
+        updatedInventory[cropType] = {
+          count,
+          marketValue
+        };
+      }
+
+      return updatedInventory;
+    });
+  };
+
+  const removeAnimalProductFromInventory = (productType: string, count: number): boolean => {
+    const currentProduct = animalProductInventory[productType];
+    if (!currentProduct || currentProduct.count < count) {
+      return false; // Not enough items
+    }
+
+    setAnimalProductInventory(prev => {
+      const newInventory = { ...prev };
+      const newCount = newInventory[productType].count - count;
+
+      if (newCount <= 0) {
+        delete newInventory[productType];
+      } else {
+        newInventory[productType] = {
+          ...newInventory[productType],
+          count: newCount
+        };
+      }
+
+      return newInventory;
+    });
+
+    return true;
+  };
+
+  const addAnimalProductToInventoryDirect = (productType: string, count: number, marketValue: number) => {
+    setAnimalProductInventory(prev => {
+      const updatedInventory = { ...prev };
+
+      if (updatedInventory[productType]) {
+        updatedInventory[productType] = {
+          ...updatedInventory[productType],
+          count: updatedInventory[productType].count + count
+        };
+      } else {
+        updatedInventory[productType] = {
+          count,
+          marketValue
+        };
+      }
+
+      return updatedInventory;
+    });
+  };
+
+  const removeCraftedItemFromInventory = (itemType: string, count: number): boolean => {
+    const currentItem = craftedItemInventory[itemType];
+    if (!currentItem || currentItem.count < count) {
+      return false; // Not enough items
+    }
+
+    setCraftedItemInventory(prev => {
+      const newInventory = { ...prev };
+      const newCount = newInventory[itemType].count - count;
+
+      if (newCount <= 0) {
+        delete newInventory[itemType];
+      } else {
+        newInventory[itemType] = {
+          ...newInventory[itemType],
+          count: newCount
+        };
+      }
+
+      return newInventory;
+    });
+
+    return true;
+  };
+
+  const addCraftedItemToInventoryDirect = (itemType: string, count: number, marketValue: number) => {
+    setCraftedItemInventory(prev => {
+      const updatedInventory = { ...prev };
+
+      if (updatedInventory[itemType]) {
+        updatedInventory[itemType] = {
+          ...updatedInventory[itemType],
+          count: updatedInventory[itemType].count + count
+        };
+      } else {
+        updatedInventory[itemType] = {
+          count,
+          marketValue
+        };
+      }
+
+      return updatedInventory;
+    });
   };
 
   return (
@@ -1657,6 +1807,13 @@ export const GameProvider = ({ children }: GameProviderProps) => {
         craftItem,
         sellCraftedItem,
         sellAllCraftedItems,
+        // Trading inventory management
+        removeCropFromInventory,
+        addCropToInventoryDirect,
+        removeAnimalProductFromInventory,
+        addAnimalProductToInventoryDirect,
+        removeCraftedItemFromInventory,
+        addCraftedItemToInventoryDirect,
         boosters,
         boostedPlots,
         buyBooster,

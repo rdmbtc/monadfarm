@@ -3578,12 +3578,11 @@ export function Farm() {
               <Users className="h-5 w-5 mr-2 text-green-400"/> Social Hub
             </h2>
             <div className="noot-card p-1 overflow-hidden">
-              {/* Pass farmCoins, addFarmCoins, nickname and playerLevel to SocialHubPage */}
-              <SocialHubPage 
-                farmCoins={farmCoins} 
-                addFarmCoins={addFarmCoins} 
+              {/* Pass farmCoins, addFarmCoins, and nickname to SocialHubPage */}
+              <SocialHubPage
+                farmCoins={farmCoins}
+                addFarmCoins={addFarmCoins}
                 nickname={nickname}
-                playerLevel={clientPlayerLevel} 
               />
             </div>
           </div>

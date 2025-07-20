@@ -23,8 +23,9 @@ import AchievementShowcase from "../../../components/achievement-showcase"
 import { PulseNotification } from "../../../components/ui/pulse-notification"
 import { StreakCounter } from "../../../components/ui/streak-counter"
 import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useContext } from "react"
 import { useToast } from "../../../hooks/use-toast"
+import { GameContext } from "../../../context/game-context"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import BulletproofSocialFeed from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
@@ -37,7 +38,6 @@ interface SocialHubPageProps {
   farmCoins?: number;
   addFarmCoins?: (amount: number) => void;
   nickname?: string;
-  playerLevel?: number;
 }
 
 // Error boundary component for ReactTogether
@@ -53,8 +53,7 @@ function ReactTogetherErrorBoundary({ children }: { children: React.ReactNode })
 function SocialHubPageContent({
   farmCoins = 1000,
   addFarmCoins = (amount: number) => {console.log(`Added ${amount} coins`)},
-  nickname = "FarmerJoe123",
-  playerLevel = 42
+  nickname = "FarmerJoe123"
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
   const [activeTab, setActiveTab] = useState<'social' | 'trading'>('social')
@@ -65,6 +64,9 @@ function SocialHubPageContent({
 
   // Get real farm inventory data
   const farmInventory = useFarmInventory();
+
+  // Get player level and XP from GameContext
+  const { playerLevel, playerXp, playerXpToNext } = useContext(GameContext);
 
   // The unified hook handles all synchronization automatically
 
@@ -199,9 +201,21 @@ function SocialHubPageContent({
                       className="h-full w-full object-cover"
                     />
                   </motion.div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-bold text-white">{currentNickname}</h3>
                     <p className="text-sm text-white/60">Level {playerLevel} • Premium Farmer</p>
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs text-white/60 mb-1">
+                        <span>XP Progress</span>
+                        <span>{playerXp}/{playerXpToNext}</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, (playerXp / playerXpToNext) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 

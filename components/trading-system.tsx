@@ -1,9 +1,10 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useStateTogether, useConnectedUsers, useMyId, useFunctionTogether } from 'react-together';
 import { useUnifiedNickname } from '../hooks/useUnifiedNickname';
 import { useFarmInventory } from '../hooks/useFarmInventory';
+import { GameContext } from '../context/game-context';
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -56,15 +57,28 @@ function safeArray<T>(value: any): T[] {
 export function TradingSystem() {
   const [activeTab, setActiveTab] = useState<'browse' | 'create' | 'my-trades'>('browse');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  
+
   // React Together state
   const [tradeOffers, setTradeOffers] = useStateTogether<TradeOffer[]>('trade-offers', []);
   const myId = useMyId();
   const connectedUsers = useConnectedUsers();
   const { nickname: myNickname } = useUnifiedNickname();
-  
+
   // Farm inventory data
   const farmInventory = useFarmInventory();
+
+  // Game context for inventory management
+  const {
+    removeCropFromInventory,
+    addCropToInventoryDirect,
+    removeAnimalProductFromInventory,
+    addAnimalProductToInventoryDirect,
+    removeCraftedItemFromInventory,
+    addCraftedItemToInventoryDirect,
+    seeds,
+    animalProducts,
+    craftableItems
+  } = useContext(GameContext);
   
   // Real-time trade broadcasting
   const broadcastTradeEvent = useFunctionTogether('broadcastTradeEvent', (event: any) => {
@@ -78,11 +92,40 @@ export function TradingSystem() {
         return [event.trade, ...currentTrades].slice(0, 100);
       });
     } else if (event.type === 'tradeAccepted' || event.type === 'tradeDeclined') {
+      // Handle inventory transfer for the trade creator
+      if (event.type === 'tradeAccepted' && event.inventoryTransfer && event.inventoryTransfer.traderId === myId) {
+        const { traderGives, traderReceives } = event.inventoryTransfer;
+
+        // Remove offered items from trader's inventory
+        for (const item of traderGives) {
+          if (item.type === 'crop') {
+            removeCropFromInventory(item.itemType, item.quantity);
+          } else if (item.type === 'animal_product') {
+            removeAnimalProductFromInventory(item.itemType, item.quantity);
+          } else if (item.type === 'crafted_item') {
+            removeCraftedItemFromInventory(item.itemType, item.quantity);
+          }
+        }
+
+        // Add requested items to trader's inventory
+        for (const item of traderReceives) {
+          if (item.type === 'crop') {
+            addCropToInventoryDirect(item.itemType, item.quantity, item.value);
+          } else if (item.type === 'animal_product') {
+            addAnimalProductToInventoryDirect(item.itemType, item.quantity, item.value);
+          } else if (item.type === 'crafted_item') {
+            addCraftedItemToInventoryDirect(item.itemType, item.quantity, item.value);
+          }
+        }
+
+        toast.success('Your trade was accepted! Items transferred. 🎉');
+      }
+
       setTradeOffers(prev => {
         const currentTrades = safeArray<TradeOffer>(prev);
-        return currentTrades.map(trade => 
-          trade.id === event.tradeId 
-            ? { ...trade, status: event.type === 'tradeAccepted' ? 'accepted' : 'declined', 
+        return currentTrades.map(trade =>
+          trade.id === event.tradeId
+            ? { ...trade, status: event.type === 'tradeAccepted' ? 'accepted' : 'declined',
                 acceptedBy: event.acceptedBy, acceptedByNickname: event.acceptedByNickname }
             : trade
         );
@@ -97,54 +140,109 @@ export function TradingSystem() {
     description: ''
   });
 
-  // Get available items for trading
-  const getAvailableItems = useCallback(() => {
+  // Get available items for trading (including items for requesting)
+  const getAvailableItems = useCallback((includeZeroQuantity: boolean = false) => {
     const items: TradeItem[] = [];
-    
-    // Add crops
+
+    // Add crops (both owned and all possible crops for requesting)
     farmInventory.cropDetails.forEach(crop => {
-      if (crop.count > 0) {
+      if (crop.count > 0 || includeZeroQuantity) {
         items.push({
           type: 'crop',
           itemType: crop.type,
           itemName: crop.name,
           itemIcon: crop.icon,
           quantity: crop.count,
-          value: crop.value / crop.count
+          value: crop.count > 0 ? crop.value / crop.count : 10 // Default value for requesting
         });
       }
     });
-    
-    // Add animal products
+
+    // Add animal products (both owned and all possible products for requesting)
     farmInventory.animalProductDetails.forEach(product => {
-      if (product.count > 0) {
+      if (product.count > 0 || includeZeroQuantity) {
         items.push({
           type: 'animal_product',
           itemType: product.type,
           itemName: product.name,
           itemIcon: product.icon,
           quantity: product.count,
-          value: product.value / product.count
+          value: product.count > 0 ? product.value / product.count : 15 // Default value for requesting
         });
       }
     });
-    
-    // Add crafted items
+
+    // Add crafted items (both owned and all possible items for requesting)
     farmInventory.craftedItemDetails.forEach(item => {
-      if (item.count > 0) {
+      if (item.count > 0 || includeZeroQuantity) {
         items.push({
           type: 'crafted_item',
           itemType: item.type,
           itemName: item.name,
           itemIcon: item.icon,
           quantity: item.count,
-          value: item.value / item.count
+          value: item.count > 0 ? item.value / item.count : 20 // Default value for requesting
         });
       }
     });
-    
-    return items;
-  }, [farmInventory]);
+
+    // If including zero quantity (for requesting), add all possible items from game context
+    if (includeZeroQuantity) {
+      // Add all seed types as potential crops to request
+      seeds.forEach(seed => {
+        const existingCrop = items.find(item => item.type === 'crop' && item.itemType === seed.type);
+        if (!existingCrop) {
+          items.push({
+            type: 'crop',
+            itemType: seed.type,
+            itemName: seed.name,
+            itemIcon: seed.icon,
+            quantity: 0,
+            value: Math.floor(seed.reward * 1.2)
+          });
+        }
+      });
+
+      // Add all animal product types
+      animalProducts.forEach(product => {
+        const existingProduct = items.find(item => item.type === 'animal_product' && item.itemType === product.type);
+        if (!existingProduct) {
+          items.push({
+            type: 'animal_product',
+            itemType: product.type,
+            itemName: product.name,
+            itemIcon: product.icon,
+            quantity: 0,
+            value: product.marketValue
+          });
+        }
+      });
+
+      // Add all craftable item types
+      craftableItems.forEach(item => {
+        const existingItem = items.find(existing => existing.type === 'crafted_item' && existing.itemType === item.type);
+        if (!existingItem) {
+          items.push({
+            type: 'crafted_item',
+            itemType: item.type,
+            itemName: item.name,
+            itemIcon: item.icon,
+            quantity: 0,
+            value: item.marketValue
+          });
+        }
+      });
+    }
+
+    return items.sort((a, b) => {
+      // Sort by type first, then by name
+      if (a.type !== b.type) {
+        const typeOrder = { 'crop': 0, 'animal_product': 1, 'crafted_item': 2 };
+        return typeOrder[a.type] - typeOrder[b.type];
+      }
+      return a.itemName.localeCompare(b.itemName);
+    });
+  }, [farmInventory, seeds, animalProducts, craftableItems]);
 
   // Filter active trades
   const activeTrades = safeArray<TradeOffer>(tradeOffers).filter(trade => 
@@ -194,19 +292,95 @@ export function TradingSystem() {
 
   // Accept trade offer
   const handleAcceptTrade = useCallback((tradeId: string) => {
+    const trade = safeArray<TradeOffer>(tradeOffers).find(t => t.id === tradeId);
+    if (!trade) {
+      toast.error('Trade offer not found');
+      return;
+    }
+
+    // Check if accepter has the requested items
+    let canAcceptTrade = true;
+    const missingItems: string[] = [];
+
+    for (const item of trade.requesting) {
+      let hasEnough = false;
+
+      if (item.type === 'crop') {
+        const cropData = farmInventory.cropDetails.find(c => c.type === item.itemType);
+        hasEnough = cropData && cropData.count >= item.quantity;
+      } else if (item.type === 'animal_product') {
+        const productData = farmInventory.animalProductDetails.find(p => p.type === item.itemType);
+        hasEnough = productData && productData.count >= item.quantity;
+      } else if (item.type === 'crafted_item') {
+        const itemData = farmInventory.craftedItemDetails.find(i => i.type === item.itemType);
+        hasEnough = itemData && itemData.count >= item.quantity;
+      }
+
+      if (!hasEnough) {
+        canAcceptTrade = false;
+        missingItems.push(`${item.quantity}x ${item.itemName}`);
+      }
+    }
+
+    if (!canAcceptTrade) {
+      toast.error(`You don't have enough items: ${missingItems.join(', ')}`);
+      return;
+    }
+
     try {
+      // Perform inventory transfers
+      // Remove requested items from accepter's inventory
+      for (const item of trade.requesting) {
+        let success = false;
+
+        if (item.type === 'crop') {
+          success = removeCropFromInventory(item.itemType, item.quantity);
+        } else if (item.type === 'animal_product') {
+          success = removeAnimalProductFromInventory(item.itemType, item.quantity);
+        } else if (item.type === 'crafted_item') {
+          success = removeCraftedItemFromInventory(item.itemType, item.quantity);
+        }
+
+        if (!success) {
+          toast.error(`Failed to remove ${item.itemName} from inventory`);
+          return;
+        }
+      }
+
+      // Add offered items to accepter's inventory
+      for (const item of trade.offering) {
+        if (item.type === 'crop') {
+          addCropToInventoryDirect(item.itemType, item.quantity, item.value);
+        } else if (item.type === 'animal_product') {
+          addAnimalProductToInventoryDirect(item.itemType, item.quantity, item.value);
+        } else if (item.type === 'crafted_item') {
+          addCraftedItemToInventoryDirect(item.itemType, item.quantity, item.value);
+        }
+      }
+
+      // Broadcast trade acceptance with inventory transfer data
       broadcastTradeEvent({
         type: 'tradeAccepted',
         tradeId,
         acceptedBy: myId,
-        acceptedByNickname: myNickname
+        acceptedByNickname: myNickname,
+        inventoryTransfer: {
+          traderId: trade.creatorId,
+          accepterId: myId,
+          traderGives: trade.offering,
+          traderReceives: trade.requesting
+        }
       });
-      toast.success('Trade offer accepted! 🎉');
+
+      toast.success('Trade completed successfully! 🎉');
     } catch (error) {
       console.error('Failed to accept trade:', error);
-      toast.error('Failed to accept trade offer');
+      toast.error('Failed to complete trade');
     }
-  }, [myId, myNickname, broadcastTradeEvent]);
+  }, [myId, myNickname, broadcastTradeEvent, tradeOffers, farmInventory,
+      removeCropFromInventory, addCropToInventoryDirect,
+      removeAnimalProductFromInventory, addAnimalProductToInventoryDirect,
+      removeCraftedItemFromInventory, addCraftedItemToInventoryDirect]);
 
   // Decline trade offer
   const handleDeclineTrade = useCallback((tradeId: string) => {
@@ -287,6 +461,7 @@ export function TradingSystem() {
           isOpen={showCreateForm}
           onClose={() => setShowCreateForm(false)}
           availableItems={getAvailableItems()}
+          allItems={getAvailableItems(true)}
           newTrade={newTrade}
           setNewTrade={setNewTrade}
           onCreateTrade={handleCreateTrade}
@@ -504,6 +679,7 @@ function CreateTradeModal({
   isOpen,
   onClose,
   availableItems,
+  allItems,
   newTrade,
   setNewTrade,
   onCreateTrade
@@ -511,6 +687,7 @@ function CreateTradeModal({
   isOpen: boolean;
   onClose: () => void;
   availableItems: TradeItem[];
+  allItems: TradeItem[];
   newTrade: { offering: TradeItem[]; requesting: TradeItem[]; description: string };
   setNewTrade: React.Dispatch<React.SetStateAction<{ offering: TradeItem[]; requesting: TradeItem[]; description: string }>>;
   onCreateTrade: () => void;
@@ -522,8 +699,16 @@ function CreateTradeModal({
   if (!isOpen) return null;
 
   const addItemToTrade = () => {
-    const item = availableItems.find(i => `${i.type}-${i.itemType}` === selectedItem);
-    if (!item || quantity <= 0 || quantity > item.quantity) return;
+    // Use appropriate item list based on what we're adding to
+    const itemList = addingTo === 'offering' ? availableItems : allItems;
+    const item = itemList.find(i => `${i.type}-${i.itemType}` === selectedItem);
+
+    if (!item || quantity <= 0) return;
+
+    // For offering, check if we have enough items
+    if (addingTo === 'offering' && quantity > item.quantity) {
+      return;
+    }
 
     const tradeItem: TradeItem = {
       ...item,
@@ -569,13 +754,14 @@ function CreateTradeModal({
                     <SelectValue placeholder="Select item" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#171717] border-[#333]">
-                    {availableItems.map(item => (
+                    {(addingTo === 'offering' ? availableItems : allItems).map(item => (
                       <SelectItem
                         key={`${item.type}-${item.itemType}`}
                         value={`${item.type}-${item.itemType}`}
                         className="text-white hover:bg-[#333]"
                       >
-                        {item.itemIcon} {item.itemName} (Available: {item.quantity})
+                        {item.itemIcon} {item.itemName}
+                        {addingTo === 'offering' ? ` (Available: ${item.quantity})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -584,7 +770,9 @@ function CreateTradeModal({
                 <Input
                   type="number"
                   min="1"
-                  max={selectedItem ? availableItems.find(i => `${i.type}-${i.itemType}` === selectedItem)?.quantity || 1 : 1}
+                  max={selectedItem && addingTo === 'offering' ?
+                    (availableItems.find(i => `${i.type}-${i.itemType}` === selectedItem)?.quantity || 1) :
+                    999}
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   className="bg-[#171717] border-[#333] text-white"
