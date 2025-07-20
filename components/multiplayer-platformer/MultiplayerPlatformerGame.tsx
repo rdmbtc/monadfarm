@@ -61,6 +61,8 @@ export default function MultiplayerPlatformerGame({
     isGameActive = false
   } = multiplayerData || {}
 
+  console.log('MultiplayerPlatformerGame render:', { gameMode, playerCount, myId, isClient })
+
   // Client-side initialization
   useEffect(() => {
     setIsClient(true)
@@ -145,29 +147,31 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, resetGame])
 
-  // Create the game sketch (same for both modes, but online mode will sync state)
+  // Create the game sketch - always create the game, but only sync in online mode
   const createGameSketch = useCallback((p: any) => {
     console.log('Creating platformer game sketch, mode:', gameMode)
 
     // Store p5 instance
     p5InstanceRef.current = p
 
-    // Create the multiplayer-enhanced game (works for both single and online modes)
+    // Always create the multiplayer-enhanced game (it works for both modes)
     const game = multiplayerPlatformerSketch(p)
+    console.log('Game created:', game)
 
     // Store game instance
     gameInstanceRef.current = game
 
     // Set up multiplayer callbacks only in online mode
     if (gameMode === 'online' && game && game.setMultiplayerCallbacks) {
+      console.log('Setting up multiplayer callbacks')
       game.setMultiplayerCallbacks({
         onPlayerUpdate: (playerData: any) => {
-          if (myId) {
+          if (myId && updatePlayerPosition) {
             updatePlayerPosition(myId, playerData)
           }
         },
         onPlayerAction: (action: string, data: any) => {
-          if (myId) {
+          if (myId && performPlayerAction) {
             performPlayerAction(myId, action, data)
           }
         }
@@ -187,6 +191,13 @@ export default function MultiplayerPlatformerGame({
 
   return (
     <div className="w-full bg-black rounded-lg overflow-hidden">
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-red-900 p-2 text-xs text-white">
+          Debug: Mode={gameMode}, MyId={myId}, PlayerCount={playerCount}, IsClient={isClient}
+        </div>
+      )}
+
       {/* Game Header */}
       <div className="bg-gray-900 p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
@@ -265,6 +276,7 @@ export default function MultiplayerPlatformerGame({
         {/* Game Canvas */}
         <div className={`${gameMode === 'online' && showChat ? 'flex-1' : 'w-full'}`}>
           <ReactP5Wrapper
+            key={`game-${gameMode}`}
             sketch={createGameSketch}
             volume={masterVolume}
             isActive={true}
