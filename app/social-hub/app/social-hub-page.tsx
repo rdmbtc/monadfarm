@@ -49,6 +49,14 @@ export function SocialHubPage({
   // Use the official React Together useNicknames hook
   const [currentNickname, setCurrentNickname] = useNicknames()
 
+  // Sync the passed nickname prop with React Together nickname
+  useEffect(() => {
+    if (nickname && nickname !== currentNickname) {
+      console.log('SocialHubPage: Syncing nickname from prop to React Together:', nickname);
+      setCurrentNickname(nickname);
+    }
+  }, [nickname, currentNickname, setCurrentNickname]);
+
   // Show daily reward popup after a short delay
   useEffect(() => {
     const timer = setTimeout(() => {
