@@ -44,19 +44,32 @@ export function ProfileEditModal({
   ];
 
   const handleSave = async () => {
-    if (!newNickname || !newNickname.trim()) return;
-    
+    console.log('ProfileEditModal: handleSave called with nickname:', newNickname);
+
+    if (!newNickname || !newNickname.trim()) {
+      console.log('ProfileEditModal: Empty nickname, returning');
+      return;
+    }
+
     setIsChanging(true);
-    
+
     try {
       if (onNicknameChange) {
+        console.log('ProfileEditModal: Calling onNicknameChange with:', newNickname.trim());
         const success = onNicknameChange((newNickname || '').trim());
+        console.log('ProfileEditModal: onNicknameChange returned:', success);
+
         if (success) {
+          console.log('ProfileEditModal: Success! Closing modal');
           setIsOpen(false);
+        } else {
+          console.log('ProfileEditModal: Failed to change nickname');
         }
+      } else {
+        console.log('ProfileEditModal: onNicknameChange function not provided');
       }
     } catch (error) {
-      console.error('Failed to change nickname:', error);
+      console.error('ProfileEditModal: Error changing nickname:', error);
     } finally {
       setIsChanging(false);
     }

@@ -230,27 +230,37 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
 
   // Nickname change function
   const changeNickname = useCallback((newNickname: string) => {
-    if (!newNickname || !newNickname.trim() || !myId) return false;
+    console.log('BulletproofSocialFeed: changeNickname called with:', newNickname);
+    console.log('BulletproofSocialFeed: myId:', myId, 'isOnline:', isOnline);
+
+    if (!newNickname || !newNickname.trim() || !myId) {
+      console.log('BulletproofSocialFeed: Invalid input, returning false');
+      return false;
+    }
 
     const trimmedNickname = (newNickname || '').trim();
+    console.log('BulletproofSocialFeed: Trimmed nickname:', trimmedNickname);
 
     try {
       if (isOnline) {
+        console.log('BulletproofSocialFeed: Setting synced nickname');
         setSyncedNicknames(prev => ({
           ...safeObject(prev),
           [myId]: trimmedNickname
         }));
       } else {
+        console.log('BulletproofSocialFeed: Setting local nickname');
         setLocalNicknames(prev => ({
           ...prev,
           [myId]: trimmedNickname
         }));
       }
 
+      console.log('BulletproofSocialFeed: Nickname change successful');
       toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
       return true;
     } catch (error) {
-      console.warn('Failed to change nickname:', error);
+      console.error('BulletproofSocialFeed: Failed to change nickname:', error);
       toast.error('Failed to change nickname. Please try again.');
       return false;
     }
@@ -258,8 +268,12 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
 
   // Expose nickname change function to parent component
   useEffect(() => {
+    console.log('BulletproofSocialFeed: Exposing nickname change function to parent');
     if (onNicknameChange) {
+      console.log('BulletproofSocialFeed: onNicknameChange callback provided, calling it');
       onNicknameChange(changeNickname);
+    } else {
+      console.log('BulletproofSocialFeed: No onNicknameChange callback provided');
     }
   }, [onNicknameChange, changeNickname]);
 

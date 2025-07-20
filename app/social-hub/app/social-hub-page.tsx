@@ -46,6 +46,7 @@ export function SocialHubPage({
   const [showDailyReward, setShowDailyReward] = useState(false)
   const [currentNickname, setCurrentNickname] = useState(nickname)
   const [nicknameChangeFunction, setNicknameChangeFunction] = useState<((newNickname: string) => boolean) | null>(null)
+  const [isNicknameChangeFunctionReady, setIsNicknameChangeFunctionReady] = useState(false)
   const { toast } = useToast()
 
   // Show daily reward popup after a short delay
@@ -211,22 +212,60 @@ export function SocialHubPage({
                 <ProfileEditModal
                   currentNickname={currentNickname}
                   onNicknameChange={(newNickname) => {
+                    console.log('Attempting to change nickname to:', newNickname);
+                    console.log('Nickname change function available:', !!nicknameChangeFunction);
+
                     if (nicknameChangeFunction) {
-                      const success = nicknameChangeFunction(newNickname);
-                      if (success) {
-                        setCurrentNickname(newNickname);
+                      try {
+                        const success = nicknameChangeFunction(newNickname);
+                        console.log('Nickname change result:', success);
+
+                        if (success) {
+                          setCurrentNickname(newNickname);
+                          toast({
+                            title: "Nickname Updated!",
+                            description: `Your nickname has been changed to "${newNickname}"`,
+                            variant: "default",
+                          });
+                        } else {
+                          toast({
+                            title: "Failed to Update Nickname",
+                            description: "Please try again or check your connection.",
+                            variant: "destructive",
+                          });
+                        }
+                        return success;
+                      } catch (error) {
+                        console.error('Error changing nickname:', error);
+                        toast({
+                          title: "Error",
+                          description: "An unexpected error occurred while changing your nickname.",
+                          variant: "destructive",
+                        });
+                        return false;
                       }
-                      return success;
+                    } else {
+                      console.warn('Nickname change function not available yet');
+                      toast({
+                        title: "Not Ready",
+                        description: "Please wait for the social feed to load completely.",
+                        variant: "destructive",
+                      });
+                      return false;
                     }
-                    return false;
                   }}
                 >
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full p-2 bg-white text-black hover:bg-white/90 rounded-none font-medium"
+                    className={`w-full p-2 rounded-none font-medium transition-colors ${
+                      isNicknameChangeFunctionReady
+                        ? 'bg-white text-black hover:bg-white/90'
+                        : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                    }`}
+                    disabled={!isNicknameChangeFunctionReady}
                   >
-                    Edit Profile
+                    {isNicknameChangeFunctionReady ? 'Edit Profile' : 'Loading...'}
                   </motion.button>
                 </ProfileEditModal>
               </div>
@@ -248,7 +287,11 @@ export function SocialHubPage({
             </motion.div>
 
             <BulletproofSocialFeed
-              onNicknameChange={setNicknameChangeFunction}
+              onNicknameChange={(changeNicknameFn) => {
+                console.log('Received nickname change function from BulletproofSocialFeed');
+                setNicknameChangeFunction(() => changeNicknameFn);
+                setIsNicknameChangeFunctionReady(true);
+              }}
             />
           </motion.div>
         </motion.div>

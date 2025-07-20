@@ -55,7 +55,7 @@ class SocialFeedModel extends window.Multisynq?.Model {
     this.subscribe("input", "reset", this.resetPosts);
   }
 
-  viewJoin(viewId) {
+  viewJoin(viewId: string) {
     const existing = this.views.get(viewId);
     if (!existing) {
       const nickname = this.randomFarmerName();
@@ -65,16 +65,16 @@ class SocialFeedModel extends window.Multisynq?.Model {
     this.publish("viewInfo", "refresh");
   }
 
-  viewExit(viewId) {
+  viewExit(viewId: string) {
     this.participants--;
     this.views.delete(viewId);
     this.publish("viewInfo", "refresh");
   }
 
-  newPost(postData) {
+  newPost(postData: { viewId: string; content: string; tags?: string[] }) {
     const postingView = postData.viewId;
     const nickname = this.views.get(postingView);
-    
+
     this.postIdCounter++;
     const post: SocialPost = {
       id: `post_${this.postIdCounter}_${Date.now()}`,
@@ -92,9 +92,9 @@ class SocialFeedModel extends window.Multisynq?.Model {
     this.future(this.inactivity_timeout_ms).resetIfInactive();
   }
 
-  likePost(likeData) {
+  likePost(likeData: { postId: string; viewId: string }) {
     const { postId, viewId } = likeData;
-    const post = this.posts.find(p => p.id === postId);
+    const post = this.posts.find((p: SocialPost) => p.id === postId);
     
     if (!post) return;
 
@@ -102,7 +102,7 @@ class SocialFeedModel extends window.Multisynq?.Model {
     
     if (hasLiked) {
       // Unlike
-      post.likedBy = post.likedBy.filter(id => id !== viewId);
+      post.likedBy = post.likedBy.filter((id: string) => id !== viewId);
       post.likes = Math.max(0, post.likes - 1);
     } else {
       // Like
@@ -113,7 +113,7 @@ class SocialFeedModel extends window.Multisynq?.Model {
     this.publish("posts", "refresh");
   }
 
-  addToFeed(post) {
+  addToFeed(post: SocialPost) {
     this.posts.unshift(post); // Add to beginning
     if (this.posts.length > 50) this.posts.pop(); // Keep last 50 posts
     this.publish("posts", "refresh");
@@ -124,17 +124,17 @@ class SocialFeedModel extends window.Multisynq?.Model {
     this.resetPosts("due to inactivity");
   }
 
-  resetPosts(reason) {
+  resetPosts(reason?: string) {
     this.posts = [];
     this.lastPostTime = null;
     this.publish("posts", "refresh");
   }
 
-  escape(text) {
+  escape(text: string): string {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  randomFarmerName() {
+  randomFarmerName(): string {
     const adjectives = [
       "Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden",
       "Sunny", "Fresh", "Wild", "Free", "Bold", "Pure", "Strong", "Gentle", "Noble", "Proud"
@@ -224,7 +224,7 @@ export function MultisynqSocialFeedProper({ className }: { className?: string })
     }).then(() => {
       setIsConnected(true);
       toast.success('Connected to farm social feed! 🌾');
-    }).catch((error) => {
+    }).catch((error: any) => {
       console.error('Failed to join Multisynq session:', error);
       toast.error('Failed to connect to social feed');
     });
@@ -236,19 +236,30 @@ export function MultisynqSocialFeedProper({ className }: { className?: string })
   }, [multisynqLoaded]);
 
   const handleCreatePost = () => {
-    if (postContent.trim() && viewRef.current && !isPosting) {
+    if (postContent && postContent.trim() && viewRef.current && !isPosting) {
       setIsPosting(true);
-      viewRef.current.createPost(postContent, ['farming', 'monfarm']);
-      setPostContent('');
-      setShowCreatePost(false);
-      setIsPosting(false);
-      toast.success('Post created! 🌾');
+      try {
+        viewRef.current.createPost(postContent.trim(), ['farming', 'monfarm']);
+        setPostContent('');
+        setShowCreatePost(false);
+        toast.success('Post created! 🌾');
+      } catch (error) {
+        console.error('Failed to create post:', error);
+        toast.error('Failed to create post. Please try again.');
+      } finally {
+        setIsPosting(false);
+      }
     }
   };
 
   const handleLikePost = (postId: string) => {
-    if (viewRef.current) {
-      viewRef.current.likePost(postId);
+    if (viewRef.current && postId) {
+      try {
+        viewRef.current.likePost(postId);
+      } catch (error) {
+        console.error('Failed to like post:', error);
+        toast.error('Failed to like post. Please try again.');
+      }
     }
   };
 
@@ -325,7 +336,7 @@ export function MultisynqSocialFeedProper({ className }: { className?: string })
                   <Textarea
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyPress}
                     placeholder="What's happening on your farm? Share your harvest, discoveries, or farming tips..."
                     className="min-h-[100px] bg-gray-700 border-gray-600 text-white placeholder-gray-400 resize-none"
                     maxLength={1000}
@@ -366,46 +377,52 @@ export function MultisynqSocialFeedProper({ className }: { className?: string })
             <ScrollArea className="h-96">
               <div className="space-y-4 pr-4">
                 <AnimatePresence>
-                  {posts.map((post) => (
-                    <motion.div
-                      key={post.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="bg-gray-800 rounded-lg p-4 border border-gray-700"
-                    >
-                      {/* Post Header */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-blue-600 text-white text-sm">
-                            {post.nickname.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">{post.nickname}</span>
-                            <Badge variant="secondary" className="text-xs bg-green-600/20 text-green-400">
-                              Online
-                            </Badge>
+                  {Array.isArray(posts) && posts.map((post) => {
+                    // Safety check for post object
+                    if (!post || typeof post !== 'object' || !post.id) {
+                      return null;
+                    }
+
+                    return (
+                      <motion.div
+                        key={post.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-gray-800 rounded-lg p-4 border border-gray-700"
+                      >
+                        {/* Post Header */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-blue-600 text-white text-sm">
+                              {(post.nickname || 'Anonymous').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-white">{post.nickname || 'Anonymous Farmer'}</span>
+                              <Badge variant="secondary" className="text-xs bg-green-600/20 text-green-400">
+                                Online
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(post.timestamp || Date.now()).toLocaleString()}
+                            </span>
                           </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(post.timestamp).toLocaleString()}
-                          </span>
                         </div>
-                      </div>
 
                       {/* Post Content */}
                       <div className="mb-3">
-                        <p className="text-gray-200 whitespace-pre-wrap" 
-                           dangerouslySetInnerHTML={{ __html: post.content }} />
+                        <p className="text-gray-200 whitespace-pre-wrap"
+                           dangerouslySetInnerHTML={{ __html: post.content || '' }} />
                       </div>
 
                       {/* Post Tags */}
-                      {post.tags.length > 0 && (
+                      {Array.isArray(post.tags) && post.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-3">
                           {post.tags.map((tag) => (
                             <Badge key={tag} variant="outline" className="text-xs border-gray-600 text-gray-400">
-                              #{tag}
+                              #{tag || ''}
                             </Badge>
                           ))}
                         </div>
@@ -420,20 +437,21 @@ export function MultisynqSocialFeedProper({ className }: { className?: string })
                           disabled={!isConnected}
                           className={cn(
                             "text-gray-400 hover:text-red-400 hover:bg-red-400/10",
-                            post.likedBy.includes(viewRef.current?.viewId || '') && "text-red-400 bg-red-400/10"
+                            Array.isArray(post.likedBy) && post.likedBy.includes(viewRef.current?.viewId || '') && "text-red-400 bg-red-400/10"
                           )}
                         >
-                          <Heart 
+                          <Heart
                             className={cn(
                               "h-4 w-4 mr-1",
-                              post.likedBy.includes(viewRef.current?.viewId || '') && "fill-current"
-                            )} 
+                              Array.isArray(post.likedBy) && post.likedBy.includes(viewRef.current?.viewId || '') && "fill-current"
+                            )}
                           />
-                          {post.likes}
+                          {post.likes || 0}
                         </Button>
                       </div>
                     </motion.div>
-                  ))}
+                    );
+                  }).filter(Boolean)}
                 </AnimatePresence>
                 
                 {posts.length === 0 && (
