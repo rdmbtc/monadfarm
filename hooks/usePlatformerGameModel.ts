@@ -133,7 +133,11 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
       color: playerColor
     }
 
-    setPlayers(prev => ({ ...prev, [playerId]: newPlayer }))
+    setPlayers(prev => {
+      const newPlayers = { ...prev, [playerId]: newPlayer }
+      console.log('🎮 Player joined. Total players now:', Object.keys(newPlayers).length)
+      return newPlayers
+    })
 
     // Add welcome message
     const welcomeMessage: ChatMessage = {
@@ -148,6 +152,7 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
 
     // Start game session if this is the first player
     if (Object.keys(players).length === 0 && !gameSession) {
+      console.log('🎮 Creating new game session for first player')
       const newSession: GameSession = {
         id: `session_${Date.now()}`,
         currentLevel: 1,
@@ -375,11 +380,11 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
   const isPlayerActive = useCallback((playerId: string): boolean => {
     const player = players[playerId]
     if (!player) return false
-
-    // Consider player active if they've updated within the last 30 seconds (increased from 5)
+    
+    // Consider player active if they've updated within the last 5 seconds
     const now = Date.now()
     const timeSinceUpdate = now - (player.lastUpdate || 0)
-    return timeSinceUpdate < 30000
+    return timeSinceUpdate < 5000
   }, [players])
 
   return {

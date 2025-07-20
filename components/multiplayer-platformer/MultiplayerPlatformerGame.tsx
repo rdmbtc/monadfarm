@@ -63,11 +63,12 @@ export default function MultiplayerPlatformerGame({
   console.log('🎮 Game State:', {
     gameMode,
     playerCount,
-    myId,
+    myId: myId?.slice(0, 8),
     isClient,
     hasMultiplayerData: !!multiplayerData,
-    myPlayer: myPlayer ? `${myPlayer.nickname} (${myPlayer.id})` : 'none',
-    otherPlayersCount: otherPlayers.length
+    myPlayer: myPlayer ? `${myPlayer.nickname} (${myPlayer.id.slice(0, 8)})` : 'none',
+    otherPlayersCount: otherPlayers.length,
+    allPlayersInModel: multiplayerData?.players ? Object.keys(multiplayerData.players).length : 'N/A'
   })
 
   // Client-side initialization
@@ -354,7 +355,13 @@ export default function MultiplayerPlatformerGame({
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-red-900 p-2 text-xs text-white">
           Debug: Mode={gameMode}, MyId={myId?.slice(0,8)}, PlayerCount={playerCount}, IsClient={isClient},
-          MyPlayer={myPlayer ? '✓' : '✗'}, OtherPlayers={otherPlayers.length}
+          MyPlayer={myPlayer ? '✓' : '✗'}, OtherPlayers={otherPlayers.length},
+          AllPlayers={multiplayerData?.players ? Object.keys(multiplayerData.players).length : 'N/A'}
+          {multiplayerData?.players && (
+            <div className="mt-1">
+              Players: {Object.values(multiplayerData.players).map((p: any) => `${p.nickname}(${p.id.slice(0,4)})`).join(', ')}
+            </div>
+          )}
         </div>
       )}
 
