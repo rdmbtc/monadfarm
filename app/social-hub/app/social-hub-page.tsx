@@ -26,7 +26,7 @@ import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import BulletproofSocialFeed from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
-import { ReactTogether } from 'react-together'
+import { ReactTogether, useNicknames } from 'react-together'
 import { ReactTogetherErrorBoundary } from "../../../components/react-together-error-boundary"
 import ProfileEditModal from "../../../components/profile-edit-modal"
 
@@ -44,28 +44,10 @@ export function SocialHubPage({
   playerLevel = 42
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
-  const [currentNickname, setCurrentNickname] = useState(nickname)
-  const [nicknameChangeFunction, setNicknameChangeFunction] = useState<((newNickname: string) => boolean) | null>(null)
-  const [isNicknameChangeFunctionReady, setIsNicknameChangeFunctionReady] = useState(false)
   const { toast } = useToast()
 
-  // Initialize with a basic nickname change function immediately
-  useEffect(() => {
-    console.log('Initializing basic nickname change function');
-    const basicNicknameChange = (newNickname: string) => {
-      console.log('Basic nickname change called with:', newNickname);
-      setCurrentNickname(newNickname);
-      toast({
-        title: "Nickname Updated!",
-        description: `Your nickname has been changed to "${newNickname}"`,
-        variant: "default",
-      });
-      return true;
-    };
-
-    setNicknameChangeFunction(() => basicNicknameChange);
-    setIsNicknameChangeFunctionReady(true);
-  }, [toast]);
+  // Use the official React Together useNicknames hook
+  const [currentNickname, setCurrentNickname] = useNicknames()
 
   // Show daily reward popup after a short delay
   useEffect(() => {
@@ -75,30 +57,6 @@ export function SocialHubPage({
 
     return () => clearTimeout(timer)
   }, [])
-
-  // Fallback: Enable nickname change after 5 seconds even if the function isn't ready
-  useEffect(() => {
-    const fallbackTimer = setTimeout(() => {
-      if (!isNicknameChangeFunctionReady) {
-        console.log('Fallback: Enabling nickname change functionality after timeout');
-        setIsNicknameChangeFunctionReady(true);
-
-        // Create a basic fallback function
-        setNicknameChangeFunction(() => (newNickname: string) => {
-          console.log('Using fallback nickname change function');
-          setCurrentNickname(newNickname);
-          toast({
-            title: "Nickname Updated!",
-            description: `Your nickname has been changed to "${newNickname}" (offline mode)`,
-            variant: "default",
-          });
-          return true;
-        });
-      }
-    }, 5000); // 5 second fallback
-
-    return () => clearTimeout(fallbackTimer);
-  }, [isNicknameChangeFunctionReady, toast]);
 
   const handleClaimDailyReward = () => {
     // Add coins when claiming reward
@@ -252,45 +210,26 @@ export function SocialHubPage({
                 </div>
                 
                 <ProfileEditModal
-                  currentNickname={currentNickname}
+                  currentNickname={currentNickname || nickname}
                   onNicknameChange={(newNickname) => {
                     console.log('Attempting to change nickname to:', newNickname);
-                    console.log('Nickname change function available:', !!nicknameChangeFunction);
 
-                    if (nicknameChangeFunction) {
-                      try {
-                        const success = nicknameChangeFunction(newNickname);
-                        console.log('Nickname change result:', success);
+                    try {
+                      // Use the official React Together setNickname function
+                      setCurrentNickname(newNickname);
 
-                        if (success) {
-                          setCurrentNickname(newNickname);
-                          toast({
-                            title: "Nickname Updated!",
-                            description: `Your nickname has been changed to "${newNickname}"`,
-                            variant: "default",
-                          });
-                        } else {
-                          toast({
-                            title: "Failed to Update Nickname",
-                            description: "Please try again or check your connection.",
-                            variant: "destructive",
-                          });
-                        }
-                        return success;
-                      } catch (error) {
-                        console.error('Error changing nickname:', error);
-                        toast({
-                          title: "Error",
-                          description: "An unexpected error occurred while changing your nickname.",
-                          variant: "destructive",
-                        });
-                        return false;
-                      }
-                    } else {
-                      console.warn('Nickname change function not available yet');
                       toast({
-                        title: "Not Ready",
-                        description: "Please wait for the social feed to load completely.",
+                        title: "Nickname Updated!",
+                        description: `Your nickname has been changed to "${newNickname}"`,
+                        variant: "default",
+                      });
+
+                      return true;
+                    } catch (error) {
+                      console.error('Error changing nickname:', error);
+                      toast({
+                        title: "Error",
+                        description: "An unexpected error occurred while changing your nickname.",
                         variant: "destructive",
                       });
                       return false;
@@ -300,14 +239,9 @@ export function SocialHubPage({
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full p-2 rounded-none font-medium transition-colors ${
-                      isNicknameChangeFunctionReady
-                        ? 'bg-white text-black hover:bg-white/90'
-                        : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                    }`}
-                    disabled={!isNicknameChangeFunctionReady}
+                    className="w-full p-2 rounded-none font-medium transition-colors bg-white text-black hover:bg-white/90"
                   >
-                    {isNicknameChangeFunctionReady ? 'Edit Profile' : 'Loading...'}
+                    Edit Profile
                   </motion.button>
                 </ProfileEditModal>
               </div>
@@ -328,21 +262,7 @@ export function SocialHubPage({
               <EventsCarousel />
             </motion.div>
 
-            <BulletproofSocialFeed
-              onNicknameChange={(changeNicknameFn) => {
-                console.log('Received enhanced nickname change function from BulletproofSocialFeed');
-                // Override the basic function with the enhanced one from BulletproofSocialFeed
-                setNicknameChangeFunction(() => (newNickname: string) => {
-                  console.log('Using enhanced nickname change function');
-                  const success = changeNicknameFn(newNickname);
-                  if (success) {
-                    setCurrentNickname(newNickname);
-                  }
-                  return success;
-                });
-                setIsNicknameChangeFunctionReady(true);
-              }}
-            />
+            <BulletproofSocialFeed />
           </motion.div>
         </motion.div>
       </main>

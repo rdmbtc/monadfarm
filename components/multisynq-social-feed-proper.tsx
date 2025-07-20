@@ -7,17 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { 
-  Heart, 
+import {
+  Heart,
   Send,
   Users,
   Plus,
-  Sparkles
+  Sparkles,
+  Edit3,
+  Check,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import Script from 'next/script';
+import { useNicknames } from 'react-together';
 
 // Declare Multisynq global
 declare global {
