@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
+import { useNicknames } from "react-together";
 import { GameContext } from "@/context/game-context";
 import { FarmPlot } from "@/components/farm-plot";
 import { SeedSelector } from "@/components/seed-selector";
@@ -193,6 +194,9 @@ export function Farm() {
   const [nickname, setNickname] = useState<string>("MONAD");
   const [bio, setBio] = useState<string>("I love farming!");
 
+  // React Together nickname system for social features (declared early)
+  const [reactTogetherNickname, setReactTogetherNickname] = useNicknames();
+
   useEffect(() => {
     // Load profile from localStorage on mount
     if (typeof window !== "undefined") {
@@ -200,6 +204,10 @@ export function Farm() {
       const savedBio = localStorage.getItem('player-bio');
       if (savedNickname) {
         setNickname(savedNickname);
+        // Also initialize React Together nickname
+        if (savedNickname !== reactTogetherNickname) {
+          setReactTogetherNickname(savedNickname);
+        }
       }
       if (savedBio) {
         setBio(savedBio);
@@ -209,7 +217,7 @@ export function Farm() {
         bio: savedBio || 'not found' 
       });
     }
-  }, []); // Runs only on mount
+  }, [reactTogetherNickname, setReactTogetherNickname]); // Runs on mount and when React Together nickname changes
   // --- End Local Profile State ---
 
   // --- Remove Profile from Context Destructuring ---
@@ -272,6 +280,19 @@ export function Farm() {
     // setBio: setContextBio
   } = useContext(GameContext);
   // --- End Context Destructuring Update ---
+
+  // Sync React Together nickname with local profile nickname
+  useEffect(() => {
+    if (reactTogetherNickname && reactTogetherNickname !== nickname) {
+      console.log("Syncing React Together nickname to local profile:", reactTogetherNickname);
+      setNickname(reactTogetherNickname);
+      setEditNickname(reactTogetherNickname);
+      // Also save to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem('player-nickname', reactTogetherNickname);
+      }
+    }
+  }, [reactTogetherNickname, nickname, setNickname]);
   
   // Add debug logging for seasonal crops
   useEffect(() => {
@@ -346,10 +367,18 @@ export function Farm() {
     }
     
     console.log("SAVING PROFILE LOCALLY:", { newNickname, newBio });
-    
+
     // Update local React state
     setNickname(newNickname);
     setBio(newBio);
+
+    // Also update React Together nickname for social features
+    try {
+      setReactTogetherNickname(newNickname);
+      console.log("Updated React Together nickname to:", newNickname);
+    } catch (error) {
+      console.warn("Failed to update React Together nickname:", error);
+    }
 
     // Save directly to localStorage
     if (typeof window !== "undefined") {
