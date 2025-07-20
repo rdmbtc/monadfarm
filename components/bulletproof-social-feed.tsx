@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useStateTogether, useConnectedUsers, useMyId } from 'react-together';
+import { useStateTogether, useConnectedUsers, useMyId, useNicknames } from 'react-together';
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
@@ -53,15 +53,16 @@ function safeString(value: any): string {
 export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?: (changeNickname: (newNickname: string) => boolean) => void } = {}) {
   // Local state first - safer approach
   const [localPosts, setLocalPosts] = useState<SocialPost[]>([]);
-  const [localNicknames, setLocalNicknames] = useState<Record<string, string>>({});
-  
+
   // React Together state with safe initialization
   const [syncedPosts, setSyncedPosts] = useStateTogether<SocialPost[]>('bulletproof-posts', []);
-  const [syncedNicknames, setSyncedNicknames] = useStateTogether<Record<string, string>>('bulletproof-nicknames', {});
-  
+
   // Get current user info
   const myId = useMyId();
   const connectedUsers = useConnectedUsers();
+
+  // Use the shared nickname system from React Together
+  const [myNickname, setMyNickname, allNicknames] = useNicknames();
   
   // Local UI state
   const [newPostContent, setNewPostContent] = useState('');
@@ -80,16 +81,6 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     return result;
   }, [isOnline, syncedPosts, localPosts]);
 
-  const nicknames = React.useMemo(() => {
-    const result = isOnline ? safeObject(syncedNicknames) : localNicknames;
-    // Double-check that result is actually an object
-    if (!result || typeof result !== 'object' || Array.isArray(result)) {
-      console.warn('Nicknames is not an object, falling back to empty object:', result);
-      return {};
-    }
-    return result;
-  }, [isOnline, syncedNicknames, localNicknames]);
-
   // Generate farmer name
   const generateFarmerName = useCallback(() => {
     const adjectives = ["Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden"];
@@ -99,38 +90,13 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     return `${adj} ${term}`;
   }, []);
 
-  // Get current user nickname with safe string handling
-  const myNickname = React.useMemo(() => {
-    const nickname = (myId && nicknames[myId]) || generateFarmerName();
-    return safeString(nickname);
-  }, [myId, nicknames, generateFarmerName]);
-
-  // Initialize user nickname
+  // Initialize user nickname if not set
   useEffect(() => {
-    if (myId && !nicknames[myId]) {
+    if (myId && (!myNickname || myNickname.trim() === '')) {
       const newNickname = generateFarmerName();
-      
-      if (isOnline) {
-        try {
-          setSyncedNicknames(prev => ({
-            ...safeObject(prev),
-            [myId]: newNickname
-          }));
-        } catch (error) {
-          console.warn('Failed to sync nickname, using local state:', error);
-          setLocalNicknames(prev => ({
-            ...prev,
-            [myId]: newNickname
-          }));
-        }
-      } else {
-        setLocalNicknames(prev => ({
-          ...prev,
-          [myId]: newNickname
-        }));
-      }
+      setMyNickname(newNickname);
     }
-  }, [myId, nicknames, generateFarmerName, isOnline, setSyncedNicknames]);
+  }, [myId, myNickname, generateFarmerName, setMyNickname]);
 
   // Monitor connection status
   useEffect(() => {
@@ -153,7 +119,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     const newPost: SocialPost = {
       id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId: myId || 'offline-user',
-      nickname: myNickname,
+      nickname: safeString(myNickname),
       content: (newPostContent || '').trim(),
       timestamp: Date.now(),
       likes: 0,
@@ -242,19 +208,8 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     console.log('BulletproofSocialFeed: Trimmed nickname:', trimmedNickname);
 
     try {
-      if (isOnline) {
-        console.log('BulletproofSocialFeed: Setting synced nickname');
-        setSyncedNicknames(prev => ({
-          ...safeObject(prev),
-          [myId]: trimmedNickname
-        }));
-      } else {
-        console.log('BulletproofSocialFeed: Setting local nickname');
-        setLocalNicknames(prev => ({
-          ...prev,
-          [myId]: trimmedNickname
-        }));
-      }
+      console.log('BulletproofSocialFeed: Setting nickname via React Together');
+      setMyNickname(trimmedNickname);
 
       console.log('BulletproofSocialFeed: Nickname change successful');
       toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
@@ -264,7 +219,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
       toast.error('Failed to change nickname. Please try again.');
       return false;
     }
-  }, [myId, isOnline, setSyncedNicknames, setLocalNicknames]);
+  }, [myId, isOnline, setMyNickname]);
 
   // Create a fallback nickname change function that works even when React Together isn't ready
   const fallbackChangeNickname = useCallback((newNickname: string) => {
@@ -279,21 +234,8 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     console.log('BulletproofSocialFeed: Trimmed nickname:', trimmedNickname);
 
     try {
-      // Always update local state first
-      const userId = myId || 'local-user';
-      setLocalNicknames(prev => ({
-        ...prev,
-        [userId]: trimmedNickname
-      }));
-
-      // Try to update synced state if online
-      if (isOnline && myId) {
-        console.log('BulletproofSocialFeed: Also updating synced nickname');
-        setSyncedNicknames(prev => ({
-          ...safeObject(prev),
-          [myId]: trimmedNickname
-        }));
-      }
+      console.log('BulletproofSocialFeed: Setting nickname via React Together');
+      setMyNickname(trimmedNickname);
 
       console.log('BulletproofSocialFeed: Nickname change successful');
       toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
@@ -303,7 +245,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
       toast.error('Failed to change nickname. Please try again.');
       return false;
     }
-  }, [myId, isOnline, setSyncedNicknames, setLocalNicknames]);
+  }, [myId, isOnline, setMyNickname]);
 
   // Expose nickname change function to parent component immediately
   useEffect(() => {
@@ -431,12 +373,12 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
               <div className="flex items-center gap-3">
                 <Avatar className="border border-[#333]">
                   <AvatarFallback className="bg-blue-600 text-white text-sm">
-                    {safeString(post.nickname).slice(0, 2).toUpperCase() || 'U'}
+                    {safeString(allNicknames[post.userId] || post.nickname).slice(0, 2).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-white">{safeString(post.nickname) || 'Anonymous'}</span>
+                    <span className="font-semibold text-white">{safeString(allNicknames[post.userId] || post.nickname) || 'Anonymous'}</span>
                     {isOnline && (
                       <Badge variant="secondary" className="text-xs bg-green-600/20 text-green-400 ml-2">
                         Online
