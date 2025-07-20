@@ -5,6 +5,8 @@ import { Menu } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { ClientOnlyWrapper } from "../../../components/client-only-wrapper"
 import dynamic from "next/dynamic"
+import { ReactTogether } from 'react-together'
+import { ErrorBoundary } from "../../../components/error-boundary"
 
 // Dynamically import FarmFeed to avoid SSR issues
 const FarmFeed = dynamic(() => import("../../../components/farm-feed"), {
@@ -36,7 +38,17 @@ interface SocialHubPageProps {
   playerLevel?: number;
 }
 
-export function SocialHubPage({
+// Error boundary component for ReactTogether
+function ReactTogetherErrorBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+// Internal component that uses ReactTogether hooks
+function SocialHubPageContent({
   farmCoins = 1000,
   addFarmCoins = (amount: number) => {console.log(`Added ${amount} coins`)},
   nickname = "FarmerJoe123",
@@ -87,7 +99,7 @@ export function SocialHubPage({
     show: { opacity: 1, y: 0 },
   }
 
-  // Real-time synchronization is handled by the ReactTogether provider in app/providers.tsx
+  // Real-time synchronization is handled by the dedicated ReactTogether wrapper for this page
   // The BulletproofSocialFeed component uses Multisynq for live updates
 
   return (
@@ -257,4 +269,63 @@ export function SocialHubPage({
       </footer>
     </div>
   )
+}
+
+// Main wrapper component with API key check and ReactTogether setup
+export function SocialHubPage(props: SocialHubPageProps) {
+  const apiKey = process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY;
+
+  console.log('SocialHubPage: Initializing with API key:', apiKey ? 'Present' : 'Missing');
+
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">⚠️ API Key Missing</h1>
+          <p className="text-gray-300 mb-4">
+            React Together API key not found in environment variables.
+          </p>
+          <p className="text-sm text-gray-500">
+            Make sure NEXT_PUBLIC_REACT_TOGETHER_API_KEY is set in your .env file
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('SocialHubPage: Initializing ReactTogether session for social hub');
+
+  return (
+    <ReactTogetherErrorBoundary>
+      <ReactTogether
+        sessionParams={{
+          apiKey: apiKey,
+          appId: "monfarm.social.hub",
+          name: "monfarm-social-hub-main",
+          password: "public"
+        }}
+        rememberUsers={true}
+        deriveNickname={(userId) => {
+          // Custom logic to derive initial nickname from localStorage
+          if (typeof window !== "undefined") {
+            const stored = localStorage.getItem('player-nickname');
+            if (stored && stored.trim() !== '') {
+              console.log('SocialHub ReactTogether deriveNickname: Using stored nickname:', stored);
+              return stored;
+            }
+          }
+          // Fallback to a farmer-themed name if no stored nickname
+          const adjectives = ["Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden"];
+          const farmTerms = ["Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher"];
+          const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+          const term = farmTerms[Math.floor(Math.random() * farmTerms.length)];
+          const fallbackName = `${adj} ${term}`;
+          console.log('SocialHub ReactTogether deriveNickname: Using fallback nickname:', fallbackName);
+          return fallbackName;
+        }}
+      >
+        <SocialHubPageContent {...props} />
+      </ReactTogether>
+    </ReactTogetherErrorBoundary>
+  );
 }
