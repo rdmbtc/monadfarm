@@ -50,7 +50,7 @@ const safeString = (value: any): string => {
   return String(value);
 };
 
-export function BulletproofSocialFeed() {
+function BulletproofSocialFeed() {
   // Local state first - safer approach
   const [localPosts, setLocalPosts] = useState<SocialPost[]>([]);
   const [localNicknames, setLocalNicknames] = useState<Record<string, string>>({});
@@ -428,5 +428,5 @@ export function BulletproofSocialFeed() {
   );
 }
 
-// Also export as default for better compatibility
+export { BulletproofSocialFeed };
 export default BulletproofSocialFeed;

@@ -17,7 +17,7 @@ import { AnimatedCard } from "@/components/ui/animated-card"
 import { AnimatedBadge } from "@/components/ui/animated-badge"
 import { ShimmerButton } from "@/components/ui/shimmer-button"
 import { Confetti } from "@/components/ui/confetti"
-import { useStateTogether, useFunctionTogether, useConnectedUsers, useMyId } from 'react-together'
+import { useStateTogether, useEventTogether, useConnectedUsers, useMyId } from 'react-together'
 
 // Sample feed data
 const feedItems = [
@@ -90,22 +90,7 @@ export default function FarmFeed() {
     likes: number;
     likedBy: string[];
   }>>('social-posts', [])
-  // Use useFunctionTogether for social events
-  const broadcastSocialEvent = useFunctionTogether('broadcastSocialEvent', (event: any) => {
-    if (event.type === 'newPost') {
-      setMultisynqPosts(prev => {
-        const exists = prev.some(p => p.id === event.post.id)
-        if (exists) return prev
-        return [event.post, ...prev].slice(0, 50) // Keep last 50 posts
-      })
-    } else if (event.type === 'likePost') {
-      setMultisynqPosts(prev => prev.map(post =>
-        post.id === event.postId
-          ? { ...post, likes: post.likes + 1, likedBy: [...post.likedBy, event.userId] }
-          : post
-      ))
-    }
-  })
+  const [sendSocialEvent, onSocialEvent] = useEventTogether('social')
 
   // Derived state
   const isConnected = !!myId
@@ -113,17 +98,32 @@ export default function FarmFeed() {
   const error = null
   const currentUser = myId ? {
     userId: myId,
-    nickname: `User${myId.slice(-4)}`,
+    nickname: `User${(myId || '').slice(-4)}`,
     isOnline: true
   } : null
-  const users = connectedUsers.map(userId => ({
-    userId,
-    nickname: `User${userId.slice(-4)}`,
+  const users = connectedUsers.map(user => ({
+    userId: user.userId,
+    nickname: user.nickname || `User${(user.userId || '').slice(-4)}`,
     isOnline: true
   }))
   const onlineCount = connectedUsers.length
 
-  // Social events are now handled by broadcastSocialEvent function above
+  // Handle social events
+  onSocialEvent((event: any) => {
+    if (event.type === 'postCreated') {
+      setMultisynqPosts(prev => {
+        const exists = prev.some(p => p.id === event.post.id)
+        if (exists) return prev
+        return [event.post, ...prev].slice(0, 100)
+      })
+    } else if (event.type === 'postLiked') {
+      setMultisynqPosts(prev => prev.map(post =>
+        post.id === event.postId
+          ? { ...post, likes: event.likes, likedBy: event.likedBy }
+          : post
+      ))
+    }
+  })
 
   // Create post function
   const createPost = (content: string) => {

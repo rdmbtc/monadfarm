@@ -71,12 +71,12 @@ export default function FriendSuggestions() {
   const isConnected = !!myId
   const currentUser = myId ? {
     userId: myId,
-    nickname: `User${myId.slice(-4)}`,
+    nickname: `User${(myId || '').slice(-4)}`,
     isOnline: true
   } : null
-  const users = connectedUsers.map(userId => ({
-    userId,
-    nickname: `User${userId.slice(-4)}`,
+  const users = connectedUsers.map(user => ({
+    userId: user.userId,
+    nickname: user.nickname || `User${(user.userId || '').slice(-4)}`,
     isOnline: true
   }))
   const onlineCount = connectedUsers.length
@@ -90,7 +90,7 @@ export default function FriendSuggestions() {
         .slice(0, 5) // Take top 5 recent users
         .map((user, index) => ({
           id: `recent-${user.userId}`,
-          name: user.nickname || `Farmer${user.userId.slice(0, 6)}`,
+          name: user.nickname || `Farmer${(user.userId || '').slice(0, 6)}`,
           avatar: "/images/nooter.png",
           level: Math.floor(Math.random() * 50) + 20, // Random level for demo
           mutualFriends: Math.floor(Math.random() * 10),
@@ -108,7 +108,7 @@ export default function FriendSuggestions() {
     toast({
       title: "Friend Request Sent!",
       description: `You sent a friend request to ${friendSuggestions.find((f) => f.id === id)?.name}!`,
-      variant: "success",
+      variant: "default",
     })
   }
 

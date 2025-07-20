@@ -71,14 +71,14 @@ export function ReactTogetherSocialFeed({
     nickname: userNicknames[myId] || `User${myId.slice(-4)}`,
     isOnline: true
   } : null
-  const users = connectedUsers.map(userId => ({
-    userId,
-    nickname: userNicknames[userId] || `User${userId.slice(-4)}`,
+  const users = connectedUsers.map(user => ({
+    userId: user.userId,
+    nickname: userNicknames[user.userId] || user.nickname || `User${(user.userId || '').slice(-4)}`,
     isOnline: true
   }))
   const onlineCount = connectedUsers.length
 
-  // Social events are now handled by broadcastSocialEvent function above
+  // Note: Social events are handled automatically by React Together hooks
 
   // Create post function
   const createPost = (content: string, media?: string, tags: string[] = []) => {
@@ -96,9 +96,11 @@ export function ReactTogetherSocialFeed({
       likedBy: []
     }
 
-    sendSocialEvent({
-      type: 'postCreated',
-      post
+    // Post is automatically synced via React Together
+    setPosts(prev => {
+      const exists = prev.some(p => p.id === post.id)
+      if (exists) return prev
+      return [post, ...prev].slice(0, 50)
     })
   }
 
@@ -118,12 +120,12 @@ export function ReactTogetherSocialFeed({
       newLikedBy.push(myId)
     }
 
-    sendSocialEvent({
-      type: 'postLiked',
-      postId,
-      likes: newLikedBy.length,
-      likedBy: newLikedBy
-    })
+    // Update post likes via React Together
+    setPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, likes: newLikedBy.length, likedBy: newLikedBy }
+        : p
+    ))
   }
 
   // Set nickname function
@@ -192,7 +194,7 @@ export function ReactTogetherSocialFeed({
 
   // Get user nickname
   const getUserNickname = (userId: string) => {
-    return allNicknames[userId] || `Farmer ${userId.slice(0, 6)}`
+    return userNicknames[userId] || `Farmer ${userId.slice(0, 6)}`
   }
 
   // Show loading state during SSR
@@ -406,7 +408,7 @@ export function ReactTogetherSocialFeed({
                         <Heart 
                           className={cn(
                             "h-5 w-5 transition-all duration-200", 
-                            post.likedBy?.has(currentUser?.userId || '') ? "fill-red-500 text-red-500 scale-110" : ""
+                            post.likedBy?.includes(currentUser?.userId || '') ? "fill-red-500 text-red-500 scale-110" : ""
                           )} 
                         />
                         <span>{post.likes || 0}</span>

@@ -107,24 +107,24 @@ export default function FarmFeed() {
   const isConnected = !!myId
   const currentUser = myId ? {
     userId: myId,
-    nickname: `User${myId.slice(-4)}`,
+    nickname: `User${(myId || '').slice(-4)}`,
     isOnline: true
   } : null
-  const users = connectedUsers.map(userId => ({
-    userId,
-    nickname: `User${userId.slice(-4)}`,
+  const users = connectedUsers.map(user => ({
+    userId: user.userId,
+    nickname: user.nickname || `User${(user.userId || '').slice(-4)}`,
     isOnline: true
   }))
   const onlineCount = connectedUsers.length
 
-  // Social events are now handled by broadcastSocialEvent function above
+  // Note: Social events are handled automatically by React Together hooks
 
   // Create post function
   const createPost = (content: string) => {
     if (!content.trim() || !currentUser) return
 
     const post = {
-      id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       userId: currentUser.userId,
       nickname: currentUser.nickname,
       content: content.trim(),
@@ -133,9 +133,11 @@ export default function FarmFeed() {
       likedBy: []
     }
 
-    sendSocialEvent({
-      type: 'postCreated',
-      post
+    // Post is automatically synced via React Together
+    setMultisynqPosts(prev => {
+      const exists = prev.some(p => p.id === post.id)
+      if (exists) return prev
+      return [post, ...prev].slice(0, 50)
     })
   }
 
@@ -155,12 +157,12 @@ export default function FarmFeed() {
       newLikedBy.push(myId)
     }
 
-    sendSocialEvent({
-      type: 'postLiked',
-      postId,
-      likes: newLikedBy.length,
-      likedBy: newLikedBy
-    })
+    // Update post likes via React Together
+    setMultisynqPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, likes: newLikedBy.length, likedBy: newLikedBy }
+        : p
+    ))
   }
 
   const handleLike = (postId: number) => {
@@ -191,29 +193,8 @@ export default function FarmFeed() {
   const handlePost = async () => {
     if (postText.trim()) {
       try {
-        // Use Multisynq createPost if connected, otherwise fallback to local
-        if (isConnected && createPost) {
-          createPost(postText.trim(), "", ["farm", "social"])
-        } else {
-          // Fallback to local posting
-          const newPost = {
-            id: Date.now(),
-            user: {
-              name: currentUser?.nickname || "FarmerJoe123",
-              avatar: "/placeholder.svg?height=40&width=40",
-              level: 42,
-              isPremium: false,
-            },
-            time: "Just now",
-            content: postText,
-            image: "",
-            likes: 0,
-            comments: 0,
-            shares: 0,
-            isNew: true,
-          }
-          setPosts([newPost, ...posts])
-        }
+        // Use local createPost function
+        createPost(postText.trim())
 
         setPostText("")
         setShowConfetti(true)
