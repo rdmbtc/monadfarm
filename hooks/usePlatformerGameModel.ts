@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useStateTogether, useConnectedUsers, useMyId } from 'react-together'
+import { useStateTogether, useMyId } from 'react-together'
 
 // Type definitions for the platformer game
 export interface PlatformerPlayer {
@@ -85,10 +85,10 @@ export interface UsePlatformerGameModelReturn {
   isPlayerActive: (playerId: string) => boolean
 }
 
-export function usePlatformerGameModel(userId?: string, nickname?: string): UsePlatformerGameModelReturn {
+export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelReturn {
   // ReactTogether hooks - following the same pattern as social hub
   const myId = useMyId()
-  const connectedUsers = useConnectedUsers()
+  // Note: connectedUsers could be used for showing online players in UI
 
   // Shared state for multiplayer platformer game
   const [players, setPlayers] = useStateTogether<Record<string, PlatformerPlayer>>('platformer-players', {})
@@ -144,7 +144,7 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
       timestamp: Date.now(),
       type: 'system'
     }
-    setChatMessages(prev => [...prev.slice(-49), welcomeMessage])
+    setChatMessages(prev => [...(prev || []).slice(-49), welcomeMessage])
 
     // Start game session if this is the first player
     if (Object.keys(players).length === 0 && !gameSession) {
@@ -174,7 +174,7 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
         timestamp: Date.now(),
         type: 'system'
       }
-      setChatMessages(prev => [...prev.slice(-49), leaveMessage])
+      setChatMessages(prev => [...(prev || []).slice(-49), leaveMessage])
 
       // Remove player
       setPlayers(prev => {
@@ -264,7 +264,7 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
       timestamp: Date.now(),
       data
     }
-    setGameEvents(prev => [...prev.slice(-99), event])
+    setGameEvents(prev => [...(prev || []).slice(-99), event])
   }, [setPlayers, setGameEvents])
 
   const sendChatMessage = useCallback((
@@ -285,7 +285,7 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
       type: type as any
     }
 
-    setChatMessages(prev => [...prev.slice(-49), message])
+    setChatMessages(prev => [...(prev || []).slice(-49), message])
   }, [setChatMessages])
 
   const startGame = useCallback((level = 1, gameMode = 'cooperative') => {
@@ -320,7 +320,7 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
       timestamp: Date.now(),
       type: 'system'
     }
-    setChatMessages(prev => [...prev.slice(-49), message])
+    setChatMessages(prev => [...(prev || []).slice(-49), message])
   }, [setGameSession, setChatMessages])
 
   const resetGame = useCallback(() => {
@@ -364,7 +364,7 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
       timestamp: Date.now(),
       type: 'system'
     }
-    setChatMessages(prev => [...prev.slice(-49), message])
+    setChatMessages(prev => [...(prev || []).slice(-49), message])
   }, [setPlayers, setGameSession, setGameEvents, setChatMessages])
 
   // Utility functions

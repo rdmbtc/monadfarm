@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useMyId, useConnectedUsers } from 'react-together'
+import { useMyId } from 'react-together'
 import { usePlatformerGameModel } from '../../hooks/usePlatformerGameModel'
 import { useUnifiedNickname } from '../../hooks/useUnifiedNickname'
 import { ReactP5Wrapper } from 'react-p5-wrapper'
 import multiplayerPlatformerSketch from '../games/multiplayer-game'
-import { Users, MessageCircle, Play, RotateCcw, Trophy } from 'lucide-react'
+import { Users, MessageCircle, Play, RotateCcw } from 'lucide-react'
 
 interface MultiplayerPlatformerGameProps {
   farmCoins?: number
@@ -23,10 +23,10 @@ export default function MultiplayerPlatformerGame({
 }: MultiplayerPlatformerGameProps) {
   // ReactTogether hooks
   const myId = useMyId()
-  const connectedUsers = useConnectedUsers()
+  // Note: connectedUsers could be used for showing online players count
 
   const { nickname: currentNickname } = useUnifiedNickname()
-  
+
   // Game state
   const [isClient, setIsClient] = useState(false)
   const [gameStarted, setGameStarted] = useState(false)
@@ -41,9 +41,7 @@ export default function MultiplayerPlatformerGame({
   
   // Use the platformer game model
   const {
-    players,
     gameSession,
-    gameEvents,
     chatMessages,
     myPlayer,
     otherPlayers,
@@ -56,7 +54,7 @@ export default function MultiplayerPlatformerGame({
     sendChatMessage,
     startGame,
     resetGame
-  } = usePlatformerGameModel(myId || undefined, currentNickname || nickname)
+  } = usePlatformerGameModel(myId || undefined)
 
   // Client-side initialization
   useEffect(() => {
@@ -83,22 +81,24 @@ export default function MultiplayerPlatformerGame({
 
   // Sync remote players with the multiplayer game
   useEffect(() => {
-    if (gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
+    if (gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer && otherPlayers) {
       // Update all remote players in the game
       otherPlayers.forEach((player: any) => {
-        gameInstanceRef.current.updateRemotePlayer(player.id, {
-          x: player.x,
-          y: player.y,
-          velocityX: player.velocityX,
-          velocityY: player.velocityY,
-          isOnGround: player.isOnGround,
-          isJumping: player.isJumping,
-          canDoubleJump: player.canDoubleJump,
-          state: player.state,
-          nickname: player.nickname,
-          color: player.color,
-          isActive: player.isActive
-        })
+        if (player && player.id) {
+          gameInstanceRef.current.updateRemotePlayer(player.id, {
+            x: player.x || 0,
+            y: player.y || 0,
+            velocityX: player.velocityX || 0,
+            velocityY: player.velocityY || 0,
+            isOnGround: player.isOnGround || false,
+            isJumping: player.isJumping || false,
+            canDoubleJump: player.canDoubleJump || false,
+            state: player.state || 'idle',
+            nickname: player.nickname || 'Unknown',
+            color: player.color || '#FF6B6B',
+            isActive: player.isActive || false
+          })
+        }
       })
     }
   }, [otherPlayers])
@@ -242,16 +242,16 @@ export default function MultiplayerPlatformerGame({
             
             {/* Chat Messages */}
             <div className="flex-1 p-3 overflow-y-auto max-h-64">
-              {chatMessages.map((message) => (
-                <div key={message.id} className="mb-2">
+              {(chatMessages || []).map((message) => (
+                <div key={message.id || Math.random()} className="mb-2">
                   <div className="text-xs text-gray-400">
                     {message.type === 'system' ? (
                       <span className="text-yellow-400">System</span>
                     ) : (
-                      <span className="text-blue-400">{message.nickname}</span>
+                      <span className="text-blue-400">{message.nickname || 'Unknown'}</span>
                     )}
                   </div>
-                  <div className="text-sm text-white">{message.text}</div>
+                  <div className="text-sm text-white">{message.text || ''}</div>
                 </div>
               ))}
             </div>
