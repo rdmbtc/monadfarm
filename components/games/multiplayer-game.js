@@ -16,43 +16,54 @@ export default function multiplayerPlatformerSketch(p) {
     onGameEvent: null
   }
   
+  // Store original functions
+  let originalSetup = null
+  let originalDraw = null
+
   // Initialize the base game
   const initializeBaseGame = () => {
-    console.log('MultiplayerGame: Initializing base game')
+    console.log('🎮 Multiplayer: Initializing base game')
+
+    // Call platformerSketch which will set p.setup and p.draw
     baseGame = platformerSketch(p)
-    
+
+    // Store the functions that were assigned by platformerSketch
+    originalSetup = p.setup
+    originalDraw = p.draw
+
     // Store reference to the local player
     if (baseGame && baseGame.getPlayer) {
       localPlayer = baseGame.getPlayer()
     }
-    
+
     return baseGame
   }
-  
+
   // Override the base game's setup function
   p.setup = () => {
-    console.log('MultiplayerGame: Setting up multiplayer game')
-    
+    console.log('🎮 Multiplayer: Setting up')
+
     // Initialize base game first
     if (!baseGame) {
       baseGame = initializeBaseGame()
-    }
-    
-    // Call base setup if it exists
-    if (baseGame && baseGame.setup) {
-      baseGame.setup()
-    } else {
-      // Fallback setup
-      p.createCanvas(800, 600)
-      p.background(100, 150, 200)
+
+      // Call the original setup function from the base game
+      if (originalSetup) {
+        console.log('🎮 Multiplayer: Calling base setup')
+        originalSetup()
+      } else {
+        // Fallback setup
+        p.createCanvas(800, 600)
+        p.background(100, 150, 200)
+      }
     }
   }
   
   // Override the base game's draw function
   p.draw = () => {
     // Call base draw if it exists
-    if (baseGame && baseGame.draw) {
-      baseGame.draw()
+    if (originalDraw) {
+      originalDraw()
     } else {
       // Fallback draw
       p.background(100, 150, 200)
@@ -61,10 +72,10 @@ export default function multiplayerPlatformerSketch(p) {
       p.textSize(24)
       p.text('Multiplayer Platformer Loading...', p.width/2, p.height/2)
     }
-    
+
     // Draw remote players
     drawRemotePlayers()
-    
+
     // Draw multiplayer UI
     drawMultiplayerUI()
   }
