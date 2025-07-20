@@ -15,83 +15,74 @@ export default function multiplayerPlatformerSketch(p) {
     onPlayerAction: null,
     onGameEvent: null
   }
+  
+  // CRITICAL: Initialize base game immediately to set up preload function
+  console.log('MultiplayerGame: Initializing base game for asset loading')
+  baseGame = platformerSketch(p)
 
-  // Game mode and multiplayer model callbacks
-  let gameModelCallbacks = {
-    recordStarCollection: null,
-    checkLevelComplete: null,
-    advanceToNextLevel: null
+  // Store reference to the local player
+  if (baseGame && baseGame.getPlayer) {
+    localPlayer = baseGame.getPlayer()
   }
 
-  // Store the original preload function from base game (for reference)
-  let originalPreload = null
+  // The base game has now set up p.preload, p.setup, and p.draw
+  // We need to wrap the setup and draw functions to add multiplayer functionality
 
-  // Initialize base game and preserve preload
-  const initializeWithPreload = () => {
-    console.log('MultiplayerGame: Initializing with preload preservation')
-    baseGame = platformerSketch(p)
+  // Store the original setup function that was set by the base game
+  const originalSetup = p.setup
 
-    // Store the preload function that was set by the base game
-    originalPreload = p.preload
-
-    // Store reference to the local player
-    if (baseGame && baseGame.getPlayer) {
-      localPlayer = baseGame.getPlayer()
-    }
-
-    return baseGame
-  }
-
-  // Call initialization immediately to preserve preload
-  initializeWithPreload()
-
-  // Override the base game's setup function
+  // Override setup to add multiplayer functionality
   p.setup = () => {
-    console.log('MultiplayerGame: Setting up multiplayer game')
+    console.log('MultiplayerGame: Enhanced setup with multiplayer features')
 
-    // Base game should already be initialized with preload preserved
-    // Call base setup if it exists
-    if (baseGame && baseGame.setup) {
-      baseGame.setup()
-
-      // Set up game mode callbacks for multiplayer
-      if (baseGame.setMultiplayerCallbacks) {
-        baseGame.setMultiplayerCallbacks({
-          onStarCollected: (starId, data) => {
-            console.log('MultiplayerGame: Star collected:', starId, data)
-            if (gameModelCallbacks.recordStarCollection) {
-              // Get current player ID from multiplayer callbacks
-              const playerId = multiplayerCallbacks.getCurrentPlayerId?.() || 'local'
-              gameModelCallbacks.recordStarCollection(playerId, starId)
-            }
-          },
-          onLevelComplete: (level) => {
-            console.log('MultiplayerGame: Level complete:', level)
-            if (gameModelCallbacks.advanceToNextLevel) {
-              gameModelCallbacks.advanceToNextLevel()
-            }
-          },
-          checkCanAdvanceLevel: () => {
-            if (gameModelCallbacks.checkLevelComplete) {
-              return gameModelCallbacks.checkLevelComplete()
-            }
-            return false
-          }
-        })
-      }
+    // Call the original base game setup first
+    if (originalSetup) {
+      originalSetup()
     } else {
+      console.error('MultiplayerGame: No original setup function found!')
       // Fallback setup
       p.createCanvas(800, 600)
       p.background(100, 150, 200)
     }
+
+    // Set up game mode callbacks for multiplayer after base setup
+    if (baseGame && baseGame.setMultiplayerCallbacks) {
+      console.log('MultiplayerGame: Setting up multiplayer callbacks')
+      baseGame.setMultiplayerCallbacks({
+        onStarCollected: (starId, data) => {
+          console.log('MultiplayerGame: Star collected:', starId, data)
+          if (gameModelCallbacks.recordStarCollection) {
+            // Get current player ID from multiplayer callbacks
+            const playerId = multiplayerCallbacks.getCurrentPlayerId?.() || 'local'
+            gameModelCallbacks.recordStarCollection(playerId, starId)
+          }
+        },
+        onLevelComplete: (level) => {
+          console.log('MultiplayerGame: Level complete:', level)
+          if (gameModelCallbacks.advanceToNextLevel) {
+            gameModelCallbacks.advanceToNextLevel()
+          }
+        },
+        checkCanAdvanceLevel: () => {
+          if (gameModelCallbacks.checkLevelComplete) {
+            return gameModelCallbacks.checkLevelComplete()
+          }
+          return false
+        }
+      })
+    }
   }
   
-  // Override the base game's draw function
+  // Store the original draw function that was set by the base game
+  const originalDraw = p.draw
+
+  // Override draw to add multiplayer functionality
   p.draw = () => {
-    // Call base draw if it exists
-    if (baseGame && baseGame.draw) {
-      baseGame.draw()
+    // Call the original base game draw first
+    if (originalDraw) {
+      originalDraw()
     } else {
+      console.error('MultiplayerGame: No original draw function found!')
       // Fallback draw
       p.background(100, 150, 200)
       p.fill(255)
@@ -278,19 +269,6 @@ export default function multiplayerPlatformerSketch(p) {
   const setMultiplayerCallbacks = (callbacks) => {
     multiplayerCallbacks = { ...multiplayerCallbacks, ...callbacks }
   }
-
-  // Function to set game model callbacks
-  const setGameModelCallbacks = (callbacks) => {
-    gameModelCallbacks = { ...gameModelCallbacks, ...callbacks }
-  }
-
-  // Function to set game mode
-  const setGameMode = (mode) => {
-    console.log('MultiplayerGame: Setting game mode to:', mode)
-    if (baseGame && baseGame.setGameMode) {
-      baseGame.setGameMode(mode)
-    }
-  }
   
   // Function to cleanup inactive players
   const cleanupInactivePlayers = () => {
@@ -313,22 +291,18 @@ export default function multiplayerPlatformerSketch(p) {
     // Base game access
     getBaseGame: () => baseGame,
     getLocalPlayer: () => localPlayer,
-
+    
     // Multiplayer functions
     updateRemotePlayer,
     removeRemotePlayer,
     getLocalPlayerData,
     setMultiplayerCallbacks,
     handlePlayerAction,
-
-    // Game mode and model functions
-    setGameMode,
-    setGameModelCallbacks,
-
+    
     // State access
     getRemotePlayers: () => Array.from(remotePlayers.values()),
     getPlayerCount: () => remotePlayers.size + 1,
-
+    
     // Utility
     isMultiplayerActive: () => remotePlayers.size > 0
   }

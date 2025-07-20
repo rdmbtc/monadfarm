@@ -85,7 +85,14 @@ export interface UsePlatformerGameModelReturn {
   sendChatMessage: (playerId: string, nickname: string, text: string, type?: string) => void
   startGame: (level?: number, gameMode?: string, playMode?: 'single' | 'online') => void
   resetGame: () => void
-  
+
+  // New lobby and game state functions
+  setGameMode: (playMode: 'single' | 'online') => void
+  canStartGame: () => boolean
+  recordStarCollection: (playerId: string, starId: string) => void
+  checkLevelComplete: () => boolean
+  advanceToNextLevel: () => void
+
   // Utility
   getPlayerById: (playerId: string) => PlatformerPlayer | null
   isPlayerActive: (playerId: string) => boolean
@@ -396,12 +403,92 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
   const isPlayerActive = useCallback((playerId: string): boolean => {
     const player = players[playerId]
     if (!player) return false
-    
+
     // Consider player active if they've updated within the last 5 seconds
     const now = Date.now()
     const timeSinceUpdate = now - (player.lastUpdate || 0)
     return timeSinceUpdate < 5000
   }, [players])
+
+  // New lobby and game state management functions
+  const setGameMode = useCallback((playMode: 'single' | 'online') => {
+    setGameSession(prev => prev ? {
+      ...prev,
+      playMode,
+      requiredPlayers: playMode === 'single' ? 1 : 2,
+      levelCompleteRequirement: playMode === 'single' ? 'any_player' : 'all_players',
+      starsCollectedThisLevel: {} // Reset star collection when changing modes
+    } : null)
+  }, [setGameSession])
+
+  const canStartGame = useCallback((): boolean => {
+    if (!gameSession) return false
+    const activePlayerCount = Object.values(players).filter(p => isPlayerActive(p.id)).length
+    return activePlayerCount >= gameSession.requiredPlayers && gameSession.state === 'lobby'
+  }, [gameSession, players, isPlayerActive])
+
+  const recordStarCollection = useCallback((playerId: string, starId: string) => {
+    console.log('usePlatformerGameModel: Recording star collection:', { playerId, starId })
+
+    setGameSession(prev => {
+      if (!prev) return prev
+
+      const newStarsCollected = {
+        ...prev.starsCollectedThisLevel,
+        [playerId]: true
+      }
+
+      return {
+        ...prev,
+        starsCollectedThisLevel: newStarsCollected
+      }
+    })
+
+    // Also trigger the player action for consistency
+    performPlayerAction(playerId, 'collect-star', { starId })
+  }, [setGameSession, performPlayerAction])
+
+  const checkLevelComplete = useCallback((): boolean => {
+    if (!gameSession) return false
+
+    const activePlayerIds = Object.values(players)
+      .filter(p => isPlayerActive(p.id))
+      .map(p => p.id)
+
+    if (gameSession.levelCompleteRequirement === 'any_player') {
+      // Single player mode: any player collecting a star completes the level
+      return activePlayerIds.some(playerId => gameSession.starsCollectedThisLevel[playerId])
+    } else {
+      // Online mode: all active players must collect stars
+      return activePlayerIds.length > 0 &&
+             activePlayerIds.every(playerId => gameSession.starsCollectedThisLevel[playerId])
+    }
+  }, [gameSession, players, isPlayerActive])
+
+  const advanceToNextLevel = useCallback(() => {
+    console.log('usePlatformerGameModel: Advancing to next level')
+
+    setGameSession(prev => {
+      if (!prev) return prev
+
+      return {
+        ...prev,
+        currentLevel: prev.currentLevel + 1,
+        starsCollectedThisLevel: {} // Reset star collection for new level
+      }
+    })
+
+    // Add system message
+    const message: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      playerId: 'system',
+      nickname: 'System',
+      text: `Level ${gameSession?.currentLevel || 1} complete! Moving to level ${(gameSession?.currentLevel || 1) + 1}`,
+      timestamp: Date.now(),
+      type: 'system'
+    }
+    setChatMessages(prev => [...(prev || []).slice(-49), message])
+  }, [gameSession, setGameSession, setChatMessages])
 
   return {
     // State
@@ -422,7 +509,14 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
     sendChatMessage,
     startGame,
     resetGame,
-    
+
+    // New lobby and game state functions
+    setGameMode,
+    canStartGame,
+    recordStarCollection,
+    checkLevelComplete,
+    advanceToNextLevel,
+
     // Utility
     getPlayerById,
     isPlayerActive
