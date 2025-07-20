@@ -83,9 +83,10 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, myId, leaveGame])
 
-  // Sync remote players with the multiplayer game
+  // Sync remote players with the multiplayer game (only in online mode)
   useEffect(() => {
-    if (gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
+    if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
+      console.log('🌐 Syncing remote players:', otherPlayers.length)
       // Update all remote players in the game
       otherPlayers.forEach((player: any) => {
         gameInstanceRef.current.updateRemotePlayer(player.id, {
@@ -103,12 +104,13 @@ export default function MultiplayerPlatformerGame({
         })
       })
     }
-  }, [otherPlayers])
+  }, [gameMode, otherPlayers])
 
-  // Sync local player position periodically
+  // Sync local player position periodically (only in online mode)
   useEffect(() => {
-    if (!gameInstanceRef.current || !myId) return
+    if (gameMode !== 'online' || !gameInstanceRef.current || !myId) return
 
+    console.log('🌐 Starting position sync for player:', myId)
     const syncInterval = setInterval(() => {
       const localPlayerData = gameInstanceRef.current.getLocalPlayerData?.()
       if (localPlayerData) {
@@ -117,7 +119,7 @@ export default function MultiplayerPlatformerGame({
     }, 1000 / 30) // 30 FPS sync rate
 
     return () => clearInterval(syncInterval)
-  }, [myId, updatePlayerPosition])
+  }, [gameMode, myId, updatePlayerPosition])
 
   // Handle chat message submission
   const handleSendChatMessage = useCallback((e: React.FormEvent) => {
@@ -144,19 +146,50 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, resetGame])
 
-  // Create the game sketch - SIMPLE TEST VERSION
+  // Create the game sketch - REAL GAME WITH FALLBACK
   const createGameSketch = useCallback((p: any) => {
     console.log('🎮 Creating game sketch, mode:', gameMode)
 
-    // Simple test sketch first
+    try {
+      // Try to create the real multiplayer game
+      console.log('🎮 Attempting to create real game...')
+      const game = multiplayerPlatformerSketch(p)
+
+      if (game) {
+        console.log('✅ Real game created successfully!')
+        gameInstanceRef.current = game
+
+        // Set up multiplayer callbacks only in online mode
+        if (gameMode === 'online' && game.setMultiplayerCallbacks) {
+          console.log('� Setting up multiplayer callbacks')
+          game.setMultiplayerCallbacks({
+            onPlayerUpdate: (playerData: any) => {
+              if (myId && updatePlayerPosition) {
+                updatePlayerPosition(myId, playerData)
+              }
+            },
+            onPlayerAction: (action: string, data: any) => {
+              if (myId && performPlayerAction) {
+                performPlayerAction(myId, action, data)
+              }
+            }
+          })
+        }
+
+        return game
+      }
+    } catch (error) {
+      console.error('❌ Error creating real game:', error)
+    }
+
+    // Fallback: Simple working game
+    console.log('🎮 Using fallback simple game')
     p.setup = () => {
-      console.log('🎮 P5 Setup called')
+      console.log('🎮 Fallback setup called')
       p.createCanvas(800, 600)
-      console.log('🎮 Canvas created: 800x600')
     }
 
     p.draw = () => {
-      // Simple test draw
       p.background(50, 100, 150)
       p.fill(255)
       p.textAlign(p.CENTER, p.CENTER)
@@ -164,16 +197,23 @@ export default function MultiplayerPlatformerGame({
       p.text(`MonFarm Platformer - ${gameMode.toUpperCase()} MODE`, p.width/2, p.height/2 - 50)
       p.textSize(16)
       p.text(`Players: ${playerCount}`, p.width/2, p.height/2)
-      p.text('Game is loading...', p.width/2, p.height/2 + 30)
+      p.text('Simple mode - Real game failed to load', p.width/2, p.height/2 + 30)
 
-      // Draw a simple moving rectangle
+      // Moving rectangle
       p.fill(255, 100, 100)
       p.rect(p.width/2 - 25 + Math.sin(p.frameCount * 0.05) * 100, p.height/2 + 100, 50, 50)
+
+      // Mode indicator
+      p.fill(gameMode === 'online' ? 'green' : 'blue')
+      p.circle(50, 50, 30)
+      p.fill(255)
+      p.textAlign(p.LEFT, p.TOP)
+      p.textSize(12)
+      p.text(gameMode === 'online' ? 'ONLINE' : 'SINGLE', 70, 45)
     }
 
-    console.log('✅ Simple game sketch created')
-    return p
-  }, [gameMode, playerCount])
+    console.log('✅ Fallback game setup complete')
+  }, [gameMode, playerCount, myId, updatePlayerPosition, performPlayerAction])
 
   if (!isClient) {
     return (
@@ -267,13 +307,15 @@ export default function MultiplayerPlatformerGame({
       </div>
 
       {/* Game Canvas - Full Width */}
-      <div className="w-full">
-        <ReactP5Wrapper
-          key={`game-${gameMode}`}
-          sketch={createGameSketch}
-          volume={masterVolume}
-          isActive={true}
-        />
+      <div className="w-full bg-gray-800 flex justify-center items-center min-h-[600px]">
+        {isClient ? (
+          <ReactP5Wrapper
+            key={`game-${gameMode}`}
+            sketch={createGameSketch}
+          />
+        ) : (
+          <div className="text-white text-xl">Loading game...</div>
+        )}
       </div>
 
       {/* Chat Panel (only in online mode) - Overlay */}
