@@ -22,29 +22,34 @@ export default function multiplayerPlatformerSketch(p) {
     checkLevelComplete: null,
     advanceToNextLevel: null
   }
-  
-  // Initialize the base game
-  const initializeBaseGame = () => {
-    console.log('MultiplayerGame: Initializing base game')
+
+  // Store the original preload function from base game (for reference)
+  let originalPreload = null
+
+  // Initialize base game and preserve preload
+  const initializeWithPreload = () => {
+    console.log('MultiplayerGame: Initializing with preload preservation')
     baseGame = platformerSketch(p)
-    
+
+    // Store the preload function that was set by the base game
+    originalPreload = p.preload
+
     // Store reference to the local player
     if (baseGame && baseGame.getPlayer) {
       localPlayer = baseGame.getPlayer()
     }
-    
+
     return baseGame
   }
-  
+
+  // Call initialization immediately to preserve preload
+  initializeWithPreload()
+
   // Override the base game's setup function
   p.setup = () => {
     console.log('MultiplayerGame: Setting up multiplayer game')
-    
-    // Initialize base game first
-    if (!baseGame) {
-      baseGame = initializeBaseGame()
-    }
-    
+
+    // Base game should already be initialized with preload preserved
     // Call base setup if it exists
     if (baseGame && baseGame.setup) {
       baseGame.setup()
@@ -108,7 +113,7 @@ export default function multiplayerPlatformerSketch(p) {
     
     p.push()
     
-    for (const [playerId, remotePlayer] of remotePlayers) {
+    for (const [, remotePlayer] of remotePlayers) {
       if (!remotePlayer.isActive) continue
       
       // Apply camera offset (same as local player)
