@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { ReactTogether } from 'react-together'
 import { ReactTogetherErrorBoundary } from './ReactTogetherErrorBoundary'
 import MultiplayerPlatformerGame from './MultiplayerPlatformerGame'
@@ -47,17 +47,17 @@ export default function MultiplayerPlatformerWrapper(props: MultiplayerPlatforme
       <ReactTogether
         sessionParams={{
           apiKey: apiKey,
-          appId: "monfarm.platformer.multiplayer",
-          name: "monfarm-platformer-session",
+          appId: "monfarm.platformer.multiplayer.stable",
+          name: "monfarm-platformer-main-lobby",
           password: "public"
         }}
         rememberUsers={true}
-        deriveNickname={(userId) => {
+        deriveNickname={(_userId: string) => {
           // Custom logic to derive initial nickname from localStorage
           if (typeof window !== "undefined") {
             const stored = localStorage.getItem('player-nickname')
             if (stored && stored.trim() !== '') {
-              console.log('MultiplayerPlatformer ReactTogether deriveNickname: Using stored nickname:', stored)
+              console.log('🎮 Using stored nickname:', stored)
               return stored
             }
           }
@@ -67,7 +67,7 @@ export default function MultiplayerPlatformerWrapper(props: MultiplayerPlatforme
           const adj = adjectives[Math.floor(Math.random() * adjectives.length)]
           const hero = heroes[Math.floor(Math.random() * heroes.length)]
           const fallbackName = `${adj} ${hero}`
-          console.log('MultiplayerPlatformer ReactTogether deriveNickname: Using fallback nickname:', fallbackName)
+          console.log('🎮 Using fallback nickname:', fallbackName)
           return fallbackName
         }}
       >

@@ -34,6 +34,8 @@ export default function MultiplayerPlatformerGame({
   const [showChat, setShowChat] = useState(false)
   const [chatMessage, setChatMessage] = useState('')
   const [masterVolume, setMasterVolume] = useState(1.0)
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected')
+  const [retryCount, setRetryCount] = useState(0)
 
   // Refs
   const gameInstanceRef = useRef<any>(null)
@@ -73,20 +75,59 @@ export default function MultiplayerPlatformerGame({
     setIsClient(true)
   }, [])
 
-  // Join game when switching to online mode - STABLE VERSION
+  // Connection monitoring
+  useEffect(() => {
+    if (gameMode === 'online') {
+      if (myId && currentNickname) {
+        setConnectionStatus('connected')
+        setRetryCount(0)
+      } else {
+        setConnectionStatus('connecting')
+      }
+    } else {
+      setConnectionStatus('disconnected')
+    }
+  }, [gameMode, myId, currentNickname])
+
+  // Join game when switching to online mode - STABLE VERSION WITH RETRY
   useEffect(() => {
     if (gameMode === 'online' && myId && currentNickname && !myPlayer) {
       console.log('🌐 Joining online game as:', currentNickname, 'ID:', myId)
-      // Add delay to ensure connection is stable
-      const joinTimeout = setTimeout(() => {
-        if (multiplayerData?.joinGame) {
-          multiplayerData.joinGame(myId, currentNickname)
-        }
-      }, 500) // 500ms delay
 
-      return () => clearTimeout(joinTimeout)
+      const attemptJoin = (attempt: number = 1) => {
+        const maxAttempts = 3
+        const delay = Math.min(1000 * attempt, 5000) // Exponential backoff, max 5s
+
+        console.log(`🌐 Join attempt ${attempt}/${maxAttempts}`)
+        setRetryCount(attempt)
+
+        const joinTimeout = setTimeout(() => {
+          try {
+            if (multiplayerData?.joinGame) {
+              multiplayerData.joinGame(myId, currentNickname)
+              console.log('🌐 Join attempt successful')
+            } else {
+              throw new Error('joinGame function not available')
+            }
+          } catch (error) {
+            console.error(`🌐 Join attempt ${attempt} failed:`, error)
+            if (attempt < maxAttempts) {
+              console.log(`🌐 Retrying in ${delay}ms...`)
+              setTimeout(() => attemptJoin(attempt + 1), delay)
+            } else {
+              console.error('🌐 All join attempts failed')
+              setConnectionStatus('error')
+            }
+          }
+        }, delay)
+
+        return joinTimeout
+      }
+
+      const timeout = attemptJoin(1)
+      return () => clearTimeout(timeout)
     }
-  }, [gameMode, myId, currentNickname]) // Removed myPlayer and joinGame to prevent reconnections
+  }, [gameMode, myId, currentNickname]) // Removed myPlayer to prevent reconnections
 
   // Leave game when switching to single player mode
   useEffect(() => {
@@ -147,33 +188,63 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, otherPlayers])
 
+  // Connection health check
+  useEffect(() => {
+    if (gameMode !== 'online') return
+
+    const healthCheckInterval = setInterval(() => {
+      // Check if we have a valid connection
+      if (myId && multiplayerData) {
+        // Connection seems healthy
+        if (connectionStatus !== 'connected') {
+          setConnectionStatus('connected')
+        }
+      } else {
+        // Connection might be unhealthy
+        if (connectionStatus === 'connected') {
+          console.warn('🌐 Connection health check failed')
+          setConnectionStatus('connecting')
+        }
+      }
+    }, 5000) // Check every 5 seconds
+
+    return () => clearInterval(healthCheckInterval)
+  }, [gameMode, myId, multiplayerData, connectionStatus])
+
   // Sync local player position periodically (only in online mode) - REDUCED FREQUENCY
   useEffect(() => {
-    if (gameMode !== 'online' || !gameInstanceRef.current || !myId) return
+    if (gameMode !== 'online' || !gameInstanceRef.current || !myId || connectionStatus !== 'connected') return
 
     console.log('🌐 Starting position sync for player:', myId)
     let syncAttempts = 0
     const maxSyncAttempts = 3
+    let lastSyncTime = 0
 
     const syncInterval = setInterval(() => {
+      const now = Date.now()
+      // Throttle sync to prevent spam
+      if (now - lastSyncTime < 200) return // Min 200ms between syncs
+
       try {
         const localPlayerData = gameInstanceRef.current.getLocalPlayerData?.()
         if (localPlayerData && multiplayerData?.updatePlayerPosition) {
           multiplayerData.updatePlayerPosition(myId, localPlayerData)
           syncAttempts = 0 // Reset on success
+          lastSyncTime = now
         }
       } catch (error) {
         syncAttempts++
         console.warn(`🌐 Sync attempt ${syncAttempts}/${maxSyncAttempts} failed:`, error)
         if (syncAttempts >= maxSyncAttempts) {
-          console.error('🌐 Max sync attempts reached, stopping sync')
+          console.error('🌐 Max sync attempts reached, marking connection as error')
+          setConnectionStatus('error')
           clearInterval(syncInterval)
         }
       }
-    }, 1000 / 5) // Further reduced to 5 FPS to be more conservative
+    }, 1000 / 3) // Reduced to 3 FPS to be very conservative
 
     return () => clearInterval(syncInterval)
-  }, [gameMode, myId]) // Removed updatePlayerPosition to prevent reconnections
+  }, [gameMode, myId, connectionStatus]) // Added connectionStatus dependency
 
   // Handle chat message submission
   const handleSendChatMessage = useCallback((e: React.FormEvent) => {
@@ -289,10 +360,24 @@ export default function MultiplayerPlatformerGame({
 
       {/* Connection Status */}
       {gameMode === 'online' && (
-        <div className="bg-blue-900 p-2 text-xs text-white">
-          🌐 Connection: {myId ? 'Connected' : 'Connecting...'} |
+        <div className={`p-2 text-xs text-white ${
+          connectionStatus === 'connected' ? 'bg-green-900' :
+          connectionStatus === 'connecting' ? 'bg-yellow-900' :
+          connectionStatus === 'error' ? 'bg-red-900' : 'bg-blue-900'
+        }`}>
+          🌐 {connectionStatus === 'connected' ? 'Connected' :
+               connectionStatus === 'connecting' ? `Connecting... ${retryCount > 0 ? `(Attempt ${retryCount})` : ''}` :
+               connectionStatus === 'error' ? 'Connection Failed' : 'Disconnected'} |
           Players: {playerCount} |
           Status: {myPlayer ? 'In Game' : 'Joining...'}
+          {connectionStatus === 'error' && (
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-2 px-2 py-1 bg-red-700 hover:bg-red-600 rounded text-xs"
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 
