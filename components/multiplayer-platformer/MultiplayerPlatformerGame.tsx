@@ -5,8 +5,8 @@ import { useMyId } from 'react-together'
 import { usePlatformerGameModel } from '../../hooks/usePlatformerGameModel'
 import { useUnifiedNickname } from '../../hooks/useUnifiedNickname'
 import { ReactP5Wrapper } from 'react-p5-wrapper'
-import multiplayerPlatformerSketch from '../games/multiplayer-game'
-import { Users, MessageCircle, Play, RotateCcw } from 'lucide-react'
+import platformerSketch from '../games/game'
+import { Users, MessageCircle, Gamepad2, Wifi, WifiOff } from 'lucide-react'
 
 interface MultiplayerPlatformerGameProps {
   farmCoins?: number
@@ -14,6 +14,8 @@ interface MultiplayerPlatformerGameProps {
   nickname?: string
   playerLevel?: number
 }
+
+type GameMode = 'single' | 'online'
 
 export default function MultiplayerPlatformerGame({
   farmCoins = 1000,
@@ -23,13 +25,11 @@ export default function MultiplayerPlatformerGame({
 }: MultiplayerPlatformerGameProps) {
   // ReactTogether hooks
   const myId = useMyId()
-  // Note: connectedUsers could be used for showing online players count
-
   const { nickname: currentNickname } = useUnifiedNickname()
-
-  // Game state
+  
+  // Game mode and state
+  const [gameMode, setGameMode] = useState<GameMode>('single')
   const [isClient, setIsClient] = useState(false)
-  const [gameStarted, setGameStarted] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [chatMessage, setChatMessage] = useState('')
   const [masterVolume, setMasterVolume] = useState(1.0)
@@ -39,143 +39,72 @@ export default function MultiplayerPlatformerGame({
   const p5InstanceRef = useRef<any>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
   
-  // Use the platformer game model
+  // Conditionally use multiplayer model only in online mode
+  const multiplayerData = gameMode === 'online' ? usePlatformerGameModel(myId || undefined) : null
+  
+  // Extract multiplayer data with fallbacks
   const {
-    gameSession,
-    chatMessages,
-    myPlayer,
-    otherPlayers,
-    isGameActive,
-    playerCount,
-    joinGame,
-    leaveGame,
-    updatePlayerPosition,
-    performPlayerAction,
-    sendChatMessage,
-    startGame,
-    resetGame
-  } = usePlatformerGameModel(myId || undefined)
+    chatMessages = [],
+    myPlayer = null,
+    otherPlayers = [],
+    playerCount = gameMode === 'online' ? (multiplayerData?.playerCount || 0) : 1,
+    joinGame = () => {},
+    leaveGame = () => {},
+    sendChatMessage = () => {}
+  } = multiplayerData || {}
 
   // Client-side initialization
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Join game when component mounts
+  // Join game when switching to online mode
   useEffect(() => {
-    if (myId && currentNickname && !myPlayer) {
-      console.log('MultiplayerPlatformerGame: Joining game as:', currentNickname)
+    if (gameMode === 'online' && myId && currentNickname && !myPlayer && joinGame) {
+      console.log('Joining online game as:', currentNickname)
       joinGame(myId, currentNickname)
     }
-  }, [myId, currentNickname, myPlayer, joinGame])
+  }, [gameMode, myId, currentNickname, myPlayer, joinGame])
 
-  // Leave game when component unmounts
+  // Leave game when switching to single player mode
   useEffect(() => {
     return () => {
-      if (myId) {
-        console.log('MultiplayerPlatformerGame: Leaving game')
+      if (gameMode === 'online' && myId && leaveGame) {
+        console.log('Leaving online game')
         leaveGame(myId)
       }
     }
-  }, [myId, leaveGame])
-
-  // Sync remote players with the multiplayer game
-  useEffect(() => {
-    if (gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer && otherPlayers) {
-      // Update all remote players in the game
-      otherPlayers.forEach((player: any) => {
-        if (player && player.id) {
-          gameInstanceRef.current.updateRemotePlayer(player.id, {
-            x: player.x || 0,
-            y: player.y || 0,
-            velocityX: player.velocityX || 0,
-            velocityY: player.velocityY || 0,
-            isOnGround: player.isOnGround || false,
-            isJumping: player.isJumping || false,
-            canDoubleJump: player.canDoubleJump || false,
-            state: player.state || 'idle',
-            nickname: player.nickname || 'Unknown',
-            color: player.color || '#FF6B6B',
-            isActive: player.isActive || false
-          })
-        }
-      })
-    }
-  }, [otherPlayers])
-
-  // Sync local player position periodically
-  useEffect(() => {
-    if (!gameInstanceRef.current || !myId) return
-
-    const syncInterval = setInterval(() => {
-      const localPlayerData = gameInstanceRef.current.getLocalPlayerData?.()
-      if (localPlayerData) {
-        updatePlayerPosition(myId, localPlayerData)
-      }
-    }, 1000 / 30) // 30 FPS sync rate
-
-    return () => clearInterval(syncInterval)
-  }, [myId, updatePlayerPosition])
+  }, [gameMode, myId, leaveGame])
 
   // Handle chat message submission
   const handleSendChatMessage = useCallback((e: React.FormEvent) => {
     e.preventDefault()
-    if (chatMessage.trim() && myId && currentNickname) {
+    if (chatMessage.trim() && myId && currentNickname && sendChatMessage) {
       sendChatMessage(myId, currentNickname, chatMessage.trim())
       setChatMessage('')
     }
   }, [chatMessage, myId, currentNickname, sendChatMessage])
 
-  // Handle game start
-  const handleStartGame = useCallback(() => {
-    console.log('MultiplayerPlatformerGame: Starting game')
-    startGame(1, 'cooperative')
-    setGameStarted(true)
-  }, [startGame])
-
-  // Handle game reset
-  const handleResetGame = useCallback(() => {
-    console.log('MultiplayerPlatformerGame: Resetting game')
-    resetGame()
-    setGameStarted(false)
-  }, [resetGame])
-
-  // Create the multiplayer sketch wrapper
-  const createMultiplayerSketch = useCallback((p: any) => {
-    console.log('MultiplayerPlatformerGame: Creating multiplayer sketch')
-
+  // Create the game sketch (same for both modes, but online mode will sync state)
+  const createGameSketch = useCallback((p: any) => {
+    console.log('Creating platformer game sketch, mode:', gameMode)
+    
     // Store p5 instance
     p5InstanceRef.current = p
-
-    // Create the multiplayer game sketch
-    const multiplayerGame = multiplayerPlatformerSketch(p)
-
-    // Store game instance
-    gameInstanceRef.current = multiplayerGame
     
-    // Set up multiplayer callbacks
-    if (multiplayerGame && multiplayerGame.setMultiplayerCallbacks) {
-      multiplayerGame.setMultiplayerCallbacks({
-        onPlayerUpdate: (playerData: any) => {
-          if (myId) {
-            updatePlayerPosition(myId, playerData)
-          }
-        },
-        onPlayerAction: (action: string, data: any) => {
-          if (myId) {
-            performPlayerAction(myId, action, data)
-          }
-        }
-      })
-    }
-
-    return multiplayerGame
-  }, [myId, myPlayer, otherPlayers, playerCount, gameSession, updatePlayerPosition, performPlayerAction])
+    // Create the base game
+    const game = platformerSketch(p)
+    
+    // Store game instance
+    gameInstanceRef.current = game
+    
+    return game
+  }, [gameMode])
 
   if (!isClient) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-900 rounded-lg">
-        <div className="text-white">Loading multiplayer platformer...</div>
+        <div className="text-white">Loading platformer game...</div>
       </div>
     )
   }
@@ -186,7 +115,35 @@ export default function MultiplayerPlatformerGame({
       <div className="bg-gray-900 p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h3 className="text-lg font-bold text-white">MonFarm Platformer - Multiplayer</h3>
+            <h3 className="text-lg font-bold text-white">MonFarm Platformer</h3>
+            
+            {/* Game Mode Selector */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setGameMode('single')}
+                className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors ${
+                  gameMode === 'single' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <Gamepad2 className="h-4 w-4" />
+                Single Player
+              </button>
+              <button
+                onClick={() => setGameMode('online')}
+                className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors ${
+                  gameMode === 'online' 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <Wifi className="h-4 w-4" />
+                Online Mode
+              </button>
+            </div>
+            
+            {/* Player Count */}
             <div className="flex items-center gap-2 text-sm text-gray-300">
               <Users className="h-4 w-4" />
               <span>{playerCount} player{playerCount !== 1 ? 's' : ''}</span>
@@ -194,31 +151,16 @@ export default function MultiplayerPlatformerGame({
           </div>
           
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center gap-1"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Chat
-            </button>
-            
-            {!isGameActive && (
+            {/* Chat Toggle (only in online mode) */}
+            {gameMode === 'online' && (
               <button
-                onClick={handleStartGame}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-1"
+                onClick={() => setShowChat(!showChat)}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center gap-1"
               >
-                <Play className="h-4 w-4" />
-                Start Game
+                <MessageCircle className="h-4 w-4" />
+                Chat
               </button>
             )}
-            
-            <button
-              onClick={handleResetGame}
-              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm flex items-center gap-1"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset
-            </button>
           </div>
         </div>
       </div>
@@ -227,14 +169,14 @@ export default function MultiplayerPlatformerGame({
         {/* Game Canvas */}
         <div className="flex-1">
           <ReactP5Wrapper 
-            sketch={createMultiplayerSketch}
+            sketch={createGameSketch}
             volume={masterVolume}
             isActive={true}
           />
         </div>
 
-        {/* Chat Panel */}
-        {showChat && (
+        {/* Chat Panel (only in online mode) */}
+        {gameMode === 'online' && showChat && (
           <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
             <div className="p-3 border-b border-gray-700">
               <h4 className="text-white font-semibold">Game Chat</h4>
