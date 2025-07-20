@@ -14,8 +14,8 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { RewardPopup } from "@/components/ui/reward-popup"
 
-// Dynamically import components that use React Together hooks to avoid SSR issues
-const FarmFeed = dynamic(() => import("@/components/farm-feed"), {
+// Dynamically import components (using local versions to avoid ReactTogether dependency)
+const FarmFeed = dynamic(() => import("../components/farm-feed"), {
   ssr: false,
   loading: () => (
     <div className="bg-[#171717] border border-[#333] rounded-lg p-8">
@@ -27,7 +27,7 @@ const FarmFeed = dynamic(() => import("@/components/farm-feed"), {
   )
 })
 
-const FriendSuggestions = dynamic(() => import("@/components/friend-suggestions"), {
+const FriendSuggestions = dynamic(() => import("../components/friend-suggestions"), {
   ssr: false,
   loading: () => (
     <div className="bg-[#171717] border border-[#333] rounded-lg p-8">

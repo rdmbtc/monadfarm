@@ -8,14 +8,14 @@ import dynamic from "next/dynamic"
 import { ReactTogether } from 'react-together'
 import { ErrorBoundary } from "../../../components/error-boundary"
 
-// Dynamically import FarmFeed to avoid SSR issues
-const FarmFeed = dynamic(() => import("../../../components/farm-feed"), {
+// Dynamically import FarmFeed to avoid SSR issues (using local version)
+const FarmFeed = dynamic(() => import("../components/farm-feed"), {
   ssr: false,
   loading: () => <div className="text-white">Loading feed...</div>
 })
 import { EventsCarousel } from "../../../components/events-carousel"
-// Dynamically import FriendSuggestions to avoid SSR issues
-const FriendSuggestions = dynamic(() => import("../../../components/friend-suggestions"), {
+// Dynamically import FriendSuggestions to avoid SSR issues (using local version)
+const FriendSuggestions = dynamic(() => import("../components/friend-suggestions"), {
   ssr: false,
   loading: () => <div className="text-white">Loading friends...</div>
 })

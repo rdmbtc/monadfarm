@@ -48,14 +48,25 @@ export interface UsePlatformerGameModelReturn {
 }
 
 export function usePlatformerGameModel(userId?: string, nickname?: string): UsePlatformerGameModelReturn {
-  // Get the model instance
-  const model = useModel() as PlatformerGameModel | null
+  // Get the model instance with error handling
+  let model: PlatformerGameModel | null = null
+  let players: Record<string, PlatformerPlayer> = {}
+  let gameSession: GameSession | null = null
+  let gameEvents: GameEvent[] = []
+  let chatMessages: ChatMessage[] = []
 
-  // State selectors using useModelSelector
-  const players = useModelSelector((state: any) => state.players || {})
-  const gameSession = useModelSelector((state: any) => state.gameSession || null)
-  const gameEvents = useModelSelector((state: any) => state.gameEvents || [])
-  const chatMessages = useModelSelector((state: any) => state.chatMessages || [])
+  try {
+    model = useModel() as PlatformerGameModel | null
+
+    // State selectors using useModelSelector
+    players = useModelSelector((state: any) => state.players || {})
+    gameSession = useModelSelector((state: any) => state.gameSession || null)
+    gameEvents = useModelSelector((state: any) => state.gameEvents || [])
+    chatMessages = useModelSelector((state: any) => state.chatMessages || [])
+  } catch (error) {
+    console.warn('usePlatformerGameModel: ReactTogether context not available, using fallback values:', error)
+    // Fallback values are already set above
+  }
 
   // Get current player
   const myPlayer = userId ? players[userId] || null : null
@@ -67,47 +78,60 @@ export function usePlatformerGameModel(userId?: string, nickname?: string): UseP
   const isGameActive = gameSession?.isActive || false
   const playerCount = Object.keys(players).length
 
-  // Event publishers
-  const publishPlayerJoin = usePublish((data: { playerId: string; nickname: string }) => 
-    [model?.id, 'player-join', data]
-  )
-  
-  const publishPlayerLeave = usePublish((data: { playerId: string }) => 
-    [model?.id, 'player-leave', data]
-  )
-  
-  const publishPlayerUpdate = usePublish((data: { 
-    playerId: string
-    x: number
-    y: number
-    velocityX: number
-    velocityY: number
-    isOnGround: boolean
-    isJumping: boolean
-    canDoubleJump: boolean
-    state: string
-  }) => [model?.id, 'player-update', data])
-  
-  const publishPlayerAction = usePublish((data: {
-    playerId: string
-    action: string
-    data?: any
-  }) => [model?.id, 'player-action', data])
-  
-  const publishChatMessage = usePublish((data: {
-    playerId: string
-    nickname: string
-    text: string
-    type?: string
-  }) => [model?.id, 'chat-message', data])
-  
-  const publishStartGame = usePublish((data: { level?: number; gameMode?: string }) => 
-    [model?.id, 'start-game', data]
-  )
-  
-  const publishResetGame = usePublish(() => 
-    [model?.id, 'reset-game', {}]
-  )
+  // Event publishers with error handling
+  let publishPlayerJoin: any = () => {}
+  let publishPlayerLeave: any = () => {}
+  let publishPlayerUpdate: any = () => {}
+  let publishPlayerAction: any = () => {}
+  let publishChatMessage: any = () => {}
+  let publishStartGame: any = () => {}
+  let publishResetGame: any = () => {}
+
+  try {
+    publishPlayerJoin = usePublish((data: { playerId: string; nickname: string }) =>
+      [model?.id, 'player-join', data]
+    )
+
+    publishPlayerLeave = usePublish((data: { playerId: string }) =>
+      [model?.id, 'player-leave', data]
+    )
+
+    publishPlayerUpdate = usePublish((data: {
+      playerId: string
+      x: number
+      y: number
+      velocityX: number
+      velocityY: number
+      isOnGround: boolean
+      isJumping: boolean
+      canDoubleJump: boolean
+      state: string
+    }) => [model?.id, 'player-update', data])
+
+    publishPlayerAction = usePublish((data: {
+      playerId: string
+      action: string
+      data?: any
+    }) => [model?.id, 'player-action', data])
+
+    publishChatMessage = usePublish((data: {
+      playerId: string
+      nickname: string
+      text: string
+      type?: string
+    }) => [model?.id, 'chat-message', data])
+
+    publishStartGame = usePublish((data: { level?: number; gameMode?: string }) =>
+      [model?.id, 'start-game', data]
+    )
+
+    publishResetGame = usePublish(() =>
+      [model?.id, 'reset-game', {}]
+    )
+  } catch (error) {
+    console.warn('usePlatformerGameModel: ReactTogether publish hooks not available, using no-op functions:', error)
+    // No-op functions are already set above
+  }
 
   // Action functions
   const joinGame = useCallback((playerId: string, nickname: string) => {
