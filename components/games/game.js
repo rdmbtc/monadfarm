@@ -1524,6 +1524,7 @@ export default function platformerSketch(p) {
 
    // Helper function to initialize player
    const initializePlayer = (startPos = null) => {
+       console.log("🎮 initializePlayer called with:", startPos);
        const baseSpeed = 5.5; // Increased base speed
        const baseJumpForce = -13; // Keep the increased jump force
        player = {
@@ -1554,6 +1555,7 @@ export default function platformerSketch(p) {
           activeComboPerk: null, // e.g., 'speed', 'magnet'
           starMagnetRadius: 0, // Base magnet radius (0 = off)
        };
+       console.log("🎮 Player initialized:", player);
    }
 
   const initializeDecorations = () => {
@@ -1636,6 +1638,7 @@ export default function platformerSketch(p) {
 
   // p5.js setup function: Initializes the game environment and objects.
   p.setup = () => {
+      console.log("🎮 Setup function called");
       p.createCanvas(800, 600);
       p.rectMode(p.CENTER);
       p.textAlign(p.CENTER, p.CENTER);
@@ -1650,10 +1653,14 @@ export default function platformerSketch(p) {
 
       // Player needs to be initialized *before* generateLevel is called
       // so generateLevel can access base stats if needed.
-      initializePlayer({ x: 100, y: p.height - 100}); 
-      
+      console.log("🎮 Calling initializePlayer");
+      initializePlayer({ x: 100, y: p.height - 100});
+      console.log("🎮 Player after init:", player ? "exists" : "missing");
+
       // Initialize game objects by loading/generating the first level
+      console.log("🎮 Calling resetGame");
       resetGame(); // Calls loadLevelData(0) internally
+      console.log("🎮 Platforms after resetGame:", platforms ? platforms.length : "missing");
 
       console.log("p5 setup complete. Procedural generation active. Interaction needed for audio context.");
   };
