@@ -26,7 +26,6 @@ export default function MultiplayerPlatformerGame({
   // ReactTogether hooks
   const myId = useMyId()
   const connectedUsers = useConnectedUsers()
-
   const { nickname: currentNickname } = useUnifiedNickname()
 
   // Game mode and state
@@ -38,7 +37,6 @@ export default function MultiplayerPlatformerGame({
 
   // Refs
   const gameInstanceRef = useRef<any>(null)
-  const p5InstanceRef = useRef<any>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
 
   // Conditionally use multiplayer model only in online mode
@@ -49,7 +47,6 @@ export default function MultiplayerPlatformerGame({
     chatMessages = [],
     myPlayer = null,
     otherPlayers = [],
-    gameSession = null,
     playerCount = gameMode === 'online' ? (multiplayerData?.playerCount || 0) : 1,
     joinGame = () => {},
     leaveGame = () => {},
@@ -61,7 +58,7 @@ export default function MultiplayerPlatformerGame({
     isGameActive = false
   } = multiplayerData || {}
 
-  console.log('MultiplayerPlatformerGame render:', { gameMode, playerCount, myId, isClient })
+  console.log('🎮 Game State:', { gameMode, playerCount, myId, isClient, hasMultiplayerData: !!multiplayerData })
 
   // Client-side initialization
   useEffect(() => {
@@ -147,56 +144,36 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, resetGame])
 
-  // Create the game sketch - always create the game, but only sync in online mode
+  // Create the game sketch - SIMPLE TEST VERSION
   const createGameSketch = useCallback((p: any) => {
-    console.log('Creating platformer game sketch, mode:', gameMode)
+    console.log('🎮 Creating game sketch, mode:', gameMode)
 
-    // Store p5 instance
-    p5InstanceRef.current = p
-
-    try {
-      // Always create the multiplayer-enhanced game (it works for both modes)
-      const game = multiplayerPlatformerSketch(p)
-      console.log('Game created successfully:', !!game)
-
-      // Store game instance
-      gameInstanceRef.current = game
-
-      // Set up multiplayer callbacks only in online mode
-      if (gameMode === 'online' && game && game.setMultiplayerCallbacks) {
-        console.log('Setting up multiplayer callbacks')
-        game.setMultiplayerCallbacks({
-          onPlayerUpdate: (playerData: any) => {
-            if (myId && updatePlayerPosition) {
-              updatePlayerPosition(myId, playerData)
-            }
-          },
-          onPlayerAction: (action: string, data: any) => {
-            if (myId && performPlayerAction) {
-              performPlayerAction(myId, action, data)
-            }
-          }
-        })
-      }
-
-      return game
-    } catch (error) {
-      console.error('Error creating game:', error)
-      // Fallback: create a simple sketch
-      return (p: any) => {
-        p.setup = () => {
-          p.createCanvas(800, 600)
-        }
-        p.draw = () => {
-          p.background(100, 150, 200)
-          p.fill(255)
-          p.textAlign(p.CENTER)
-          p.textSize(24)
-          p.text('Game Loading...', p.width/2, p.height/2)
-        }
-      }
+    // Simple test sketch first
+    p.setup = () => {
+      console.log('🎮 P5 Setup called')
+      p.createCanvas(800, 600)
+      console.log('🎮 Canvas created: 800x600')
     }
-  }, [gameMode, myId, updatePlayerPosition, performPlayerAction])
+
+    p.draw = () => {
+      // Simple test draw
+      p.background(50, 100, 150)
+      p.fill(255)
+      p.textAlign(p.CENTER, p.CENTER)
+      p.textSize(24)
+      p.text(`MonFarm Platformer - ${gameMode.toUpperCase()} MODE`, p.width/2, p.height/2 - 50)
+      p.textSize(16)
+      p.text(`Players: ${playerCount}`, p.width/2, p.height/2)
+      p.text('Game is loading...', p.width/2, p.height/2 + 30)
+
+      // Draw a simple moving rectangle
+      p.fill(255, 100, 100)
+      p.rect(p.width/2 - 25 + Math.sin(p.frameCount * 0.05) * 100, p.height/2 + 100, 50, 50)
+    }
+
+    console.log('✅ Simple game sketch created')
+    return p
+  }, [gameMode, playerCount])
 
   if (!isClient) {
     return (
