@@ -40,6 +40,12 @@ export interface GameSession {
   gameMode: 'cooperative' | 'competitive'
   startTime: number
   levelData?: any
+  // New lobby and game state properties
+  state: 'lobby' | 'playing' | 'paused' | 'completed'
+  playMode: 'single' | 'online'
+  requiredPlayers: number
+  starsCollectedThisLevel: Record<string, boolean> // Track which players collected stars
+  levelCompleteRequirement: 'any_player' | 'all_players' // Single vs Online mode logic
 }
 
 export interface ChatMessage {
@@ -77,7 +83,7 @@ export interface UsePlatformerGameModelReturn {
   }) => void
   performPlayerAction: (playerId: string, action: string, data?: any) => void
   sendChatMessage: (playerId: string, nickname: string, text: string, type?: string) => void
-  startGame: (level?: number, gameMode?: string) => void
+  startGame: (level?: number, gameMode?: string, playMode?: 'single' | 'online') => void
   resetGame: () => void
   
   // Utility
@@ -133,11 +139,7 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
       color: playerColor
     }
 
-    setPlayers(prev => {
-      const newPlayers = { ...prev, [playerId]: newPlayer }
-      console.log('🎮 Player joined. Total players now:', Object.keys(newPlayers).length)
-      return newPlayers
-    })
+    setPlayers(prev => ({ ...prev, [playerId]: newPlayer }))
 
     // Add welcome message
     const welcomeMessage: ChatMessage = {
@@ -152,14 +154,18 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
 
     // Start game session if this is the first player
     if (Object.keys(players).length === 0 && !gameSession) {
-      console.log('🎮 Creating new game session for first player')
       const newSession: GameSession = {
         id: `session_${Date.now()}`,
         currentLevel: 1,
         isActive: false,
         maxPlayers: 4,
         gameMode: 'cooperative',
-        startTime: Date.now()
+        startTime: Date.now(),
+        state: 'lobby',
+        playMode: 'online', // Default to online when joining multiplayer
+        requiredPlayers: 1, // Minimum 1 player to start
+        starsCollectedThisLevel: {},
+        levelCompleteRequirement: 'all_players' // Online mode requires all players
       }
       setGameSession(newSession)
     }
@@ -293,8 +299,8 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
     setChatMessages(prev => [...(prev || []).slice(-49), message])
   }, [setChatMessages])
 
-  const startGame = useCallback((level = 1, gameMode = 'cooperative') => {
-    console.log('usePlatformerGameModel: Starting game:', { level, gameMode })
+  const startGame = useCallback((level = 1, gameMode = 'cooperative', playMode: 'single' | 'online' = 'online') => {
+    console.log('usePlatformerGameModel: Starting game:', { level, gameMode, playMode })
 
     setGameSession(prev => {
       if (!prev) {
@@ -304,7 +310,12 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
           isActive: true,
           maxPlayers: 4,
           gameMode: gameMode as any,
-          startTime: Date.now()
+          startTime: Date.now(),
+          state: 'playing',
+          playMode,
+          requiredPlayers: playMode === 'single' ? 1 : 2,
+          starsCollectedThisLevel: {},
+          levelCompleteRequirement: playMode === 'single' ? 'any_player' : 'all_players'
         }
       }
       return {
@@ -312,7 +323,12 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
         currentLevel: level,
         gameMode: gameMode as any,
         isActive: true,
-        startTime: Date.now()
+        startTime: Date.now(),
+        state: 'playing',
+        playMode,
+        requiredPlayers: playMode === 'single' ? 1 : 2,
+        starsCollectedThisLevel: {},
+        levelCompleteRequirement: playMode === 'single' ? 'any_player' : 'all_players'
       }
     })
 

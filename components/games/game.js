@@ -82,6 +82,14 @@ export default function platformerSketch(p) {
   let internalMasterVolume = 1.0; // Renamed to avoid conflict with wrapper state
   const sfxVolumeMultiplier = 0.3; // Multiplier for sound effects (30%)
 
+  // Multiplayer game mode variables
+  let gameMode = 'single'; // 'single' or 'online'
+  let multiplayerCallbacks = {
+    onStarCollected: null, // Callback when a star is collected
+    onLevelComplete: null, // Callback when level should be completed
+    checkCanAdvanceLevel: null // Callback to check if level can advance
+  }
+
   // --- ADDED: Screen Shake Function ---
   const triggerShake = (intensity, duration) => {
       // Don't override a stronger shake with a weaker one
@@ -262,7 +270,7 @@ export default function platformerSketch(p) {
         bgMusic = p.loadSound(oldSfxBasePath + 'bg_music.mp3', soundLoadedCallback, soundLoadError); 
         
       } else {
-        console.log("p5.sound functions not available during preload - will load sounds in setup");
+        console.warn("p5.sound functions not available on 'p' instance during preload.");
         soundsLoaded = false;
       }
     } catch (error) {
@@ -788,11 +796,20 @@ export default function platformerSketch(p) {
           if (!star.isCollected && ellipseRectCollision(star, player)) {
               star.isCollected = true;
               score += 10;
-              playSound(coinSound); 
+              playSound(coinSound);
               // --- Enhanced Star Collection Feedback ---
               emitParticles(star.x, star.y, 35, p.color(255, 235, 50, 240), { speed: 4.5, life: 50, size: 12, gravity: 0.05 }); // Brighter, more particles, slight lift
               emitFloatingScore("+10", star.x, star.y - 20); // Emit score pop-up
               triggerShake(1.5, 8); // Gentle shake on star collect
+
+              // --- Multiplayer Star Collection Callback ---
+              if (multiplayerCallbacks.onStarCollected) {
+                  multiplayerCallbacks.onStarCollected(star.id || `star_${star.x}_${star.y}`, {
+                      x: star.x,
+                      y: star.y,
+                      points: 10
+                  });
+              }
           } else if (!star.isCollected && player.starMagnetRadius > 0) {
               // --- Star Magnet Logic (Part 2: Pull stars) ---
               const dx = player.x - star.x;
@@ -1076,34 +1093,58 @@ export default function platformerSketch(p) {
 
   // Checks if all stars have been collected to trigger the win condition.
   const checkWinCondition = () => {
-      // --- MODIFIED: Early exit logic --- 
+      // --- MODIFIED: Early exit logic ---
       // Exit if game over, already won, or if there are no stars to collect
       if (isGameOver || isGameWon || !stars || stars.length === 0) {
           return;
       }
-      
-      // --- Star Collection Check --- 
-      let allStarsCollected = true;
-      for (let star of stars) {
-          if (!star || !star.isCollected) { // Check if star exists and is collected
-              allStarsCollected = false;
-              break;
+
+      // --- Different logic for single vs online mode ---
+      let canAdvanceLevel = false;
+
+      if (gameMode === 'single') {
+          // Single player mode: advance when any star is collected
+          for (let star of stars) {
+              if (star && star.isCollected) {
+                  canAdvanceLevel = true;
+                  break;
+              }
+          }
+      } else if (gameMode === 'online') {
+          // Online mode: check with multiplayer system
+          if (multiplayerCallbacks.checkCanAdvanceLevel) {
+              canAdvanceLevel = multiplayerCallbacks.checkCanAdvanceLevel();
+          } else {
+              // Fallback: require all stars collected (original behavior)
+              let allStarsCollected = true;
+              for (let star of stars) {
+                  if (!star || !star.isCollected) {
+                      allStarsCollected = false;
+                      break;
+                  }
+              }
+              canAdvanceLevel = allStarsCollected;
           }
       }
-      
-      // --- Win Condition based ONLY on stars --- 
-      if (allStarsCollected) {
-         console.log("[WinCheck] All stars collected! Setting isGameWon = true."); // <-- ADDED LOG
+
+      // --- Win Condition ---
+      if (canAdvanceLevel) {
+         console.log(`[WinCheck] Level complete in ${gameMode} mode! Setting isGameWon = true.`);
          isGameWon = true; // Mark current level as won
          playSound(victorySound);
          if (bgMusic && bgMusic.isLoaded() && bgMusic.isPlaying()) bgMusic.stop();
          console.log(`Generated Level ${currentLevelIndex + 1} Complete!`);
-         
+
+         // --- Notify multiplayer system ---
+         if (multiplayerCallbacks.onLevelComplete) {
+             multiplayerCallbacks.onLevelComplete(currentLevelIndex + 1);
+         }
+
          // --- INFINITE PART ---
          // Immediately load next level after a short delay
-         console.log("[WinCheck] Starting 2-second timeout for next level..."); // <-- ADDED LOG
+         console.log("[WinCheck] Starting 2-second timeout for next level...");
          setTimeout(() => {
-             console.log("[WinCheck] Timeout finished! Loading next level."); // <-- ADDED LOG
+             console.log("[WinCheck] Timeout finished! Loading next level.");
              currentLevelIndex++;
              loadLevelData(currentLevelIndex); // Load the next generated level
          }, 2000); // 2 second delay before next level
@@ -1658,33 +1699,11 @@ export default function platformerSketch(p) {
       console.log("🎮 Player after init:", player ? "exists" : "missing");
 
       // Initialize game objects by loading/generating the first level
+      console.log("🎮 Calling resetGame");
       resetGame(); // Calls loadLevelData(0) internally
+      console.log("🎮 Platforms after resetGame:", platforms ? platforms.length : "missing");
 
-      // Load sounds if they weren't loaded in preload (multiplayer context)
-      if (!soundsLoaded && p.loadSound) {
-          console.log("🔊 Loading sounds in setup (fallback)");
-          try {
-              p.soundFormats('mp3', 'ogg', 'wav');
-              const sfxBasePath = '/assets/platformer/sfx and backgrounds/FreeSFX/FreeSFX/GameSFX/';
-              const oldSfxBasePath = '/assets/platformer/';
-
-              jumpSound = p.loadSound(sfxBasePath + 'Bounce Jump/Retro Jump Classic 08.wav');
-              coinSound = p.loadSound(sfxBasePath + 'PickUp/Retro PickUp Coin 04.wav');
-              landSound = p.loadSound(sfxBasePath + 'Impact/Retro Impact Punch Hurt 01.wav');
-              powerupCollectSound = p.loadSound(sfxBasePath + 'PickUp/Retro PickUp Coin 07.wav');
-              defeatSound = p.loadSound(oldSfxBasePath + 'enemy_defeat.mp3');
-              gameOverSound = p.loadSound(oldSfxBasePath + 'enemy_hit.mp3');
-              victorySound = p.loadSound(oldSfxBasePath + 'victory.mp3');
-              bgMusic = p.loadSound(oldSfxBasePath + 'bg_music.mp3');
-
-              soundsLoaded = true;
-              console.log("🔊 Sounds loaded in setup");
-          } catch (error) {
-              console.warn("🔊 Sound loading failed in setup:", error);
-          }
-      }
-
-      console.log("🎮 Setup complete - Player:", player ? "✓" : "✗", "Platforms:", platforms ? platforms.length : "✗");
+      console.log("p5 setup complete. Procedural generation active. Interaction needed for audio context.");
   };
 
   // p5.js draw function: Called repeatedly to update and render the game frame.
@@ -2158,6 +2177,19 @@ export default function platformerSketch(p) {
    };
 
   // Return game API for multiplayer access
+  // --- Multiplayer Game Mode Functions ---
+  const setGameMode = (mode) => {
+    console.log(`[Game] Setting game mode to: ${mode}`);
+    gameMode = mode;
+  };
+
+  const setMultiplayerCallbacks = (callbacks) => {
+    console.log('[Game] Setting multiplayer callbacks:', Object.keys(callbacks));
+    multiplayerCallbacks = { ...multiplayerCallbacks, ...callbacks };
+  };
+
+  const getGameMode = () => gameMode;
+
   return {
     getPlayer: () => player,
     nootIdleImg: nootIdleImg,
@@ -2165,7 +2197,11 @@ export default function platformerSketch(p) {
     // Add other assets that might be needed
     enemyFoxImg: enemyFoxImg,
     enemyRabbitImg: enemyRabbitImg,
-    enemyBirdImg: enemyBirdImg
+    enemyBirdImg: enemyBirdImg,
+    // Multiplayer functions
+    setGameMode,
+    setMultiplayerCallbacks,
+    getGameMode
   };
 } // End of platformerSketch function
 }

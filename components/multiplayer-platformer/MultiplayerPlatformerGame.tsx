@@ -6,6 +6,7 @@ import { usePlatformerGameModel } from '../../hooks/usePlatformerGameModel'
 import { useUnifiedNickname } from '../../hooks/useUnifiedNickname'
 import { ReactP5Wrapper } from 'react-p5-wrapper'
 import multiplayerPlatformerSketch from '../games/multiplayer-game'
+import GameLobby from './GameLobby'
 import { Users, MessageCircle, Play, RotateCcw, Gamepad2, Wifi } from 'lucide-react'
 
 interface MultiplayerPlatformerGameProps {
@@ -29,7 +30,7 @@ export default function MultiplayerPlatformerGame({
   const { nickname: currentNickname } = useUnifiedNickname()
 
   // Game mode and state
-  const [gameMode, setGameMode] = useState<GameMode>('single')
+  const [localGameMode, setLocalGameMode] = useState<GameMode>('single')
   const [isClient, setIsClient] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [chatMessage, setChatMessage] = useState('')
@@ -49,7 +50,8 @@ export default function MultiplayerPlatformerGame({
     chatMessages = [],
     myPlayer = null,
     otherPlayers = [],
-    playerCount = gameMode === 'online' ? (multiplayerData?.playerCount || 0) : 1,
+    playerCount = localGameMode === 'online' ? (multiplayerData?.playerCount || 0) : 1,
+    gameSession = null,
     joinGame = () => {},
     leaveGame = () => {},
     sendChatMessage = () => {},
@@ -57,18 +59,25 @@ export default function MultiplayerPlatformerGame({
     resetGame = () => {},
     updatePlayerPosition = () => {},
     performPlayerAction = () => {},
-    isGameActive = false
-  } = gameMode === 'online' ? (multiplayerData || {}) : {}
+    isGameActive = false,
+    // New lobby and game state functions
+    setGameMode = () => {},
+    canStartGame = () => false,
+    recordStarCollection = () => {},
+    checkLevelComplete = () => false,
+    advanceToNextLevel = () => {}
+  } = localGameMode === 'online' ? (multiplayerData || {}) : {}
 
   console.log('🎮 Game State:', {
-    gameMode,
+    localGameMode,
     playerCount,
     myId: myId?.slice(0, 8),
     isClient,
     hasMultiplayerData: !!multiplayerData,
     myPlayer: myPlayer ? `${myPlayer.nickname} (${myPlayer.id.slice(0, 8)})` : 'none',
     otherPlayersCount: otherPlayers.length,
-    allPlayersInModel: multiplayerData?.players ? Object.keys(multiplayerData.players).length : 'N/A'
+    allPlayersInModel: multiplayerData?.players ? Object.keys(multiplayerData.players).length : 'N/A',
+    gameSessionState: gameSession?.state || 'none'
   })
 
   // Client-side initialization
@@ -78,7 +87,7 @@ export default function MultiplayerPlatformerGame({
 
   // Connection monitoring
   useEffect(() => {
-    if (gameMode === 'online') {
+    if (localGameMode === 'online') {
       if (myId && currentNickname) {
         setConnectionStatus('connected')
         setRetryCount(0)
@@ -88,11 +97,11 @@ export default function MultiplayerPlatformerGame({
     } else {
       setConnectionStatus('disconnected')
     }
-  }, [gameMode, myId, currentNickname])
+  }, [localGameMode, myId, currentNickname])
 
   // Join game when switching to online mode - STABLE VERSION WITH RETRY
   useEffect(() => {
-    if (gameMode === 'online' && myId && currentNickname && !myPlayer) {
+    if (localGameMode === 'online' && myId && currentNickname && !myPlayer) {
       console.log('🌐 Joining online game as:', currentNickname, 'ID:', myId)
 
       const attemptJoin = (attempt: number = 1) => {
@@ -128,21 +137,21 @@ export default function MultiplayerPlatformerGame({
       const timeout = attemptJoin(1)
       return () => clearTimeout(timeout)
     }
-  }, [gameMode, myId, currentNickname]) // Removed myPlayer to prevent reconnections
+  }, [localGameMode, myId, currentNickname]) // Removed myPlayer to prevent reconnections
 
   // Leave game when switching to single player mode
   useEffect(() => {
     return () => {
-      if (gameMode === 'online' && myId && leaveGame) {
+      if (localGameMode === 'online' && myId && leaveGame) {
         console.log('Leaving online game')
         leaveGame(myId)
       }
     }
-  }, [gameMode, myId, leaveGame])
+  }, [localGameMode, myId, leaveGame])
 
   // Update multiplayer callbacks when dependencies change - STABLE VERSION
   useEffect(() => {
-    if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.setMultiplayerCallbacks) {
+    if (localGameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.setMultiplayerCallbacks) {
       console.log('🔄 Setting up multiplayer callbacks')
       gameInstanceRef.current.setMultiplayerCallbacks({
         onPlayerUpdate: (playerData: any) => {
@@ -157,11 +166,11 @@ export default function MultiplayerPlatformerGame({
         }
       })
     }
-  }, [gameMode, myId]) // Removed unstable dependencies
+  }, [localGameMode, myId]) // Removed unstable dependencies
 
   // Sync remote players with the multiplayer game (only in online mode) - THROTTLED
   useEffect(() => {
-    if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
+    if (localGameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
       // Throttle remote player updates to prevent spam
       const throttleTimeout = setTimeout(() => {
         console.log('🌐 Syncing remote players:', otherPlayers.length)
@@ -187,11 +196,11 @@ export default function MultiplayerPlatformerGame({
 
       return () => clearTimeout(throttleTimeout)
     }
-  }, [gameMode, otherPlayers])
+  }, [localGameMode, otherPlayers])
 
   // Connection health check
   useEffect(() => {
-    if (gameMode !== 'online') return
+    if (localGameMode !== 'online') return
 
     const healthCheckInterval = setInterval(() => {
       // Check if we have a valid connection
@@ -210,11 +219,11 @@ export default function MultiplayerPlatformerGame({
     }, 5000) // Check every 5 seconds
 
     return () => clearInterval(healthCheckInterval)
-  }, [gameMode, myId, multiplayerData, connectionStatus])
+  }, [localGameMode, myId, multiplayerData, connectionStatus])
 
   // Sync local player position periodically (only in online mode) - REDUCED FREQUENCY
   useEffect(() => {
-    if (gameMode !== 'online' || !gameInstanceRef.current || !myId || connectionStatus !== 'connected') return
+    if (localGameMode !== 'online' || !gameInstanceRef.current || !myId || connectionStatus !== 'connected') return
 
     console.log('🌐 Starting position sync for player:', myId)
     let syncAttempts = 0
@@ -245,7 +254,7 @@ export default function MultiplayerPlatformerGame({
     }, 1000 / 3) // Reduced to 3 FPS to be very conservative
 
     return () => clearInterval(syncInterval)
-  }, [gameMode, myId, connectionStatus]) // Added connectionStatus dependency
+  }, [localGameMode, myId, connectionStatus]) // Added connectionStatus dependency
 
   // Handle chat message submission
   const handleSendChatMessage = useCallback((e: React.FormEvent) => {
@@ -259,22 +268,31 @@ export default function MultiplayerPlatformerGame({
   // Handle game start
   const handleStartGame = useCallback(() => {
     console.log('MultiplayerPlatformerGame: Starting game')
-    if (gameMode === 'online') {
-      startGame(1, 'cooperative')
+    if (localGameMode === 'online') {
+      startGame(1, 'cooperative', gameSession?.playMode || 'online')
     }
-  }, [gameMode, startGame])
+  }, [localGameMode, startGame, gameSession?.playMode])
 
   // Handle game reset
   const handleResetGame = useCallback(() => {
     console.log('MultiplayerPlatformerGame: Resetting game')
-    if (gameMode === 'online') {
+    if (localGameMode === 'online') {
       resetGame()
     }
-  }, [gameMode, resetGame])
+  }, [localGameMode, resetGame])
+
+  // Handle game mode change
+  const handleGameModeChange = useCallback((mode: 'single' | 'online') => {
+    console.log('MultiplayerPlatformerGame: Changing game mode to:', mode)
+    setLocalGameMode(mode)
+    if (localGameMode === 'online' && setGameMode) {
+      setGameMode(mode)
+    }
+  }, [localGameMode, setGameMode])
 
   // Create the game sketch - REAL GAME WITH FALLBACK
   const createGameSketch = useCallback((p: any) => {
-    console.log('🎮 Creating game sketch, mode:', gameMode)
+    console.log('🎮 Creating game sketch, mode:', localGameMode)
 
     try {
       // Try to create the real multiplayer game
@@ -285,9 +303,22 @@ export default function MultiplayerPlatformerGame({
         console.log('✅ Real game created successfully!')
         gameInstanceRef.current = game
 
+        // Set up game mode and callbacks
+        if (game.setGameMode) {
+          game.setGameMode(localGameMode)
+        }
+
+        if (game.setGameModelCallbacks) {
+          game.setGameModelCallbacks({
+            recordStarCollection,
+            checkLevelComplete,
+            advanceToNextLevel
+          })
+        }
+
         // Set up multiplayer callbacks only in online mode
-        if (gameMode === 'online' && game.setMultiplayerCallbacks) {
-          console.log('� Setting up multiplayer callbacks')
+        if (localGameMode === 'online' && game.setMultiplayerCallbacks) {
+          console.log('🔄 Setting up multiplayer callbacks')
           game.setMultiplayerCallbacks({
             onPlayerUpdate: (playerData: any) => {
               if (myId && updatePlayerPosition) {
@@ -298,7 +329,8 @@ export default function MultiplayerPlatformerGame({
               if (myId && performPlayerAction) {
                 performPlayerAction(myId, action, data)
               }
-            }
+            },
+            getCurrentPlayerId: () => myId
           })
         }
 
@@ -320,7 +352,7 @@ export default function MultiplayerPlatformerGame({
       p.fill(255)
       p.textAlign(p.CENTER, p.CENTER)
       p.textSize(24)
-      p.text(`MonFarm Platformer - ${gameMode.toUpperCase()} MODE`, p.width/2, p.height/2 - 50)
+      p.text(`MonFarm Platformer - ${localGameMode.toUpperCase()} MODE`, p.width/2, p.height/2 - 50)
       p.textSize(16)
       p.text(`Players: ${playerCount}`, p.width/2, p.height/2)
       p.text('Simple mode - Real game failed to load', p.width/2, p.height/2 + 30)
@@ -330,16 +362,16 @@ export default function MultiplayerPlatformerGame({
       p.rect(p.width/2 - 25 + Math.sin(p.frameCount * 0.05) * 100, p.height/2 + 100, 50, 50)
 
       // Mode indicator
-      p.fill(gameMode === 'online' ? 'green' : 'blue')
+      p.fill(localGameMode === 'online' ? 'green' : 'blue')
       p.circle(50, 50, 30)
       p.fill(255)
       p.textAlign(p.LEFT, p.TOP)
       p.textSize(12)
-      p.text(gameMode === 'online' ? 'ONLINE' : 'SINGLE', 70, 45)
+      p.text(localGameMode === 'online' ? 'ONLINE' : 'SINGLE', 70, 45)
     }
 
     console.log('✅ Fallback game setup complete')
-  }, [gameMode]) // Removed dependencies that cause re-creation
+  }, [localGameMode, recordStarCollection, checkLevelComplete, advanceToNextLevel, myId, updatePlayerPosition, performPlayerAction]) // Added dependencies
 
   if (!isClient) {
     return (
@@ -354,9 +386,10 @@ export default function MultiplayerPlatformerGame({
       {/* Debug Info */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-red-900 p-2 text-xs text-white">
-          Debug: Mode={gameMode}, MyId={myId?.slice(0,8)}, PlayerCount={playerCount}, IsClient={isClient},
+          Debug: Mode={localGameMode}, MyId={myId?.slice(0,8)}, PlayerCount={playerCount}, IsClient={isClient},
           MyPlayer={myPlayer ? '✓' : '✗'}, OtherPlayers={otherPlayers.length},
-          AllPlayers={multiplayerData?.players ? Object.keys(multiplayerData.players).length : 'N/A'}
+          AllPlayers={multiplayerData?.players ? Object.keys(multiplayerData.players).length : 'N/A'},
+          GameState={gameSession?.state || 'none'}
           {multiplayerData?.players && (
             <div className="mt-1">
               Players: {Object.values(multiplayerData.players).map((p: any) => `${p.nickname}(${p.id.slice(0,4)})`).join(', ')}
@@ -365,8 +398,19 @@ export default function MultiplayerPlatformerGame({
         </div>
       )}
 
-      {/* Connection Status */}
-      {gameMode === 'online' && (
+      {/* Show Lobby or Game */}
+      {localGameMode === 'online' && gameSession?.state === 'lobby' ? (
+        <GameLobby
+          gameData={multiplayerData || {}}
+          myId={myId}
+          currentNickname={currentNickname}
+          onStartGame={handleStartGame}
+          onChangeGameMode={handleGameModeChange}
+        />
+      ) : (
+        <>
+          {/* Connection Status */}
+          {localGameMode === 'online' && (
         <div className={`p-2 text-xs text-white ${
           connectionStatus === 'connected' ? 'bg-green-900' :
           connectionStatus === 'connecting' ? 'bg-yellow-900' :
@@ -397,9 +441,9 @@ export default function MultiplayerPlatformerGame({
             {/* Game Mode Selector */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setGameMode('single')}
+                onClick={() => handleGameModeChange('single')}
                 className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors ${
-                  gameMode === 'single'
+                  localGameMode === 'single'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
@@ -408,9 +452,9 @@ export default function MultiplayerPlatformerGame({
                 Single Player
               </button>
               <button
-                onClick={() => setGameMode('online')}
+                onClick={() => handleGameModeChange('online')}
                 className={`px-3 py-1 rounded text-sm flex items-center gap-1 transition-colors ${
-                  gameMode === 'online'
+                  localGameMode === 'online'
                     ? 'bg-green-600 text-white'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
@@ -429,7 +473,7 @@ export default function MultiplayerPlatformerGame({
 
           <div className="flex items-center gap-2">
             {/* Chat Toggle (only in online mode) */}
-            {gameMode === 'online' && (
+            {localGameMode === 'online' && (
               <button
                 onClick={() => setShowChat(!showChat)}
                 className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center gap-1"
@@ -439,7 +483,7 @@ export default function MultiplayerPlatformerGame({
               </button>
             )}
 
-            {gameMode === 'online' && !isGameActive && (
+            {localGameMode === 'online' && !isGameActive && (
               <button
                 onClick={handleStartGame}
                 className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-1"
@@ -449,7 +493,7 @@ export default function MultiplayerPlatformerGame({
               </button>
             )}
 
-            {gameMode === 'online' && (
+            {localGameMode === 'online' && (
               <button
                 onClick={handleResetGame}
                 className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm flex items-center gap-1"
@@ -466,7 +510,7 @@ export default function MultiplayerPlatformerGame({
       <div className="w-full bg-gray-800 flex justify-center items-center min-h-[600px]">
         {isClient ? (
           <ReactP5Wrapper
-            key={`game-${gameMode}-stable`}
+            key={`game-${localGameMode}-stable`}
             sketch={createGameSketch}
           />
         ) : (
@@ -475,7 +519,7 @@ export default function MultiplayerPlatformerGame({
       </div>
 
       {/* Chat Panel (only in online mode) - Overlay */}
-      {gameMode === 'online' && showChat && (
+      {localGameMode === 'online' && showChat && (
         <div className="absolute top-16 right-4 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
           <div className="p-3 border-b border-gray-700">
             <h4 className="text-white font-semibold">Game Chat</h4>
@@ -518,6 +562,8 @@ export default function MultiplayerPlatformerGame({
             </div>
           </form>
         </div>
+      )}
+        </>
       )}
     </div>
   )

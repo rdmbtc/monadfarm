@@ -6,12 +6,7 @@ import platformerSketch from './game'
 export default function multiplayerPlatformerSketch(p) {
   // Store the base game instance
   let baseGame = null
-
-  // Store original functions
-  let originalPreload = null
-  let originalSetup = null
-  let originalDraw = null
-
+  
   // Multiplayer-specific state
   let localPlayer = null
   let remotePlayers = new Map() // Map of playerId -> player object
@@ -21,37 +16,64 @@ export default function multiplayerPlatformerSketch(p) {
     onGameEvent: null
   }
 
-  // Initialize the base game and store original functions
-  console.log('🎮 Multiplayer: Initializing base game')
-  baseGame = platformerSketch(p)
-
-  // Store the functions that were assigned by platformerSketch
-  originalPreload = p.preload
-  originalSetup = p.setup
-  originalDraw = p.draw
-
-  // Store reference to the local player
-  if (baseGame && baseGame.getPlayer) {
-    localPlayer = baseGame.getPlayer()
+  // Game mode and multiplayer model callbacks
+  let gameModelCallbacks = {
+    recordStarCollection: null,
+    checkLevelComplete: null,
+    advanceToNextLevel: null
   }
-
-  // CRITICAL: Override the preload function to call the base game's preload
-  p.preload = () => {
-    console.log('🎮 Multiplayer: Calling base preload - ASSETS LOADING')
-    if (originalPreload) {
-      originalPreload()
-    } else {
-      console.error('🎮 Multiplayer: originalPreload is missing!')
+  
+  // Initialize the base game
+  const initializeBaseGame = () => {
+    console.log('MultiplayerGame: Initializing base game')
+    baseGame = platformerSketch(p)
+    
+    // Store reference to the local player
+    if (baseGame && baseGame.getPlayer) {
+      localPlayer = baseGame.getPlayer()
     }
+    
+    return baseGame
   }
   
   // Override the base game's setup function
   p.setup = () => {
-    console.log('🎮 Multiplayer: Calling base setup')
+    console.log('MultiplayerGame: Setting up multiplayer game')
+    
+    // Initialize base game first
+    if (!baseGame) {
+      baseGame = initializeBaseGame()
+    }
+    
+    // Call base setup if it exists
+    if (baseGame && baseGame.setup) {
+      baseGame.setup()
 
-    // Call the original setup function from the base game
-    if (originalSetup) {
-      originalSetup()
+      // Set up game mode callbacks for multiplayer
+      if (baseGame.setMultiplayerCallbacks) {
+        baseGame.setMultiplayerCallbacks({
+          onStarCollected: (starId, data) => {
+            console.log('MultiplayerGame: Star collected:', starId, data)
+            if (gameModelCallbacks.recordStarCollection) {
+              // Get current player ID from multiplayer callbacks
+              const playerId = multiplayerCallbacks.getCurrentPlayerId?.() || 'local'
+              gameModelCallbacks.recordStarCollection(playerId, starId)
+            }
+          },
+          onLevelComplete: (level) => {
+            console.log('MultiplayerGame: Level complete:', level)
+            if (gameModelCallbacks.advanceToNextLevel) {
+              gameModelCallbacks.advanceToNextLevel()
+            }
+          },
+          checkCanAdvanceLevel: () => {
+            if (gameModelCallbacks.checkLevelComplete) {
+              return gameModelCallbacks.checkLevelComplete()
+            }
+            return false
+          }
+        })
+      }
     } else {
       // Fallback setup
       p.createCanvas(800, 600)
@@ -61,9 +83,9 @@ export default function multiplayerPlatformerSketch(p) {
   
   // Override the base game's draw function
   p.draw = () => {
-    // Call the original draw function from the base game
-    if (originalDraw) {
-      originalDraw()
+    // Call base draw if it exists
+    if (baseGame && baseGame.draw) {
+      baseGame.draw()
     } else {
       // Fallback draw
       p.background(100, 150, 200)
@@ -72,14 +94,10 @@ export default function multiplayerPlatformerSketch(p) {
       p.textSize(24)
       p.text('Multiplayer Platformer Loading...', p.width/2, p.height/2)
     }
-
-    // Draw remote players (only if base game is ready)
-    if (baseGame && baseGame.nootIdleImg) {
-      drawRemotePlayers()
-    } else if (p.frameCount % 60 === 0) { // Log every second
-      console.log('🎮 Waiting for base game assets to load...')
-    }
-
+    
+    // Draw remote players
+    drawRemotePlayers()
+    
     // Draw multiplayer UI
     drawMultiplayerUI()
   }
@@ -90,7 +108,7 @@ export default function multiplayerPlatformerSketch(p) {
     
     p.push()
     
-    for (const [, remotePlayer] of remotePlayers) {
+    for (const [playerId, remotePlayer] of remotePlayers) {
       if (!remotePlayer.isActive) continue
       
       // Apply camera offset (same as local player)
@@ -255,6 +273,19 @@ export default function multiplayerPlatformerSketch(p) {
   const setMultiplayerCallbacks = (callbacks) => {
     multiplayerCallbacks = { ...multiplayerCallbacks, ...callbacks }
   }
+
+  // Function to set game model callbacks
+  const setGameModelCallbacks = (callbacks) => {
+    gameModelCallbacks = { ...gameModelCallbacks, ...callbacks }
+  }
+
+  // Function to set game mode
+  const setGameMode = (mode) => {
+    console.log('MultiplayerGame: Setting game mode to:', mode)
+    if (baseGame && baseGame.setGameMode) {
+      baseGame.setGameMode(mode)
+    }
+  }
   
   // Function to cleanup inactive players
   const cleanupInactivePlayers = () => {
@@ -277,18 +308,22 @@ export default function multiplayerPlatformerSketch(p) {
     // Base game access
     getBaseGame: () => baseGame,
     getLocalPlayer: () => localPlayer,
-    
+
     // Multiplayer functions
     updateRemotePlayer,
     removeRemotePlayer,
     getLocalPlayerData,
     setMultiplayerCallbacks,
     handlePlayerAction,
-    
+
+    // Game mode and model functions
+    setGameMode,
+    setGameModelCallbacks,
+
     // State access
     getRemotePlayers: () => Array.from(remotePlayers.values()),
     getPlayerCount: () => remotePlayers.size + 1,
-    
+
     // Utility
     isMultiplayerActive: () => remotePlayers.size > 0
   }
