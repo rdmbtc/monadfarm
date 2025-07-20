@@ -6,7 +6,12 @@ import platformerSketch from './game'
 export default function multiplayerPlatformerSketch(p) {
   // Store the base game instance
   let baseGame = null
-  
+
+  // Store original functions
+  let originalPreload = null
+  let originalSetup = null
+  let originalDraw = null
+
   // Multiplayer-specific state
   let localPlayer = null
   let remotePlayers = new Map() // Map of playerId -> player object
@@ -15,32 +20,38 @@ export default function multiplayerPlatformerSketch(p) {
     onPlayerAction: null,
     onGameEvent: null
   }
-  
-  // Initialize the base game
-  const initializeBaseGame = () => {
-    console.log('MultiplayerGame: Initializing base game')
-    baseGame = platformerSketch(p)
-    
-    // Store reference to the local player
-    if (baseGame && baseGame.getPlayer) {
-      localPlayer = baseGame.getPlayer()
+
+  // Initialize the base game and store original functions
+  console.log('🎮 Multiplayer: Initializing base game')
+  baseGame = platformerSketch(p)
+
+  // Store the functions that were assigned by platformerSketch
+  originalPreload = p.preload
+  originalSetup = p.setup
+  originalDraw = p.draw
+
+  // Store reference to the local player
+  if (baseGame && baseGame.getPlayer) {
+    localPlayer = baseGame.getPlayer()
+  }
+
+  // CRITICAL: Override the preload function to call the base game's preload
+  p.preload = () => {
+    console.log('🎮 Multiplayer: Calling base preload - ASSETS LOADING')
+    if (originalPreload) {
+      originalPreload()
+    } else {
+      console.error('🎮 Multiplayer: originalPreload is missing!')
     }
-    
-    return baseGame
   }
   
   // Override the base game's setup function
   p.setup = () => {
-    console.log('MultiplayerGame: Setting up multiplayer game')
-    
-    // Initialize base game first
-    if (!baseGame) {
-      baseGame = initializeBaseGame()
-    }
-    
-    // Call base setup if it exists
-    if (baseGame && baseGame.setup) {
-      baseGame.setup()
+    console.log('🎮 Multiplayer: Calling base setup')
+
+    // Call the original setup function from the base game
+    if (originalSetup) {
+      originalSetup()
     } else {
       // Fallback setup
       p.createCanvas(800, 600)
@@ -50,9 +61,9 @@ export default function multiplayerPlatformerSketch(p) {
   
   // Override the base game's draw function
   p.draw = () => {
-    // Call base draw if it exists
-    if (baseGame && baseGame.draw) {
-      baseGame.draw()
+    // Call the original draw function from the base game
+    if (originalDraw) {
+      originalDraw()
     } else {
       // Fallback draw
       p.background(100, 150, 200)
@@ -92,17 +103,7 @@ export default function multiplayerPlatformerSketch(p) {
         // Try to get the noot character image from the base game
         const nootImg = baseGame && baseGame.nootIdleImg ? baseGame.nootIdleImg : null
 
-        // Debug: Log image availability occasionally
-        if (p.frameCount % 300 === 0) { // Every 5 seconds
-          console.log('🎮 Remote player image check:', {
-            hasBaseGame: !!baseGame,
-            hasNootImg: !!nootImg,
-            imageWidth: nootImg ? nootImg.width : 'N/A',
-            imageHeight: nootImg ? nootImg.height : 'N/A'
-          })
-        }
-
-        if (nootImg && nootImg.width > 0 && nootImg.height > 0) {
+        if (nootImg) {
           // Draw the same PNG character as the local player
           p.push()
           p.translate(drawX, drawY)
@@ -127,7 +128,6 @@ export default function multiplayerPlatformerSketch(p) {
           p.pop()
         } else {
           // Fallback to rectangle if image not available
-          console.log('🎮 Drawing fallback rectangle for remote player:', remotePlayer.nickname, 'Image available:', !!nootImg)
           const playerColor = remotePlayer.color || '#4ECDC4' // Default to teal instead of red
           p.fill(playerColor)
           p.stroke(255)
