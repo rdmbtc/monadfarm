@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useStateTogether, useConnectedUsers, useMyId, useNicknames } from 'react-together';
+import { useStateTogether, useConnectedUsers, useMyId } from 'react-together';
+import { useUnifiedNickname } from '../hooks/useUnifiedNickname';
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
@@ -61,8 +62,11 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
   const myId = useMyId();
   const connectedUsers = useConnectedUsers();
 
-  // Use the shared nickname system from React Together
-  const [myNickname, setMyNickname, allNicknames] = useNicknames();
+  // Use the unified nickname system
+  const { nickname: myNickname, updateNickname } = useUnifiedNickname();
+
+  // For compatibility with existing post display logic, create allNicknames object
+  const allNicknames = { [myId || 'offline-user']: myNickname };
   
   // Local UI state
   const [newPostContent, setNewPostContent] = useState('');
@@ -94,9 +98,9 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
   useEffect(() => {
     if (myId && (!myNickname || myNickname.trim() === '')) {
       const newNickname = generateFarmerName();
-      setMyNickname(newNickname);
+      updateNickname(newNickname);
     }
-  }, [myId, myNickname, generateFarmerName, setMyNickname]);
+  }, [myId, myNickname, generateFarmerName, updateNickname]);
 
   // Monitor connection status
   useEffect(() => {
@@ -208,18 +212,24 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     console.log('BulletproofSocialFeed: Trimmed nickname:', trimmedNickname);
 
     try {
-      console.log('BulletproofSocialFeed: Setting nickname via React Together');
-      setMyNickname(trimmedNickname);
+      console.log('BulletproofSocialFeed: Setting nickname via unified system');
+      const success = updateNickname(trimmedNickname);
 
-      console.log('BulletproofSocialFeed: Nickname change successful');
-      toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
-      return true;
+      if (success) {
+        console.log('BulletproofSocialFeed: Nickname change successful');
+        toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
+        return true;
+      } else {
+        console.log('BulletproofSocialFeed: Nickname change failed');
+        toast.error('Failed to change nickname. Please try again.');
+        return false;
+      }
     } catch (error) {
       console.error('BulletproofSocialFeed: Failed to change nickname:', error);
       toast.error('Failed to change nickname. Please try again.');
       return false;
     }
-  }, [myId, isOnline, setMyNickname]);
+  }, [myId, isOnline, updateNickname]);
 
   // Create a fallback nickname change function that works even when React Together isn't ready
   const fallbackChangeNickname = useCallback((newNickname: string) => {
@@ -234,18 +244,24 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     console.log('BulletproofSocialFeed: Trimmed nickname:', trimmedNickname);
 
     try {
-      console.log('BulletproofSocialFeed: Setting nickname via React Together');
-      setMyNickname(trimmedNickname);
+      console.log('BulletproofSocialFeed: Setting nickname via unified system');
+      const success = updateNickname(trimmedNickname);
 
-      console.log('BulletproofSocialFeed: Nickname change successful');
-      toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
-      return true;
+      if (success) {
+        console.log('BulletproofSocialFeed: Nickname change successful');
+        toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
+        return true;
+      } else {
+        console.log('BulletproofSocialFeed: Nickname change failed');
+        toast.error('Failed to change nickname. Please try again.');
+        return false;
+      }
     } catch (error) {
       console.error('BulletproofSocialFeed: Failed to change nickname:', error);
       toast.error('Failed to change nickname. Please try again.');
       return false;
     }
-  }, [myId, isOnline, setMyNickname]);
+  }, [myId, isOnline, updateNickname]);
 
   // Expose nickname change function to parent component immediately
   useEffect(() => {

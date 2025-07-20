@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
-import { useNicknames } from "react-together";
+import { useUnifiedNickname } from "@/hooks/useUnifiedNickname";
 import { GameContext } from "@/context/game-context";
 import { FarmPlot } from "@/components/farm-plot";
 import { SeedSelector } from "@/components/seed-selector";
@@ -190,34 +190,25 @@ export function Farm() {
   };
   // --- End Guide State ---
 
-  // --- Restore Local Profile State & Loading ---
-  const [nickname, setNickname] = useState<string>("MONAD");
+  // --- Unified Nickname Management ---
+  const { nickname, updateNickname, isLoading: nicknameLoading } = useUnifiedNickname();
+
+  // --- Local Profile State ---
   const [bio, setBio] = useState<string>("I love farming!");
 
-  // React Together nickname system for social features (declared early)
-  const [reactTogetherNickname, setReactTogetherNickname] = useNicknames();
+  // Local setNickname function for compatibility
+  const setNickname = updateNickname;
 
   useEffect(() => {
-    // Load profile from localStorage on mount
+    // Load bio from localStorage on mount (nickname is handled by unified hook)
     if (typeof window !== "undefined") {
-      const savedNickname = localStorage.getItem('player-nickname');
       const savedBio = localStorage.getItem('player-bio');
-      if (savedNickname) {
-        setNickname(savedNickname);
-        // Also initialize React Together nickname
-        if (savedNickname !== reactTogetherNickname) {
-          setReactTogetherNickname(savedNickname);
-        }
-      }
       if (savedBio) {
         setBio(savedBio);
       }
-      console.log('Profile loaded from localStorage (local state):', { 
-        nickname: savedNickname || 'not found', 
-        bio: savedBio || 'not found' 
-      });
+      console.log('Bio loaded from localStorage:', savedBio || 'not found');
     }
-  }, [reactTogetherNickname, setReactTogetherNickname]); // Runs on mount and when React Together nickname changes
+  }, []); // Only run on mount
   // --- End Local Profile State ---
 
   // --- Remove Profile from Context Destructuring ---
@@ -281,18 +272,7 @@ export function Farm() {
   } = useContext(GameContext);
   // --- End Context Destructuring Update ---
 
-  // Sync React Together nickname with local profile nickname
-  useEffect(() => {
-    if (reactTogetherNickname && reactTogetherNickname !== nickname) {
-      console.log("Syncing React Together nickname to local profile:", reactTogetherNickname);
-      setNickname(reactTogetherNickname);
-      setEditNickname(reactTogetherNickname);
-      // Also save to localStorage
-      if (typeof window !== "undefined") {
-        localStorage.setItem('player-nickname', reactTogetherNickname);
-      }
-    }
-  }, [reactTogetherNickname, nickname, setNickname]);
+  // Nickname synchronization is now handled by the unified hook
   
   // Add debug logging for seasonal crops
   useEffect(() => {
@@ -368,26 +348,23 @@ export function Farm() {
     
     console.log("SAVING PROFILE LOCALLY:", { newNickname, newBio });
 
-    // Update local React state
-    setNickname(newNickname);
-    setBio(newBio);
-
-    // Also update React Together nickname for social features
-    try {
-      setReactTogetherNickname(newNickname);
-      console.log("Updated React Together nickname to:", newNickname);
-    } catch (error) {
-      console.warn("Failed to update React Together nickname:", error);
+    // Update nickname using unified system (handles all synchronization)
+    const nicknameUpdateSuccess = updateNickname(newNickname);
+    if (!nicknameUpdateSuccess) {
+      toast.error("Failed to update nickname. Please try again.");
+      return false;
     }
 
-    // Save directly to localStorage
+    // Update bio
+    setBio(newBio);
+
+    // Save bio to localStorage (nickname is handled by unified hook)
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem('player-nickname', newNickname);
         localStorage.setItem('player-bio', newBio);
-        console.log('Profile saved directly to localStorage:', { nickname: newNickname, bio: newBio });
+        console.log('Bio saved to localStorage:', newBio);
       } catch (error) {
-        console.error('Error saving profile directly to localStorage:', error);
+        console.error('Error saving bio to localStorage:', error);
         toast.error("Error saving profile! Please try again.");
         return false; // Indicate save failure
       }

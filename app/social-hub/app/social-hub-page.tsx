@@ -26,7 +26,8 @@ import { useToast } from "../../../hooks/use-toast"
 import { RewardPopup } from "../../../components/ui/reward-popup"
 import BulletproofSocialFeed from "../../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../../components/notification-dropdown"
-import { ReactTogether, useNicknames } from 'react-together'
+import { ReactTogether } from 'react-together'
+import { useUnifiedNickname } from "../../../hooks/useUnifiedNickname"
 import { ReactTogetherErrorBoundary } from "../../../components/react-together-error-boundary"
 import ProfileEditModal from "../../../components/profile-edit-modal"
 
@@ -46,16 +47,10 @@ export function SocialHubPage({
   const [showDailyReward, setShowDailyReward] = useState(false)
   const { toast } = useToast()
 
-  // Use the official React Together useNicknames hook
-  const [currentNickname, setCurrentNickname] = useNicknames()
+  // Use the unified nickname system
+  const { nickname: currentNickname, updateNickname } = useUnifiedNickname();
 
-  // Sync the passed nickname prop with React Together nickname
-  useEffect(() => {
-    if (nickname && nickname !== currentNickname) {
-      console.log('SocialHubPage: Syncing nickname from prop to React Together:', nickname);
-      setCurrentNickname(nickname);
-    }
-  }, [nickname, currentNickname, setCurrentNickname]);
+  // The unified hook handles all synchronization automatically
 
   // Show daily reward popup after a short delay
   useEffect(() => {
@@ -121,6 +116,25 @@ export function SocialHubPage({
           appId: "monfarm.social.hub",
           name: "monfarm-social-hub-main",
           password: "public"
+        }}
+        rememberUsers={true}
+        deriveNickname={(userId) => {
+          // Custom logic to derive initial nickname from localStorage
+          if (typeof window !== "undefined") {
+            const stored = localStorage.getItem('player-nickname');
+            if (stored && stored.trim() !== '') {
+              console.log('SocialHub ReactTogether deriveNickname: Using stored nickname:', stored);
+              return stored;
+            }
+          }
+          // Fallback to a farmer-themed name if no stored nickname
+          const adjectives = ["Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden"];
+          const farmTerms = ["Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher"];
+          const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+          const term = farmTerms[Math.floor(Math.random() * farmTerms.length)];
+          const fallbackName = `${adj} ${term}`;
+          console.log('SocialHub ReactTogether deriveNickname: Using fallback nickname:', fallbackName);
+          return fallbackName;
         }}
       >
         <div className="min-h-screen bg-black">
@@ -223,16 +237,24 @@ export function SocialHubPage({
                     console.log('Attempting to change nickname to:', newNickname);
 
                     try {
-                      // Use the official React Together setNickname function
-                      setCurrentNickname(newNickname);
+                      // Use the unified nickname system
+                      const success = updateNickname(newNickname);
 
-                      toast({
-                        title: "Nickname Updated!",
-                        description: `Your nickname has been changed to "${newNickname}"`,
-                        variant: "default",
-                      });
-
-                      return true;
+                      if (success) {
+                        toast({
+                          title: "Nickname Updated!",
+                          description: `Your nickname has been changed to "${newNickname}"`,
+                          variant: "default",
+                        });
+                        return true;
+                      } else {
+                        toast({
+                          title: "Error",
+                          description: "Failed to update nickname. Please try again.",
+                          variant: "destructive",
+                        });
+                        return false;
+                      }
                     } catch (error) {
                       console.error('Error changing nickname:', error);
                       toast({

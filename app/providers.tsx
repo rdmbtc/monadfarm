@@ -99,6 +99,24 @@ export function Providers({ children }: { children: ReactNode }) {
               model: FarmGameModel
             }}
             rememberUsers={true}
+            deriveNickname={(userId) => {
+              // Custom logic to derive initial nickname from localStorage
+              if (typeof window !== "undefined") {
+                const stored = localStorage.getItem('player-nickname');
+                if (stored && stored.trim() !== '') {
+                  console.log('ReactTogether deriveNickname: Using stored nickname:', stored);
+                  return stored;
+                }
+              }
+              // Fallback to a farmer-themed name if no stored nickname
+              const adjectives = ["Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden"];
+              const farmTerms = ["Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher"];
+              const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+              const term = farmTerms[Math.floor(Math.random() * farmTerms.length)];
+              const fallbackName = `${adj} ${term}`;
+              console.log('ReactTogether deriveNickname: Using fallback nickname:', fallbackName);
+              return fallbackName;
+            }}
           >
             <GameProvider>
               <GuideProvider>
