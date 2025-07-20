@@ -221,7 +221,7 @@ const EnhancedGuideContent: React.FC<EnhancedGuideContentProps> = ({ guideType, 
       ]
     },
     platformer: {
-      intro: "Play the Nooter Platformer game to earn extra Farm Coins:",
+      intro: "Play the MonFarm Platformer game to earn extra Farm Coins:",
       steps: [
         {
           title: "Controls",

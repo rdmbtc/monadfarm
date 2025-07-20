@@ -66,10 +66,16 @@ import { SocialHubPage } from "@/app/social-hub/app/social-hub-page"; // Path to
 // Import MonIoWrapper for Mon.io game
 import MonIoWrapper from '@/components/mon-io/MonIoWrapper';
 
-// Dynamically import P5Wrapper with SSR disabled
-const DynamicP5Wrapper = dynamic(() => import('./p5-platformer/P5Wrapper'), { // Corrected path
+// Dynamically import P5Wrapper with SSR disabled (kept as fallback)
+// const DynamicP5Wrapper = dynamic(() => import('./p5-platformer/P5Wrapper'), { // Corrected path
+//   ssr: false,
+//   loading: () => <LoadingPlaceholder /> // Use your LoadingPlaceholder here
+// });
+
+// Dynamically import Multiplayer Platformer Wrapper with SSR disabled
+const DynamicMultiplayerPlatformerWrapper = dynamic(() => import('./multiplayer-platformer/MultiplayerPlatformerWrapper'), {
   ssr: false,
-  loading: () => <LoadingPlaceholder /> // Use your LoadingPlaceholder here
+  loading: () => <LoadingPlaceholder />
 });
 
 // Use the actual Plot interface from game-context
@@ -3914,12 +3920,18 @@ export function Farm() {
         {activeTab === "platformer" && (
           <div className="animate-fadeIn">
             <h2 className="text-xl font-semibold text-white border-b border-white/10 pb-2 mb-4">
-              Noot's Platformer Adventure
+              MonFarm Platformer - Multiplayer
             </h2>
             <div className="noot-card p-1 overflow-hidden">
-              {/* Use the dynamically imported component */}
-              <DynamicP5Wrapper /> 
-              {/* Remove the old P5Wrapper reference entirely */}
+              {/* Use the multiplayer platformer wrapper */}
+              <DynamicMultiplayerPlatformerWrapper
+                farmCoins={farmCoins}
+                addFarmCoins={addFarmCoins}
+                nickname={nickname}
+                playerLevel={playerLevel}
+              />
+              {/* Fallback to single-player if needed */}
+              {/* <DynamicP5Wrapper /> */}
             </div>
           </div>
         )}

@@ -5,9 +5,7 @@ import { GameProvider } from "@/context/game-context"
 import { GuideProvider } from "@/context/guide-context"
 import { PrivyProvider } from '@privy-io/react-auth'
 import { defineChain } from 'viem'
-import { ReactTogether } from 'react-together'
 import { NoSSRWrapper } from '@/components/no-ssr-wrapper'
-import { FarmGameModel } from '@/models/farm-game-model'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 // Define Monad Testnet chain configuration for Privy
@@ -35,14 +33,11 @@ const monadTestnet = defineChain({
 })
 
 export function Providers({ children }: { children: ReactNode }) {
-  // Track if we're on the client side
-  const [isClient, setIsClient] = useState(false)
   const [hasInitialized, setHasInitialized] = useState(false)
 
   // Add debug logging for context initialization
   useEffect(() => {
     if (!hasInitialized) {
-      setIsClient(true)
       setHasInitialized(true)
       console.log("[Providers] Client-side providers initialized");
 
@@ -55,7 +50,7 @@ export function Providers({ children }: { children: ReactNode }) {
           console.warn('⚠️ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is not set. WalletConnect features may not work properly.')
         }
         if (!process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY) {
-          console.warn('⚠️ NEXT_PUBLIC_REACT_TOGETHER_API_KEY is not set. Real-time features may not work properly.')
+          console.warn('⚠️ NEXT_PUBLIC_REACT_TOGETHER_API_KEY is not set. Real-time features on specific pages may not work properly.')
         }
       }
     }
@@ -89,48 +84,11 @@ export function Providers({ children }: { children: ReactNode }) {
           },
         }}
       >
-        {/* Only initialize ReactTogether on client side to prevent SSR issues */}
-        {isClient && process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY ? (
-          <ReactTogether
-            sessionParams={{
-              appId: "monfarm-social-hub",
-              apiKey: process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY,
-              name: "monfarm-social-hub-session",
-              model: FarmGameModel
-            }}
-            rememberUsers={true}
-            deriveNickname={(userId) => {
-              // Custom logic to derive initial nickname from localStorage
-              if (typeof window !== "undefined") {
-                const stored = localStorage.getItem('player-nickname');
-                if (stored && stored.trim() !== '') {
-                  console.log('ReactTogether deriveNickname: Using stored nickname:', stored);
-                  return stored;
-                }
-              }
-              // Fallback to a farmer-themed name if no stored nickname
-              const adjectives = ["Happy", "Clever", "Bright", "Swift", "Kind", "Brave", "Calm", "Wise", "Green", "Golden"];
-              const farmTerms = ["Farmer", "Harvester", "Grower", "Planter", "Gardener", "Rancher"];
-              const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-              const term = farmTerms[Math.floor(Math.random() * farmTerms.length)];
-              const fallbackName = `${adj} ${term}`;
-              console.log('ReactTogether deriveNickname: Using fallback nickname:', fallbackName);
-              return fallbackName;
-            }}
-          >
-            <GameProvider>
-              <GuideProvider>
-                {children}
-              </GuideProvider>
-            </GameProvider>
-          </ReactTogether>
-        ) : (
-          <GameProvider>
-            <GuideProvider>
-              {children}
-            </GuideProvider>
-          </GameProvider>
-        )}
+        <GameProvider>
+          <GuideProvider>
+            {children}
+          </GuideProvider>
+        </GameProvider>
         </PrivyProvider>
       </NoSSRWrapper>
     </ErrorBoundary>
