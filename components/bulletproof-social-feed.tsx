@@ -105,12 +105,13 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
   // Monitor connection status
   useEffect(() => {
     const checkConnection = () => {
+      console.log('BulletproofSocialFeed: Connection check - myId:', myId, 'connectedUsers:', connectedUsers.length);
       setIsOnline(!!myId && connectedUsers.length > 0);
     };
-    
+
     checkConnection();
     const interval = setInterval(checkConnection, 1000);
-    
+
     return () => clearInterval(interval);
   }, [myId, connectedUsers]);
 

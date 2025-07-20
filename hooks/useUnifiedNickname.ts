@@ -7,6 +7,8 @@ export function useUnifiedNickname() {
   // React Together nickname system (now properly configured with deriveNickname)
   const [nickname, setNickname] = useNicknames();
 
+  console.log('useUnifiedNickname: Current nickname:', nickname);
+
   // Sync nickname changes to localStorage
   useEffect(() => {
     if (nickname && nickname.trim() !== '' && typeof window !== "undefined") {
