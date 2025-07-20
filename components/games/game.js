@@ -149,13 +149,32 @@ export default function platformerSketch(p) {
     };
 
     // Player images
-    nootIdleImg = p.loadImage('/defense/noot idle.png', img => checkImage(img, 'nootIdleImg'));
+    console.log('🖼️ Loading player image: /defense/noot idle.png');
+    nootIdleImg = p.loadImage('/defense/noot idle.png',
+      img => {
+        console.log('✅ Player image loaded successfully:', img.width, 'x', img.height);
+        checkImage(img, 'nootIdleImg');
+      },
+      err => {
+        console.error('❌ Failed to load player image:', err);
+      }
+    );
 
     // Enemy images
     const enemyBasePath = '/characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/';
-    enemyFoxImg = p.loadImage(enemyBasePath + 'Icon9.png', img => checkImage(img, 'enemyFoxImg'));
-    enemyRabbitImg = p.loadImage(enemyBasePath + 'Icon2.png', img => checkImage(img, 'enemyRabbitImg'));
-    enemyBirdImg = p.loadImage(enemyBasePath + 'Icon1.png', img => checkImage(img, 'enemyBirdImg'));
+    console.log('🖼️ Loading enemy images from:', enemyBasePath);
+    enemyFoxImg = p.loadImage(enemyBasePath + 'Icon9.png',
+      img => checkImage(img, 'enemyFoxImg'),
+      err => console.error('❌ Failed to load fox image:', err)
+    );
+    enemyRabbitImg = p.loadImage(enemyBasePath + 'Icon2.png',
+      img => checkImage(img, 'enemyRabbitImg'),
+      err => console.error('❌ Failed to load rabbit image:', err)
+    );
+    enemyBirdImg = p.loadImage(enemyBasePath + 'Icon1.png',
+      img => checkImage(img, 'enemyBirdImg'),
+      err => console.error('❌ Failed to load bird image:', err)
+    );
 
     // Level Dressing Assets
     const assetBasePath = '/assets/platformer/sfx and backgrounds/Small Forest Asset Pack/Small Forest Asset Pack/';
@@ -1114,9 +1133,11 @@ export default function platformerSketch(p) {
 
   const drawPlayer = () => {
       if (!player) {
+          console.warn("drawPlayer: No player object");
           return;
       }
       if (!nootIdleImg) {
+          console.warn("drawPlayer: No nootIdleImg loaded, drawing fallback rectangle");
           // Draw fallback rectangle instead of returning
           p.push();
           p.translate(player.x, player.y);
@@ -1186,7 +1207,12 @@ export default function platformerSketch(p) {
     const crumblingColor = p.color(200, 160, 120, 200); // Dusty brown for crumbling
     
     // Guard clause
-    if (!platforms || platforms.length === 0) {
+    if (!platforms) {
+        console.warn("drawPlatformsWithTexture: No platforms array");
+        return;
+    }
+    if (platforms.length === 0) {
+        console.warn("drawPlatformsWithTexture: Empty platforms array");
         return;
     }
     
@@ -1517,6 +1543,7 @@ export default function platformerSketch(p) {
 
    // Helper function to initialize player
    const initializePlayer = (startPos = null) => {
+       console.log("🎮 initializePlayer called with:", startPos);
        const baseSpeed = 5.5; // Increased base speed
        const baseJumpForce = -13; // Keep the increased jump force
        player = {
@@ -1547,6 +1574,7 @@ export default function platformerSketch(p) {
           activeComboPerk: null, // e.g., 'speed', 'magnet'
           starMagnetRadius: 0, // Base magnet radius (0 = off)
        };
+       console.log("🎮 Player initialized:", player);
    }
 
   const initializeDecorations = () => {
@@ -1585,6 +1613,7 @@ export default function platformerSketch(p) {
       // Check the dynamically assigned bgLayer variables
       if (!bgLayer1 || !bgLayer2 || !bgLayer3 || !bgLayer4) {
           // If backgrounds failed to load, just use solid color but don't return
+          console.warn("Background layers not loaded, using solid color");
           return;
       }
 
@@ -1643,16 +1672,27 @@ export default function platformerSketch(p) {
 
       // Player needs to be initialized *before* generateLevel is called
       // so generateLevel can access base stats if needed.
+      console.log("🎮 Calling initializePlayer");
       initializePlayer({ x: 100, y: p.height - 100});
+      console.log("🎮 Player after init:", player ? "exists" : "missing");
 
       // Initialize game objects by loading/generating the first level
+      console.log("🎮 Calling resetGame");
       resetGame(); // Calls loadLevelData(0) internally
+      console.log("🎮 Platforms after resetGame:", platforms ? platforms.length : "missing");
 
-      console.log("🎮 Setup complete - Player:", player ? "✓" : "✗", "Platforms:", platforms ? platforms.length : "✗");
+      console.log("p5 setup complete. Procedural generation active. Interaction needed for audio context.");
   };
 
   // p5.js draw function: Called repeatedly to update and render the game frame.
   p.draw = () => {
+      // Debug: Log once every 5 seconds to confirm draw is running
+      if (p.frameCount === 1) {
+          console.log("🎮 Game draw function started");
+      }
+      if (p.frameCount % 300 === 0) {
+          console.log(`🎮 Game running - Frame: ${p.frameCount}, Player: ${player ? 'exists' : 'missing'}, Platforms: ${platforms ? platforms.length : 'missing'}`);
+      }
 
       // --- Camera Update ---
       // Simple horizontal follow, centered on player, clamped to level bounds
@@ -1681,7 +1721,11 @@ export default function platformerSketch(p) {
       updateProjectiles(); // Add projectile updates
       updateFloatingScores(); // Update floating scores BEFORE drawing
 
-
+      // --- ADDED LOGS (before drawing) ---
+      if (p.frameCount % 120 === 0) { // Log counts every 2 seconds to avoid spam
+          console.log(`Draw loop counts (Lvl ${currentLevelIndex+1}): Plat=${platforms?.length}, Star=${stars?.length}, Enemy=${enemies?.length}`);
+      }
+      // --- END ADDED LOGS ---
 
       // --- Apply Camera Translation --- 
       p.push(); // Isolate camera translation
