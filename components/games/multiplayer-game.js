@@ -6,7 +6,12 @@ import platformerSketch from './game'
 export default function multiplayerPlatformerSketch(p) {
   // Store the base game instance
   let baseGame = null
-  
+
+  // Store original functions
+  let originalPreload = null
+  let originalSetup = null
+  let originalDraw = null
+
   // Multiplayer-specific state
   let localPlayer = null
   let remotePlayers = new Map() // Map of playerId -> player object
@@ -15,53 +20,46 @@ export default function multiplayerPlatformerSketch(p) {
     onPlayerAction: null,
     onGameEvent: null
   }
-  
-  // Store original functions
-  let originalSetup = null
-  let originalDraw = null
 
-  // Initialize the base game
-  const initializeBaseGame = () => {
-    console.log('🎮 Multiplayer: Initializing base game')
+  // Initialize the base game and store original functions
+  console.log('🎮 Multiplayer: Initializing base game')
+  baseGame = platformerSketch(p)
 
-    // Call platformerSketch which will set p.setup and p.draw
-    baseGame = platformerSketch(p)
+  // Store the functions that were assigned by platformerSketch
+  originalPreload = p.preload
+  originalSetup = p.setup
+  originalDraw = p.draw
 
-    // Store the functions that were assigned by platformerSketch
-    originalSetup = p.setup
-    originalDraw = p.draw
-
-    // Store reference to the local player
-    if (baseGame && baseGame.getPlayer) {
-      localPlayer = baseGame.getPlayer()
-    }
-
-    return baseGame
+  // Store reference to the local player
+  if (baseGame && baseGame.getPlayer) {
+    localPlayer = baseGame.getPlayer()
   }
 
+  // Override the preload function to call the base game's preload
+  p.preload = () => {
+    console.log('🎮 Multiplayer: Calling base preload')
+    if (originalPreload) {
+      originalPreload()
+    }
+  }
+  
   // Override the base game's setup function
   p.setup = () => {
-    console.log('🎮 Multiplayer: Setting up')
+    console.log('🎮 Multiplayer: Calling base setup')
 
-    // Initialize base game first
-    if (!baseGame) {
-      baseGame = initializeBaseGame()
-
-      // Call the original setup function from the base game
-      if (originalSetup) {
-        console.log('🎮 Multiplayer: Calling base setup')
-        originalSetup()
-      } else {
-        // Fallback setup
-        p.createCanvas(800, 600)
-        p.background(100, 150, 200)
-      }
+    // Call the original setup function from the base game
+    if (originalSetup) {
+      originalSetup()
+    } else {
+      // Fallback setup
+      p.createCanvas(800, 600)
+      p.background(100, 150, 200)
     }
   }
   
   // Override the base game's draw function
   p.draw = () => {
-    // Call base draw if it exists
+    // Call the original draw function from the base game
     if (originalDraw) {
       originalDraw()
     } else {
