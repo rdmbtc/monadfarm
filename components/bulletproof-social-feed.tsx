@@ -146,7 +146,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
 
   // Safe post creation
   const handleCreatePost = useCallback(() => {
-    if (!newPostContent.trim() || isPosting) return;
+    if (!newPostContent || !newPostContent.trim() || isPosting) return;
 
     setIsPosting(true);
     
@@ -154,7 +154,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
       id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId: myId || 'offline-user',
       nickname: myNickname,
-      content: newPostContent.trim(),
+      content: (newPostContent || '').trim(),
       timestamp: Date.now(),
       likes: 0,
       likedBy: [],
@@ -230,9 +230,9 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
 
   // Nickname change function
   const changeNickname = useCallback((newNickname: string) => {
-    if (!newNickname.trim() || !myId) return false;
+    if (!newNickname || !newNickname.trim() || !myId) return false;
 
-    const trimmedNickname = newNickname.trim();
+    const trimmedNickname = (newNickname || '').trim();
 
     try {
       if (isOnline) {
@@ -342,7 +342,7 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
                 </Button>
                 <Button
                   onClick={handleCreatePost}
-                  disabled={!newPostContent.trim() || isPosting}
+                  disabled={!newPostContent || !newPostContent.trim() || isPosting}
                   className="bg-[#333] hover:bg-[#444] text-white border border-[#444] rounded-none"
                 >
                   <Send className="h-4 w-4 mr-1" />

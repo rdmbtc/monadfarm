@@ -133,7 +133,7 @@ export function ReactTogetherChat({
 
   // Enhanced message sending
   const handleSendMessage = () => {
-    if (messageInput.trim() && isConnected) {
+    if (messageInput && messageInput.trim() && isConnected) {
       sendMessage(messageInput.trim())
       setMessageInput('')
       setShowEmojiPicker(false)
@@ -349,7 +349,7 @@ export function ReactTogetherChat({
               />
               <Button 
                 onClick={handleSendMessage}
-                disabled={!messageInput.trim() || !isConnected}
+                disabled={!messageInput || !messageInput.trim() || !isConnected}
                 className="bg-white text-black hover:bg-white/90 rounded-none"
               >
                 <Send className="h-4 w-4" />

@@ -126,7 +126,7 @@ export function SimpleMultisynqChat({ className }: { className?: string }) {
             />
             <Button 
               onClick={handleSendMessage}
-              disabled={!isConnected || !messageInput.trim()}
+              disabled={!isConnected || !messageInput || !messageInput.trim()}
               size="sm"
             >
               <Send className="h-4 w-4" />

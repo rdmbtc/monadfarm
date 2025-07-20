@@ -47,7 +47,7 @@ export function NotificationDropdown() {
     },
   ])
 
-  const markAsRead = (id) => {
+  const markAsRead = (id: number) => {
     setNotifications(
       notifications.map((notification) =>
         notification.id === id ? { ...notification, unread: false } : notification

@@ -9,6 +9,13 @@ import { Badge } from './ui/badge';
 import { motion } from 'framer-motion';
 import { User, Edit3, Check, X } from 'lucide-react';
 
+// Safe string helper
+function safeString(value: any): string {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
 interface ProfileEditModalProps {
   currentNickname: string;
   onNicknameChange?: (newNickname: string) => boolean;
@@ -37,13 +44,13 @@ export function ProfileEditModal({
   ];
 
   const handleSave = async () => {
-    if (!newNickname.trim()) return;
+    if (!newNickname || !newNickname.trim()) return;
     
     setIsChanging(true);
     
     try {
       if (onNicknameChange) {
-        const success = onNicknameChange(newNickname.trim());
+        const success = onNicknameChange((newNickname || '').trim());
         if (success) {
           setIsOpen(false);
         }
@@ -81,7 +88,7 @@ export function ProfileEditModal({
           {/* Current Profile Info */}
           <div className="flex items-center gap-4 p-4 bg-[#111] border border-[#333] rounded-none">
             <div className="h-12 w-12 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
-              {currentNickname.slice(0, 2).toUpperCase()}
+              {safeString(currentNickname).slice(0, 2).toUpperCase() || 'U'}
             </div>
             <div>
               <p className="font-semibold text-white">{currentNickname}</p>
@@ -161,7 +168,7 @@ export function ProfileEditModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isChanging || !newNickname.trim() || newNickname === currentNickname}
+              disabled={isChanging || !newNickname || !newNickname.trim() || newNickname === currentNickname}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-none"
             >
               {isChanging ? (
