@@ -1744,10 +1744,10 @@ export default function platformerSketch(p) {
       handleInput(); // Process input 
       updateFloatingScores(); // Update scores 
       drawScore(); // Draw score overlay 
-      drawFloatingScores(); // Draw floating scores 
+      drawFloatingScores(); // Draw floating scores
       drawComboDisplay(); // Draw combo text
 
-  };
+  }; // End of p.draw function
 
   // --- Hazard Functions ---
   const drawHazards = () => {
@@ -2094,16 +2094,15 @@ export default function platformerSketch(p) {
      console.log("p5 sketch cleanup complete.");
    };
 
-   // Return game API for multiplayer access
-   return {
-     getPlayer: () => player,
-     nootIdleImg: nootIdleImg,
-     draw: p.draw,
-     // Add other assets that might be needed
-     enemyFoxImg: enemyFoxImg,
-     enemyRabbitImg: enemyRabbitImg,
-     enemyBirdImg: enemyBirdImg
-   };
-
-  }
- }
+  // Return game API for multiplayer access
+  return {
+    getPlayer: () => player,
+    nootIdleImg: nootIdleImg,
+    draw: p.draw,
+    // Add other assets that might be needed
+    enemyFoxImg: enemyFoxImg,
+    enemyRabbitImg: enemyRabbitImg,
+    enemyBirdImg: enemyBirdImg
+  };
+} // End of platformerSketch function
+}

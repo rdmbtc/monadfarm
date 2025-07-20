@@ -20,17 +20,12 @@ export default function multiplayerPlatformerSketch(p) {
   const initializeBaseGame = () => {
     console.log('MultiplayerGame: Initializing base game')
     baseGame = platformerSketch(p)
-
+    
     // Store reference to the local player
     if (baseGame && baseGame.getPlayer) {
       localPlayer = baseGame.getPlayer()
     }
-
-    // Store reference to the noot image for remote players
-    if (baseGame && baseGame.nootIdleImg) {
-      console.log('MultiplayerGame: Noot image available for remote players')
-    }
-
+    
     return baseGame
   }
   
@@ -77,17 +72,17 @@ export default function multiplayerPlatformerSketch(p) {
   // Function to draw remote players
   const drawRemotePlayers = () => {
     if (remotePlayers.size === 0) return
-
+    
     p.push()
-
+    
     for (const [playerId, remotePlayer] of remotePlayers) {
       if (!remotePlayer.isActive) continue
-
+      
       // Apply camera offset (same as local player)
       const cameraX = localPlayer ? localPlayer.x - p.width / 2 : 0
       const drawX = remotePlayer.x - cameraX
       const drawY = remotePlayer.y
-
+      
       // Only draw if player is on screen
       if (drawX > -50 && drawX < p.width + 50) {
         // Try to get the noot character image from the base game
@@ -112,13 +107,13 @@ export default function multiplayerPlatformerSketch(p) {
             p.scale(-1, 1)
           }
 
-          // Draw the character image (same size as local player)
+          // Draw the character image (same size as local player: width: 45, height: 55)
           p.image(nootImg, 0, 0, 45, 55)
           p.noTint()
           p.pop()
         } else {
           // Fallback to rectangle if image not available
-          const playerColor = remotePlayer.color || '#4ECDC4'
+          const playerColor = remotePlayer.color || '#4ECDC4' // Default to teal instead of red
           p.fill(playerColor)
           p.stroke(255)
           p.strokeWeight(2)
@@ -140,7 +135,7 @@ export default function multiplayerPlatformerSketch(p) {
         }
       }
     }
-
+    
     p.pop()
   }
   
