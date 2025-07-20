@@ -2065,7 +2065,7 @@ export default function platformerSketch(p) {
       // return false; // Optionally add if needed
   };
 
-   // --- Prop Handling ---
+   // --- Prop Handling --- 
    p.updateWithProps = props => {
      if (props.volume !== undefined && props.volume !== internalMasterVolume) {
          if (typeof props.volume === 'number') {
@@ -2094,6 +2094,16 @@ export default function platformerSketch(p) {
      console.log("p5 sketch cleanup complete.");
    };
 
-  
+   // Return game API for multiplayer access
+   return {
+     getPlayer: () => player,
+     nootIdleImg: nootIdleImg,
+     draw: p.draw,
+     // Add other assets that might be needed
+     enemyFoxImg: enemyFoxImg,
+     enemyRabbitImg: enemyRabbitImg,
+     enemyBirdImg: enemyBirdImg
+   };
+
   }
  }

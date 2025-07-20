@@ -20,77 +20,119 @@ export default function multiplayerPlatformerSketch(p) {
   const initializeBaseGame = () => {
     console.log('MultiplayerGame: Initializing base game')
     baseGame = platformerSketch(p)
-    
+
     // Store reference to the local player
     if (baseGame && baseGame.getPlayer) {
       localPlayer = baseGame.getPlayer()
     }
-    
+
+    // Store reference to the noot image for remote players
+    if (baseGame && baseGame.nootIdleImg) {
+      console.log('MultiplayerGame: Noot image available for remote players')
+    }
+
     return baseGame
   }
   
-  // Initialize the base game - this sets up p.setup and p.draw
-  console.log('MultiplayerGame: Initializing base game')
-  if (!baseGame) {
-    baseGame = initializeBaseGame()
-  }
-
-  // Store the original setup and draw functions
-  const originalSetup = p.setup
-  const originalDraw = p.draw
-
-  // Override setup to add multiplayer functionality
+  // Override the base game's setup function
   p.setup = () => {
-    console.log('MultiplayerGame: Setup called')
-    // The base game has already set up p.setup, so we call it
-    if (originalSetup) {
-      originalSetup()
+    console.log('MultiplayerGame: Setting up multiplayer game')
+    
+    // Initialize base game first
+    if (!baseGame) {
+      baseGame = initializeBaseGame()
     }
-    console.log('MultiplayerGame: Base setup complete')
+    
+    // Call base setup if it exists
+    if (baseGame && baseGame.setup) {
+      baseGame.setup()
+    } else {
+      // Fallback setup
+      p.createCanvas(800, 600)
+      p.background(100, 150, 200)
+    }
   }
-
-  // Override draw to add multiplayer functionality
+  
+  // Override the base game's draw function
   p.draw = () => {
-    // The base game has already set up p.draw, so we call it
-    if (originalDraw) {
-      originalDraw()
+    // Call base draw if it exists
+    if (baseGame && baseGame.draw) {
+      baseGame.draw()
+    } else {
+      // Fallback draw
+      p.background(100, 150, 200)
+      p.fill(255)
+      p.textAlign(p.CENTER)
+      p.textSize(24)
+      p.text('Multiplayer Platformer Loading...', p.width/2, p.height/2)
     }
-
-    // Add multiplayer elements on top
+    
+    // Draw remote players
     drawRemotePlayers()
+    
+    // Draw multiplayer UI
     drawMultiplayerUI()
   }
   
   // Function to draw remote players
   const drawRemotePlayers = () => {
     if (remotePlayers.size === 0) return
-    
+
     p.push()
-    
+
     for (const [playerId, remotePlayer] of remotePlayers) {
       if (!remotePlayer.isActive) continue
-      
+
       // Apply camera offset (same as local player)
       const cameraX = localPlayer ? localPlayer.x - p.width / 2 : 0
       const drawX = remotePlayer.x - cameraX
       const drawY = remotePlayer.y
-      
+
       // Only draw if player is on screen
       if (drawX > -50 && drawX < p.width + 50) {
-        // Draw player rectangle with their color
-        p.fill(remotePlayer.color || '#FF6B6B')
-        p.stroke(255)
-        p.strokeWeight(2)
-        p.rectMode(p.CENTER)
-        p.rect(drawX, drawY, 45, 55)
-        
+        // Try to get the noot character image from the base game
+        const nootImg = baseGame && baseGame.nootIdleImg ? baseGame.nootIdleImg : null
+
+        if (nootImg) {
+          // Draw the same PNG character as the local player
+          p.push()
+          p.translate(drawX, drawY)
+          p.imageMode(p.CENTER)
+
+          // Apply color tint to differentiate players
+          const playerColor = remotePlayer.color || '#4ECDC4'
+          // Convert hex color to RGB for tinting
+          const r = parseInt(playerColor.slice(1, 3), 16)
+          const g = parseInt(playerColor.slice(3, 5), 16)
+          const b = parseInt(playerColor.slice(5, 7), 16)
+          p.tint(r, g, b, 200) // Apply color tint with some transparency
+
+          // Flip image based on direction (if available)
+          if (remotePlayer.velocityX < 0) {
+            p.scale(-1, 1)
+          }
+
+          // Draw the character image (same size as local player)
+          p.image(nootImg, 0, 0, 45, 55)
+          p.noTint()
+          p.pop()
+        } else {
+          // Fallback to rectangle if image not available
+          const playerColor = remotePlayer.color || '#4ECDC4'
+          p.fill(playerColor)
+          p.stroke(255)
+          p.strokeWeight(2)
+          p.rectMode(p.CENTER)
+          p.rect(drawX, drawY, 45, 55)
+        }
+
         // Draw player nickname above
         p.fill(255)
         p.noStroke()
         p.textAlign(p.CENTER)
         p.textSize(12)
         p.text(remotePlayer.nickname || 'Player', drawX, drawY - 35)
-        
+
         // Draw state indicator
         if (remotePlayer.state === 'jump') {
           p.fill(255, 255, 0, 150)
@@ -98,7 +140,7 @@ export default function multiplayerPlatformerSketch(p) {
         }
       }
     }
-    
+
     p.pop()
   }
   

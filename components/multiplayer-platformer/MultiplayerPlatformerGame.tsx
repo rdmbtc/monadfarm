@@ -83,6 +83,25 @@ export default function MultiplayerPlatformerGame({
     }
   }, [gameMode, myId, leaveGame])
 
+  // Update multiplayer callbacks when dependencies change
+  useEffect(() => {
+    if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.setMultiplayerCallbacks) {
+      console.log('🔄 Updating multiplayer callbacks')
+      gameInstanceRef.current.setMultiplayerCallbacks({
+        onPlayerUpdate: (playerData: any) => {
+          if (myId && updatePlayerPosition) {
+            updatePlayerPosition(myId, playerData)
+          }
+        },
+        onPlayerAction: (action: string, data: any) => {
+          if (myId && performPlayerAction) {
+            performPlayerAction(myId, action, data)
+          }
+        }
+      })
+    }
+  }, [gameMode, myId, updatePlayerPosition, performPlayerAction])
+
   // Sync remote players with the multiplayer game (only in online mode)
   useEffect(() => {
     if (gameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.updateRemotePlayer) {
@@ -213,7 +232,7 @@ export default function MultiplayerPlatformerGame({
     }
 
     console.log('✅ Fallback game setup complete')
-  }, [gameMode, playerCount, myId, updatePlayerPosition, performPlayerAction])
+  }, [gameMode]) // Removed dependencies that cause re-creation
 
   if (!isClient) {
     return (
@@ -310,7 +329,7 @@ export default function MultiplayerPlatformerGame({
       <div className="w-full bg-gray-800 flex justify-center items-center min-h-[600px]">
         {isClient ? (
           <ReactP5Wrapper
-            key={`game-${gameMode}`}
+            key={`game-${gameMode}-stable`}
             sketch={createGameSketch}
           />
         ) : (
