@@ -266,16 +266,56 @@ export function BulletproofSocialFeed({ onNicknameChange }: { onNicknameChange?:
     }
   }, [myId, isOnline, setSyncedNicknames, setLocalNicknames]);
 
-  // Expose nickname change function to parent component
+  // Create a fallback nickname change function that works even when React Together isn't ready
+  const fallbackChangeNickname = useCallback((newNickname: string) => {
+    console.log('BulletproofSocialFeed: fallbackChangeNickname called with:', newNickname);
+
+    if (!newNickname || !newNickname.trim()) {
+      console.log('BulletproofSocialFeed: Invalid input, returning false');
+      return false;
+    }
+
+    const trimmedNickname = (newNickname || '').trim();
+    console.log('BulletproofSocialFeed: Trimmed nickname:', trimmedNickname);
+
+    try {
+      // Always update local state first
+      const userId = myId || 'local-user';
+      setLocalNicknames(prev => ({
+        ...prev,
+        [userId]: trimmedNickname
+      }));
+
+      // Try to update synced state if online
+      if (isOnline && myId) {
+        console.log('BulletproofSocialFeed: Also updating synced nickname');
+        setSyncedNicknames(prev => ({
+          ...safeObject(prev),
+          [myId]: trimmedNickname
+        }));
+      }
+
+      console.log('BulletproofSocialFeed: Nickname change successful');
+      toast.success(`Nickname changed to "${trimmedNickname}" 🌾`);
+      return true;
+    } catch (error) {
+      console.error('BulletproofSocialFeed: Failed to change nickname:', error);
+      toast.error('Failed to change nickname. Please try again.');
+      return false;
+    }
+  }, [myId, isOnline, setSyncedNicknames, setLocalNicknames]);
+
+  // Expose nickname change function to parent component immediately
   useEffect(() => {
     console.log('BulletproofSocialFeed: Exposing nickname change function to parent');
     if (onNicknameChange) {
       console.log('BulletproofSocialFeed: onNicknameChange callback provided, calling it');
-      onNicknameChange(changeNickname);
+      // Use the fallback function that works even when React Together isn't ready
+      onNicknameChange(fallbackChangeNickname);
     } else {
       console.log('BulletproofSocialFeed: No onNicknameChange callback provided');
     }
-  }, [onNicknameChange, changeNickname]);
+  }, [onNicknameChange, fallbackChangeNickname]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {

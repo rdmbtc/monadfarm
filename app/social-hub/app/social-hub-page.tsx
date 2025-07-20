@@ -49,6 +49,24 @@ export function SocialHubPage({
   const [isNicknameChangeFunctionReady, setIsNicknameChangeFunctionReady] = useState(false)
   const { toast } = useToast()
 
+  // Initialize with a basic nickname change function immediately
+  useEffect(() => {
+    console.log('Initializing basic nickname change function');
+    const basicNicknameChange = (newNickname: string) => {
+      console.log('Basic nickname change called with:', newNickname);
+      setCurrentNickname(newNickname);
+      toast({
+        title: "Nickname Updated!",
+        description: `Your nickname has been changed to "${newNickname}"`,
+        variant: "default",
+      });
+      return true;
+    };
+
+    setNicknameChangeFunction(() => basicNicknameChange);
+    setIsNicknameChangeFunctionReady(true);
+  }, [toast]);
+
   // Show daily reward popup after a short delay
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -57,6 +75,30 @@ export function SocialHubPage({
 
     return () => clearTimeout(timer)
   }, [])
+
+  // Fallback: Enable nickname change after 5 seconds even if the function isn't ready
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (!isNicknameChangeFunctionReady) {
+        console.log('Fallback: Enabling nickname change functionality after timeout');
+        setIsNicknameChangeFunctionReady(true);
+
+        // Create a basic fallback function
+        setNicknameChangeFunction(() => (newNickname: string) => {
+          console.log('Using fallback nickname change function');
+          setCurrentNickname(newNickname);
+          toast({
+            title: "Nickname Updated!",
+            description: `Your nickname has been changed to "${newNickname}" (offline mode)`,
+            variant: "default",
+          });
+          return true;
+        });
+      }
+    }, 5000); // 5 second fallback
+
+    return () => clearTimeout(fallbackTimer);
+  }, [isNicknameChangeFunctionReady, toast]);
 
   const handleClaimDailyReward = () => {
     // Add coins when claiming reward
@@ -288,8 +330,16 @@ export function SocialHubPage({
 
             <BulletproofSocialFeed
               onNicknameChange={(changeNicknameFn) => {
-                console.log('Received nickname change function from BulletproofSocialFeed');
-                setNicknameChangeFunction(() => changeNicknameFn);
+                console.log('Received enhanced nickname change function from BulletproofSocialFeed');
+                // Override the basic function with the enhanced one from BulletproofSocialFeed
+                setNicknameChangeFunction(() => (newNickname: string) => {
+                  console.log('Using enhanced nickname change function');
+                  const success = changeNicknameFn(newNickname);
+                  if (success) {
+                    setCurrentNickname(newNickname);
+                  }
+                  return success;
+                });
                 setIsNicknameChangeFunctionReady(true);
               }}
             />
