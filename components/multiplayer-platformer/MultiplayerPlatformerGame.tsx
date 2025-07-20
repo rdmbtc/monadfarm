@@ -290,9 +290,9 @@ export default function MultiplayerPlatformerGame({
     }
   }, [localGameMode, setGameMode])
 
-  // Create the game sketch - REAL GAME WITH FALLBACK
+  // Create the game sketch - STABLE VERSION TO PREVENT MULTIPLE INSTANCES
   const createGameSketch = useCallback((p: any) => {
-    console.log('🎮 Creating game sketch, mode:', localGameMode)
+    console.log('🎮 Creating game sketch, mode:', localGameMode, 'Instance ID:', Math.random().toString(36).substring(2, 11))
 
     try {
       // Try to create the real multiplayer game
@@ -371,7 +371,7 @@ export default function MultiplayerPlatformerGame({
     }
 
     console.log('✅ Fallback game setup complete')
-  }, [localGameMode, recordStarCollection, checkLevelComplete, advanceToNextLevel, myId, updatePlayerPosition, performPlayerAction]) // Added dependencies
+  }, [localGameMode]) // REDUCED DEPENDENCIES TO PREVENT RE-CREATION
 
   if (!isClient) {
     return (
@@ -510,7 +510,7 @@ export default function MultiplayerPlatformerGame({
       <div className="w-full bg-gray-800 flex justify-center items-center min-h-[600px]">
         {isClient ? (
           <ReactP5Wrapper
-            key={`game-${localGameMode}-stable`}
+            key="multiplayer-platformer-game"
             sketch={createGameSketch}
           />
         ) : (

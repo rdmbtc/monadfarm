@@ -4,9 +4,13 @@
 import platformerSketch from './game'
 
 export default function multiplayerPlatformerSketch(p) {
+  // Prevent multiple instances
+  const instanceId = Math.random().toString(36).substring(2, 11)
+  console.log('🎮 MultiplayerGame: Creating instance', instanceId)
+
   // Store the base game instance
   let baseGame = null
-  
+
   // Multiplayer-specific state
   let localPlayer = null
   let remotePlayers = new Map() // Map of playerId -> player object
@@ -15,9 +19,16 @@ export default function multiplayerPlatformerSketch(p) {
     onPlayerAction: null,
     onGameEvent: null
   }
-  
+
+  // Game mode and multiplayer model callbacks
+  let gameModelCallbacks = {
+    recordStarCollection: null,
+    checkLevelComplete: null,
+    advanceToNextLevel: null
+  }
+
   // CRITICAL: Initialize base game immediately to set up preload function
-  console.log('MultiplayerGame: Initializing base game for asset loading')
+  console.log('🎮 MultiplayerGame: Initializing base game for asset loading, instance:', instanceId)
   baseGame = platformerSketch(p)
 
   // Store reference to the local player
@@ -73,16 +84,12 @@ export default function multiplayerPlatformerSketch(p) {
     }
   }
   
-  // Store the original draw function that was set by the base game
-  const originalDraw = p.draw
-
-  // Override draw to add multiplayer functionality
+  // Override the base game's draw function
   p.draw = () => {
-    // Call the original base game draw first
-    if (originalDraw) {
-      originalDraw()
+    // Call base draw if it exists
+    if (baseGame && baseGame.draw) {
+      baseGame.draw()
     } else {
-      console.error('MultiplayerGame: No original draw function found!')
       // Fallback draw
       p.background(100, 150, 200)
       p.fill(255)
