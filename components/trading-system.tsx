@@ -399,60 +399,67 @@ export function TradingSystem() {
   }, [myId, myNickname, broadcastTradeEvent]);
 
   return (
-    <div className="space-y-6">
+    <div className="noot-card">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ArrowRightLeft className="h-6 w-6 text-green-400" />
-          <h2 className="text-2xl font-bold text-white">Trading Hub</h2>
-          <Badge variant="secondary" className="bg-green-900/30 text-green-300">
-            {connectedUsers.length} farmers online
-          </Badge>
-        </div>
-        <Button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create Trade
-        </Button>
+      <div className="border-b border-[#333] p-4">
+        <h2 className="noot-header flex items-center text-white noot-title">
+          <ArrowRightLeft className="h-5 w-5 mr-2 text-green-400" />
+          Trading Hub
+        </h2>
+        <p className="text-white/60 text-sm noot-text">
+          {connectedUsers.length} farmers online • Trade items with other players
+        </p>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex gap-2">
-        {[
-          { id: 'browse', label: 'Browse Trades', count: activeTrades.length },
-          { id: 'my-trades', label: 'My Trades', count: myTrades.length },
-        ].map(tab => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? "default" : "outline"}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={activeTab === tab.id ? "bg-green-600 hover:bg-green-700" : "border-gray-600 text-gray-300"}
+      <div className="p-4">
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mb-6">
+          {[
+            { id: 'browse', label: 'Browse Trades', count: activeTrades.length },
+            { id: 'my-trades', label: 'My Trades', count: myTrades.length },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2 border border-[#333] rounded-none noot-text transition-all ${
+                activeTab === tab.id
+                  ? 'bg-white text-black'
+                  : 'bg-[#111] text-white hover:bg-[#222]'
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className={`ml-2 px-1.5 py-0.5 text-xs border border-[#333] ${
+                  activeTab === tab.id ? 'bg-black text-white' : 'bg-[#333] text-white'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="ml-auto px-4 py-2 bg-white text-black hover:bg-white/90 border-0 rounded-none noot-text flex items-center"
           >
-            {tab.label}
-            {tab.count > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-gray-700 text-white">
-                {tab.count}
-              </Badge>
-            )}
-          </Button>
-        ))}
-      </div>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Trade
+          </button>
+        </div>
 
-      {/* Content based on active tab */}
-      <div className="min-h-[400px]">
-        {activeTab === 'browse' && (
-          <BrowseTrades 
-            trades={activeTrades} 
-            myId={myId || ''} 
-            onAccept={handleAcceptTrade}
-            onDecline={handleDeclineTrade}
-          />
-        )}
-        {activeTab === 'my-trades' && (
-          <MyTrades trades={myTrades} />
-        )}
+        {/* Content based on active tab */}
+        <div className="min-h-[400px]">
+          {activeTab === 'browse' && (
+            <BrowseTrades
+              trades={activeTrades}
+              myId={myId || ''}
+              onAccept={handleAcceptTrade}
+              onDecline={handleDeclineTrade}
+            />
+          )}
+          {activeTab === 'my-trades' && (
+            <MyTrades trades={myTrades} />
+          )}
+        </div>
       </div>
 
       {/* Create Trade Modal */}
@@ -485,18 +492,18 @@ function BrowseTrades({
 }) {
   if (trades.length === 0) {
     return (
-      <Card className="bg-[#171717] border-[#333]">
-        <CardContent className="p-8 text-center">
-          <Package className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No Active Trades</h3>
-          <p className="text-gray-400">Be the first to create a trade offer!</p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-8 text-white/60">
+        <div className="w-12 h-12 border border-[#333] flex items-center justify-center mx-auto mb-4 bg-[#111]">
+          <Package className="h-6 w-6 text-white/40" />
+        </div>
+        <h3 className="text-lg font-medium text-white mb-2 noot-text">No Active Trades</h3>
+        <p className="text-white/60 noot-text">Be the first to create a trade offer!</p>
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="space-y-3">
       <AnimatePresence>
         {trades.map(trade => (
           <motion.div
@@ -504,35 +511,42 @@ function BrowseTrades({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-[#171717] border border-[#333] rounded-lg p-6"
+            className="border border-[#333] bg-[#111] p-4 noot-text"
           >
             <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-medium text-white">{trade.creatorNickname}</h3>
-                <p className="text-sm text-gray-400">
-                  {new Date(trade.timestamp).toLocaleDateString()} •
-                  Expires {new Date(trade.expiresAt).toLocaleDateString()}
-                </p>
+              <div className="flex items-center">
+                <div className="w-8 h-8 border border-[#333] flex items-center justify-center mr-3">
+                  <span className="text-white text-xs">👤</span>
+                </div>
+                <div>
+                  <h3 className="text-white font-medium noot-text">{trade.creatorNickname}</h3>
+                  <p className="text-xs text-white/60 noot-text">
+                    {new Date(trade.timestamp).toLocaleDateString()} •
+                    Expires {new Date(trade.expiresAt).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-              <Badge variant="secondary" className="bg-green-900/30 text-green-300">
+              <div className="px-2 py-1 bg-[#333] text-green-400 text-xs border border-[#333] noot-text flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
                 Active
-              </Badge>
+              </div>
             </div>
 
             {trade.description && (
-              <p className="text-gray-300 mb-4 italic">"{trade.description}"</p>
+              <p className="text-white/80 mb-4 text-sm noot-text italic">"{trade.description}"</p>
             )}
 
             <div className="grid md:grid-cols-3 gap-4 items-center">
               {/* Offering */}
               <div>
-                <h4 className="text-sm font-medium text-green-400 mb-2">Offering</h4>
-                <div className="space-y-2">
+                <h4 className="text-sm font-medium text-green-400 mb-2 noot-text">Offering</h4>
+                <div className="space-y-1">
                   {trade.offering.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <span className="text-lg">{item.itemIcon}</span>
-                      <span className="text-white">{item.quantity}x {item.itemName}</span>
+                    <div key={idx} className="flex items-center gap-2 p-2 border border-[#333] bg-black">
+                      <div className="w-6 h-6 border border-[#333] flex items-center justify-center text-sm">
+                        {item.itemIcon}
+                      </div>
+                      <span className="text-white text-sm noot-text">{item.quantity}x {item.itemName}</span>
                     </div>
                   ))}
                 </div>
@@ -540,17 +554,21 @@ function BrowseTrades({
 
               {/* Arrow */}
               <div className="flex justify-center">
-                <ArrowRightLeft className="h-6 w-6 text-gray-500" />
+                <div className="w-8 h-8 border border-[#333] flex items-center justify-center bg-[#111]">
+                  <ArrowRightLeft className="h-4 w-4 text-white/60" />
+                </div>
               </div>
 
               {/* Requesting */}
               <div>
-                <h4 className="text-sm font-medium text-blue-400 mb-2">Requesting</h4>
-                <div className="space-y-2">
+                <h4 className="text-sm font-medium text-blue-400 mb-2 noot-text">Requesting</h4>
+                <div className="space-y-1">
                   {trade.requesting.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
-                      <span className="text-lg">{item.itemIcon}</span>
-                      <span className="text-white">{item.quantity}x {item.itemName}</span>
+                    <div key={idx} className="flex items-center gap-2 p-2 border border-[#333] bg-black">
+                      <div className="w-6 h-6 border border-[#333] flex items-center justify-center text-sm">
+                        {item.itemIcon}
+                      </div>
+                      <span className="text-white text-sm noot-text">{item.quantity}x {item.itemName}</span>
                     </div>
                   ))}
                 </div>
@@ -560,21 +578,20 @@ function BrowseTrades({
             {/* Actions */}
             {trade.creatorId !== myId && (
               <div className="flex gap-2 mt-4 pt-4 border-t border-[#333]">
-                <Button
+                <button
                   onClick={() => onAccept(trade.id)}
-                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  className="bg-white text-black hover:bg-white/90 border-0 rounded-none flex-1 py-2 px-4 noot-text font-medium flex items-center justify-center"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Accept Trade
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={() => onDecline(trade.id)}
-                  variant="outline"
-                  className="border-red-600 text-red-400 hover:bg-red-600/10 flex-1"
+                  className="bg-[#333] text-white hover:bg-[#444] border border-[#333] rounded-none flex-1 py-2 px-4 noot-text font-medium flex items-center justify-center"
                 >
                   <X className="h-4 w-4 mr-2" />
                   Decline
-                </Button>
+                </button>
               </div>
             )}
           </motion.div>

@@ -133,17 +133,20 @@ export default function FriendSuggestions() {
   )
 
   return (
-    <Card>
-      <CardHeader className="pb-3 flex items-center">
-        <div className="flex items-center">
-          <Users className="h-5 w-5 text-blue-500 mr-2" />
-          <h3 className="text-lg font-semibold">Friend Suggestions</h3>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <div className="noot-card">
+      <div className="border-b border-[#333] p-4">
+        <h2 className="noot-header flex items-center text-white noot-title">
+          <Users className="h-5 w-5 mr-2 text-green-400" />
+          Friend Suggestions
+        </h2>
+        <p className="text-white/60 text-sm noot-text">
+          {visibleSuggestions.length} farmers online
+        </p>
+      </div>
+      <div className="p-4">
         <AnimatePresence>
           {visibleSuggestions.length > 0 ? (
-            <motion.div className="space-y-4">
+            <motion.div className="space-y-3">
               {visibleSuggestions.slice(0, 3).map((friend, index) => (
                 <motion.div
                   key={friend.userId}
@@ -151,41 +154,44 @@ export default function FriendSuggestions() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between"
+                  className="flex items-center justify-between p-3 border border-[#333] mb-2 bg-[#111] noot-text"
                 >
-                  <div className="flex items-center gap-3">
-                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                      <div className="relative">
-                        <Avatar>
-                          <AvatarImage src={friend.avatar || "/images/logo mark/Monad Logo - Default - Logo Mark.png"} alt={friend.name} />
-                          <AvatarFallback>{friend.name.substring(0, 2)}</AvatarFallback>
-                        </Avatar>
-                        {friend.isOnline && (
-                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"></span>
-                        )}
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 border border-[#333] flex items-center justify-center mr-3 relative">
+                      <div className="w-6 h-6 bg-[#222] border border-[#333] flex items-center justify-center text-xs">
+                        👤
                       </div>
-                    </motion.div>
+                      {friend.isOnline && (
+                        <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-green-500 border border-[#111]"></span>
+                      )}
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{friend.name}</span>
-                        <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-100">
+                        <span className="text-white noot-text font-medium">{friend.name}</span>
+                        <span className="text-xs bg-[#333] text-green-400 px-1.5 py-0.5 border border-[#333]">
                           Lvl {friend.level}
                         </span>
                         {friend.isOnline && (
-                          <span className="text-xs text-green-600 dark:text-green-400">Online</span>
+                          <span className="text-xs text-green-400">Online</span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{friend.mutualFriends} mutual friends</p>
+                      <p className="text-xs text-white/60 noot-text">{friend.mutualFriends} mutual friends</p>
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <ShimmerButton className="h-8 px-2 py-1 text-xs" onClick={() => handleAddFriend(friend.userId)}>
+                    <button
+                      onClick={() => handleAddFriend(friend.userId)}
+                      className="px-2 py-1 bg-white text-black hover:bg-white/90 border-0 rounded-none text-xs font-medium noot-text flex items-center"
+                    >
                       <UserPlus className="h-3 w-3 mr-1" />
                       Add
-                    </ShimmerButton>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDismiss(friend.userId)}>
+                    </button>
+                    <button
+                      onClick={() => handleDismiss(friend.userId)}
+                      className="px-2 py-1 bg-[#333] text-white hover:bg-[#444] border border-[#333] rounded-none text-xs font-medium noot-text flex items-center"
+                    >
                       <X className="h-3 w-3" />
-                    </Button>
+                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -194,20 +200,20 @@ export default function FriendSuggestions() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="py-4 text-center text-muted-foreground"
+              className="py-4 text-center text-white/60"
             >
-              <p>No more suggestions right now.</p>
-              <p className="text-sm">Check back later!</p>
+              <div className="w-12 h-12 border border-[#333] flex items-center justify-center mx-auto mb-2 bg-[#111]">
+                <Users className="h-6 w-6 text-white/40" />
+              </div>
+              <p className="noot-text">No friend suggestions available</p>
+              <p className="text-xs noot-text">Connect with other farmers online!</p>
             </motion.div>
           )}
         </AnimatePresence>
-        <Button
-          variant="ghost"
-          className="w-full mt-4 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 dark:hover:text-blue-300"
-        >
+        <button className="w-full mt-4 bg-[#333] text-white hover:bg-[#444] border border-[#333] rounded-none py-2 px-4 noot-text">
           View All Suggestions
-        </Button>
-      </CardContent>
-    </Card>
+        </button>
+      </div>
+    </div>
   )
 }

@@ -703,6 +703,8 @@ export const GameProvider = ({ children }: GameProviderProps) => {
 
   const incrementSeedsPlanted = () => {
     setSeedsPlanted(prev => prev + 1)
+    // Give XP for planting seeds
+    addXp(2)
   }
 
   const addCoinsEarned = (amount: number) => {
@@ -892,6 +894,9 @@ export const GameProvider = ({ children }: GameProviderProps) => {
       return updatedInventory;
     });
     
+    // Give XP for harvesting crops
+    addXp(5);
+
     // If a booster affected the yield, show a notification
     if (plotIndex !== undefined && yieldMultiplier > 1.0) {
       if (typeof window !== "undefined") {
