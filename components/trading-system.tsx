@@ -35,6 +35,8 @@ export interface TradeOffer {
   description?: string;
   acceptedBy?: string;
   acceptedByNickname?: string;
+  acceptedAt?: number; // Timestamp when trade was accepted
+  declinedAt?: number; // Timestamp when trade was declined
   expiresAt: number;
 }
 
@@ -125,8 +127,14 @@ export function TradingSystem() {
         const currentTrades = safeArray<TradeOffer>(prev);
         return currentTrades.map(trade =>
           trade.id === event.tradeId
-            ? { ...trade, status: event.type === 'tradeAccepted' ? 'accepted' : 'declined',
-                acceptedBy: event.acceptedBy, acceptedByNickname: event.acceptedByNickname }
+            ? {
+                ...trade,
+                status: event.type === 'tradeAccepted' ? 'accepted' : 'declined',
+                acceptedBy: event.acceptedBy,
+                acceptedByNickname: event.acceptedByNickname,
+                acceptedAt: event.type === 'tradeAccepted' ? Date.now() : undefined,
+                declinedAt: event.type === 'tradeDeclined' ? Date.now() : undefined
+              }
             : trade
         );
       });
@@ -244,12 +252,44 @@ export function TradingSystem() {
     });
   }, [farmInventory, seeds, animalProducts, craftableItems]);
 
-  // Filter active trades
-  const activeTrades = safeArray<TradeOffer>(tradeOffers).filter(trade => 
+  // Auto-cleanup completed trades after 5 minutes
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      const fiveMinutesAgo = now - (5 * 60 * 1000); // 5 minutes in milliseconds
+
+      setTradeOffers(prev => {
+        const currentTrades = safeArray<TradeOffer>(prev);
+        const cleanedTrades = currentTrades.filter(trade => {
+          // Keep active trades and recently completed trades (within 5 minutes)
+          if (trade.status === 'active') return true;
+          if (trade.status === 'accepted' || trade.status === 'declined') {
+            // Check if trade was completed recently
+            const completionTime = trade.acceptedAt || trade.declinedAt || trade.timestamp;
+            return completionTime > fiveMinutesAgo;
+          }
+          return false;
+        });
+
+        // Only update if there's a change to avoid unnecessary re-renders
+        if (cleanedTrades.length !== currentTrades.length) {
+          console.log(`Cleaned up ${currentTrades.length - cleanedTrades.length} old completed trades`);
+          return cleanedTrades;
+        }
+        return prev;
+      });
+    }, 60000); // Run cleanup every minute
+
+    return () => clearInterval(cleanupInterval);
+  }, [setTradeOffers]);
+
+  // Filter active trades (only show trades that are active and not expired)
+  const activeTrades = safeArray<TradeOffer>(tradeOffers).filter(trade =>
     trade.status === 'active' && trade.expiresAt > Date.now()
   );
-  
-  const myTrades = safeArray<TradeOffer>(tradeOffers).filter(trade => 
+
+  // Filter my trades (show all my trades regardless of status for history)
+  const myTrades = safeArray<TradeOffer>(tradeOffers).filter(trade =>
     trade.creatorId === myId
   );
 
@@ -399,67 +439,60 @@ export function TradingSystem() {
   }, [myId, myNickname, broadcastTradeEvent]);
 
   return (
-    <div className="noot-card">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="border-b border-[#333] p-4">
-        <h2 className="noot-header flex items-center text-white noot-title">
-          <ArrowRightLeft className="h-5 w-5 mr-2 text-green-400" />
-          Trading Hub
-        </h2>
-        <p className="text-white/60 text-sm noot-text">
-          {connectedUsers.length} farmers online • Trade items with other players
-        </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ArrowRightLeft className="h-6 w-6 text-green-400" />
+          <h2 className="text-2xl font-bold text-white">Trading Hub</h2>
+          <Badge variant="secondary" className="bg-green-900/30 text-green-300">
+            {connectedUsers.length} farmers online
+          </Badge>
+        </div>
+        <Button
+          onClick={() => setShowCreateForm(true)}
+          className="bg-green-600 hover:bg-green-700 text-white"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create Trade
+        </Button>
       </div>
 
-      <div className="p-4">
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-6">
-          {[
-            { id: 'browse', label: 'Browse Trades', count: activeTrades.length },
-            { id: 'my-trades', label: 'My Trades', count: myTrades.length },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-2 border border-[#333] rounded-none noot-text transition-all ${
-                activeTab === tab.id
-                  ? 'bg-white text-black'
-                  : 'bg-[#111] text-white hover:bg-[#222]'
-              }`}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <span className={`ml-2 px-1.5 py-0.5 text-xs border border-[#333] ${
-                  activeTab === tab.id ? 'bg-black text-white' : 'bg-[#333] text-white'
-                }`}>
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="ml-auto px-4 py-2 bg-white text-black hover:bg-white/90 border-0 rounded-none noot-text flex items-center"
+      {/* Navigation Tabs */}
+      <div className="flex gap-2">
+        {[
+          { id: 'browse', label: 'Browse Trades', count: activeTrades.length },
+          { id: 'my-trades', label: 'My Trades', count: myTrades.length },
+        ].map(tab => (
+          <Button
+            key={tab.id}
+            variant={activeTab === tab.id ? "default" : "outline"}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={activeTab === tab.id ? "bg-green-600 hover:bg-green-700" : "border-gray-600 text-gray-300"}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Trade
-          </button>
-        </div>
+            {tab.label}
+            {tab.count > 0 && (
+              <Badge variant="secondary" className="ml-2 bg-gray-700 text-white">
+                {tab.count}
+              </Badge>
+            )}
+          </Button>
+        ))}
+      </div>
 
-        {/* Content based on active tab */}
-        <div className="min-h-[400px]">
-          {activeTab === 'browse' && (
-            <BrowseTrades
-              trades={activeTrades}
-              myId={myId || ''}
-              onAccept={handleAcceptTrade}
-              onDecline={handleDeclineTrade}
-            />
-          )}
-          {activeTab === 'my-trades' && (
-            <MyTrades trades={myTrades} />
-          )}
-        </div>
+      {/* Content based on active tab */}
+      <div className="min-h-[400px]">
+        {activeTab === 'browse' && (
+          <BrowseTrades 
+            trades={activeTrades} 
+            myId={myId || ''} 
+            onAccept={handleAcceptTrade}
+            onDecline={handleDeclineTrade}
+          />
+        )}
+        {activeTab === 'my-trades' && (
+          <MyTrades trades={myTrades} />
+        )}
       </div>
 
       {/* Create Trade Modal */}
@@ -492,18 +525,18 @@ function BrowseTrades({
 }) {
   if (trades.length === 0) {
     return (
-      <div className="text-center py-8 text-white/60">
-        <div className="w-12 h-12 border border-[#333] flex items-center justify-center mx-auto mb-4 bg-[#111]">
-          <Package className="h-6 w-6 text-white/40" />
-        </div>
-        <h3 className="text-lg font-medium text-white mb-2 noot-text">No Active Trades</h3>
-        <p className="text-white/60 noot-text">Be the first to create a trade offer!</p>
-      </div>
+      <Card className="bg-[#171717] border-[#333]">
+        <CardContent className="p-8 text-center">
+          <Package className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No Active Trades</h3>
+          <p className="text-gray-400">Be the first to create a trade offer!</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-4">
       <AnimatePresence>
         {trades.map(trade => (
           <motion.div
@@ -511,42 +544,35 @@ function BrowseTrades({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, height: 0 }}
-            className="border border-[#333] bg-[#111] p-4 noot-text"
+            className="bg-[#171717] border border-[#333] rounded-lg p-6"
           >
             <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center">
-                <div className="w-8 h-8 border border-[#333] flex items-center justify-center mr-3">
-                  <span className="text-white text-xs">👤</span>
-                </div>
-                <div>
-                  <h3 className="text-white font-medium noot-text">{trade.creatorNickname}</h3>
-                  <p className="text-xs text-white/60 noot-text">
-                    {new Date(trade.timestamp).toLocaleDateString()} •
-                    Expires {new Date(trade.expiresAt).toLocaleDateString()}
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-lg font-medium text-white">{trade.creatorNickname}</h3>
+                <p className="text-sm text-gray-400">
+                  {new Date(trade.timestamp).toLocaleDateString()} •
+                  Expires {new Date(trade.expiresAt).toLocaleDateString()}
+                </p>
               </div>
-              <div className="px-2 py-1 bg-[#333] text-green-400 text-xs border border-[#333] noot-text flex items-center">
+              <Badge variant="secondary" className="bg-green-900/30 text-green-300">
                 <Clock className="h-3 w-3 mr-1" />
                 Active
-              </div>
+              </Badge>
             </div>
 
             {trade.description && (
-              <p className="text-white/80 mb-4 text-sm noot-text italic">"{trade.description}"</p>
+              <p className="text-gray-300 mb-4 italic">"{trade.description}"</p>
             )}
 
             <div className="grid md:grid-cols-3 gap-4 items-center">
               {/* Offering */}
               <div>
-                <h4 className="text-sm font-medium text-green-400 mb-2 noot-text">Offering</h4>
-                <div className="space-y-1">
+                <h4 className="text-sm font-medium text-green-400 mb-2">Offering</h4>
+                <div className="space-y-2">
                   {trade.offering.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 border border-[#333] bg-black">
-                      <div className="w-6 h-6 border border-[#333] flex items-center justify-center text-sm">
-                        {item.itemIcon}
-                      </div>
-                      <span className="text-white text-sm noot-text">{item.quantity}x {item.itemName}</span>
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <span className="text-lg">{item.itemIcon}</span>
+                      <span className="text-white">{item.quantity}x {item.itemName}</span>
                     </div>
                   ))}
                 </div>
@@ -554,21 +580,17 @@ function BrowseTrades({
 
               {/* Arrow */}
               <div className="flex justify-center">
-                <div className="w-8 h-8 border border-[#333] flex items-center justify-center bg-[#111]">
-                  <ArrowRightLeft className="h-4 w-4 text-white/60" />
-                </div>
+                <ArrowRightLeft className="h-6 w-6 text-gray-500" />
               </div>
 
               {/* Requesting */}
               <div>
-                <h4 className="text-sm font-medium text-blue-400 mb-2 noot-text">Requesting</h4>
-                <div className="space-y-1">
+                <h4 className="text-sm font-medium text-blue-400 mb-2">Requesting</h4>
+                <div className="space-y-2">
                   {trade.requesting.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 border border-[#333] bg-black">
-                      <div className="w-6 h-6 border border-[#333] flex items-center justify-center text-sm">
-                        {item.itemIcon}
-                      </div>
-                      <span className="text-white text-sm noot-text">{item.quantity}x {item.itemName}</span>
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <span className="text-lg">{item.itemIcon}</span>
+                      <span className="text-white">{item.quantity}x {item.itemName}</span>
                     </div>
                   ))}
                 </div>
@@ -578,20 +600,21 @@ function BrowseTrades({
             {/* Actions */}
             {trade.creatorId !== myId && (
               <div className="flex gap-2 mt-4 pt-4 border-t border-[#333]">
-                <button
+                <Button
                   onClick={() => onAccept(trade.id)}
-                  className="bg-white text-black hover:bg-white/90 border-0 rounded-none flex-1 py-2 px-4 noot-text font-medium flex items-center justify-center"
+                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Accept Trade
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => onDecline(trade.id)}
-                  className="bg-[#333] text-white hover:bg-[#444] border border-[#333] rounded-none flex-1 py-2 px-4 noot-text font-medium flex items-center justify-center"
+                  variant="outline"
+                  className="border-red-600 text-red-400 hover:bg-red-600/10 flex-1"
                 >
                   <X className="h-4 w-4 mr-2" />
                   Decline
-                </button>
+                </Button>
               </div>
             )}
           </motion.div>

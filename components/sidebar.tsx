@@ -70,26 +70,26 @@ export const Sidebar = ({
   
   // Set farm coins only on client side to avoid hydration mismatch
   useEffect(() => {
-    // Check if the farmCoins value has actually changed from the displayed value
+    // Always update the displayed value when farmCoins changes
     if (farmCoins !== clientSideFarmCoins) {
-        // Only trigger animation if it's not the initial load (where clientSideFarmCoins is 0)
-        if (clientSideFarmCoins !== 0) {
-            setIsCoinAnimating(true);
-            const timer = setTimeout(() => setIsCoinAnimating(false), 500); // Animation duration
-            // Cleanup function to clear the timeout
-             // Important: This cleanup needs to be returned correctly
-             const cleanup = () => clearTimeout(timer);
-             return cleanup;
-        }
-        // Update the displayed value regardless of animation
-        setClientSideFarmCoins(farmCoins);
+      // Only trigger animation if it's not the initial load (where clientSideFarmCoins is 0)
+      if (clientSideFarmCoins !== 0) {
+        setIsCoinAnimating(true);
+        const timer = setTimeout(() => setIsCoinAnimating(false), 500);
+        // Return cleanup function
+        return () => clearTimeout(timer);
+      }
+      // Update the displayed value
+      setClientSideFarmCoins(farmCoins);
     }
-    // This handles the initial load case gracefully or when farmCoins becomes 0
-    else if ((clientSideFarmCoins === 0 && farmCoins !== 0) || (clientSideFarmCoins !== 0 && farmCoins === 0)) {
-       setClientSideFarmCoins(farmCoins);
+  }, [farmCoins]); // Remove clientSideFarmCoins from dependencies to prevent infinite loops
+
+  // Handle initial load separately
+  useEffect(() => {
+    if (clientSideFarmCoins === 0 && farmCoins > 0) {
+      setClientSideFarmCoins(farmCoins);
     }
-  
-  }, [farmCoins, clientSideFarmCoins]); // Add clientSideFarmCoins as a dependency
+  }, [farmCoins, clientSideFarmCoins]);
 
   const handleMintNFT = async () => {
     if (!provider || !isConnected) {
