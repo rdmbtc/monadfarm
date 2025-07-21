@@ -91,7 +91,7 @@ export default function FriendSuggestions() {
       name: user.nickname || `Farmer${user.userId.slice(-4)}`,
       avatar: "/images/nooter.png",
       level: allPlayerLevels[user.userId] || 1, // Use real player level from ReactTogether
-      mutualFriends: Math.floor(Math.random() * 10), // Keep random for now
+      mutualFriends: Math.floor(Math.random() * 10),
       isOnline: true,
       userId: user.userId
     }))
