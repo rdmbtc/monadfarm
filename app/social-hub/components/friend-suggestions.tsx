@@ -239,7 +239,8 @@ export default function FriendSuggestions() {
   )
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader className="pb-3 flex items-center">
         <div className="flex items-center">
           <Users className="h-5 w-5 text-blue-500 mr-2" />
@@ -325,5 +326,6 @@ export default function FriendSuggestions() {
         <QuestSystem compact={true} showTitle={false} />
       </CardContent>
     </Card>
+    </>
   )
 }
