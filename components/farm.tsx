@@ -7,6 +7,7 @@ import { FarmPlot } from "@/components/farm-plot";
 import { SeedSelector } from "@/components/seed-selector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QuestSystem } from "@/components/QuestSystem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import toast, { Toast, DefaultToastOptions } from "react-hot-toast";
 import { 
@@ -1066,17 +1067,7 @@ export function Farm() {
     toast.success(`Daily task completed! +${dailyTasks[taskType].reward} coins`);
   };
   
-  // Daily quests (mock data)
-  const dailyQuests = [
-    { id: 1, title: "Plant 5 Seeds", description: "Plant any 5 seeds", reward: 50, progress: 0.6 },
-    { id: 2, title: "Harvest 3 Tomatoes", description: "Harvest 3 tomato plants", reward: 30, progress: 0.33 }
-  ];
-  
-  // Weekly quests (mock data)
-  const weeklyQuests = [
-    { id: 3, title: "Master Farmer", description: "Harvest 50 crops", reward: 200, progress: 0.25 },
-    { id: 4, title: "Weather Watcher", description: "Grow crops in all weather conditions", reward: 150, progress: 0.66 }
-  ];
+  // Quest data is now handled by the QuestSystem component
   
   // Add animations for XP gain and level up
   useEffect(() => {
@@ -3358,83 +3349,7 @@ export function Farm() {
         
         {/* Quests Tab */}
         {activeTab === "quests" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-            {/* Daily Quests */}
-            <div className="noot-card">
-              <div className="border-b border-[#333] p-4">
-                <h2 className="noot-header flex items-center text-white noot-title">
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Daily Quests
-                </h2>
-                <p className="text-white/60 text-sm noot-text">
-                  Resets every 24 hours
-                </p>
-              </div>
-              <div className="p-4">
-                {dailyQuests.map(quest => (
-                  <div key={quest.id} className="flex items-center justify-between p-3 border border-[#333] mb-2 bg-[#111] noot-text">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 border border-[#333] flex items-center justify-center mr-3">
-                        <Sparkles className="h-4 w-4 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-white">{quest.title}</div>
-                        <div className="text-white/60 text-xs">{quest.description}</div>
-                        <div className="w-full h-1 bg-[#222] mt-1">
-                          <div 
-                            className="h-full bg-white"
-                            style={{ width: `${quest.progress * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-white">
-                      <Coins className="h-4 w-4 mr-1 text-white" />
-                      {quest.reward}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Weekly Quests */}
-            <div className="noot-card">
-              <div className="border-b border-[#333] p-4">
-                <h2 className="noot-header flex items-center text-white noot-title">
-                  <Trophy className="h-5 w-5 mr-2" />
-                  Weekly Quests
-                </h2>
-                <p className="text-white/60 text-sm noot-text">
-                  Resets every 7 days
-                </p>
-              </div>
-              <div className="p-4">
-                {weeklyQuests.map(quest => (
-                  <div key={quest.id} className="flex items-center justify-between p-3 border border-[#333] mb-2 bg-[#111] noot-text">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 border border-[#333] flex items-center justify-center mr-3">
-                        <Trophy className="h-4 w-4 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-white">{quest.title}</div>
-                        <div className="text-white/60 text-xs">{quest.description}</div>
-                        <div className="w-full h-1 bg-[#222] mt-1">
-                          <div 
-                            className="h-full bg-white"
-                            style={{ width: `${quest.progress * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-white">
-                      <Coins className="h-4 w-4 mr-1 text-white" />
-                      {quest.reward}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <QuestSystem />
         )}
         
         {/* Market Tab */}

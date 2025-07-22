@@ -68,28 +68,97 @@ export const Sidebar = ({
   const [clientSideFarmCoins, setClientSideFarmCoins] = useState<number>(0);
   const [isCoinAnimating, setIsCoinAnimating] = useState(false);
   
-  // Set farm coins only on client side to avoid hydration mismatch
+  // Enhanced farm coins synchronization with real-time updates and fallback mechanisms
   useEffect(() => {
-    // Always update the displayed value when farmCoins changes
+    console.log('💰 Sidebar: Farm coins changed from', clientSideFarmCoins, 'to', farmCoins);
+
+    // Always update when farmCoins changes, regardless of current value
     if (farmCoins !== clientSideFarmCoins) {
-      // Only trigger animation if it's not the initial load (where clientSideFarmCoins is 0)
-      if (clientSideFarmCoins !== 0) {
+      // Trigger animation for any change (except initial load from 0)
+      if (clientSideFarmCoins !== 0 && farmCoins !== 0) {
         setIsCoinAnimating(true);
         const timer = setTimeout(() => setIsCoinAnimating(false), 500);
-        // Return cleanup function
+        // Store timer reference for cleanup
         return () => clearTimeout(timer);
       }
-      // Update the displayed value
-      setClientSideFarmCoins(farmCoins);
-    }
-  }, [farmCoins]); // Remove clientSideFarmCoins from dependencies to prevent infinite loops
 
-  // Handle initial load separately
-  useEffect(() => {
-    if (clientSideFarmCoins === 0 && farmCoins > 0) {
+      // Update the displayed value immediately
       setClientSideFarmCoins(farmCoins);
     }
+  }, [farmCoins]); // Only depend on farmCoins to prevent loops
+
+  // Force update on mount to ensure initial sync
+  useEffect(() => {
+    console.log('💰 Sidebar: Initial mount sync - farmCoins:', farmCoins);
+    setClientSideFarmCoins(farmCoins);
+  }, []); // Run only once on mount
+
+  // Periodic sync to catch any missed updates (fallback mechanism)
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      if (farmCoins !== clientSideFarmCoins) {
+        console.log('💰 Sidebar: Periodic sync detected mismatch, fixing:', farmCoins, '!=', clientSideFarmCoins);
+        setClientSideFarmCoins(farmCoins);
+      }
+    }, 1000); // Check every second
+
+    return () => clearInterval(syncInterval);
   }, [farmCoins, clientSideFarmCoins]);
+
+  // Force re-render when GameContext changes (additional safety net)
+  const [forceUpdate, setForceUpdate] = useState(0);
+  useEffect(() => {
+    const forceUpdateInterval = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 2000); // Force re-render every 2 seconds
+
+    return () => clearInterval(forceUpdateInterval);
+  }, []);
+
+  // Additional fallback: Listen to localStorage changes directly
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'farm-coins' && e.newValue) {
+        try {
+          const newCoins = JSON.parse(e.newValue);
+          console.log('💰 Sidebar: localStorage change detected:', newCoins);
+          if (newCoins !== clientSideFarmCoins) {
+            setClientSideFarmCoins(newCoins);
+            setIsCoinAnimating(true);
+            setTimeout(() => setIsCoinAnimating(false), 500);
+          }
+        } catch (error) {
+          console.error('💰 Sidebar: Error parsing localStorage coins:', error);
+        }
+      }
+    };
+
+    // Listen for storage events from other tabs/windows
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also check localStorage directly on mount
+    try {
+      const storedCoins = localStorage.getItem('farm-coins');
+      if (storedCoins) {
+        const parsedCoins = JSON.parse(storedCoins);
+        if (parsedCoins !== clientSideFarmCoins && parsedCoins !== farmCoins) {
+          console.log('💰 Sidebar: Direct localStorage check found different value:', parsedCoins);
+          setClientSideFarmCoins(parsedCoins);
+        }
+      }
+    } catch (error) {
+      console.error('💰 Sidebar: Error reading localStorage:', error);
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Debug effect to track all changes
+  useEffect(() => {
+    console.log('💰 Sidebar: State update - farmCoins:', farmCoins, 'clientSide:', clientSideFarmCoins, 'animating:', isCoinAnimating, 'forceUpdate:', forceUpdate);
+  }, [farmCoins, clientSideFarmCoins, isCoinAnimating, forceUpdate]);
 
   const handleMintNFT = async () => {
     if (!provider || !isConnected) {
@@ -310,15 +379,25 @@ export const Sidebar = ({
           )}
         </nav>
         
-        {/* Farm Coins display */}
+        {/* Farm Coins display with real-time synchronization */}
         <div className="px-4 py-3 border-y border-[#333]">
           <div className="flex items-center">
             <Coins className="h-5 w-5 text-yellow-500 mr-2" />
             <div>
               <div className="text-sm text-white/70 noot-text">Farm Coins</div>
               <div className={`font-bold text-lg noot-title transition-all duration-300 ${isCoinAnimating ? 'animate-pulse text-yellow-400 scale-105' : 'text-white'}`}>
-                {clientSideFarmCoins.toFixed(2)}
+                {(() => {
+                  // Always show the most current value available
+                  const displayValue = clientSideFarmCoins !== undefined ? clientSideFarmCoins : farmCoins;
+                  return (displayValue || 0).toFixed(2);
+                })()}
               </div>
+              {/* Debug info in development */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Debug: {farmCoins?.toFixed(2)} → {clientSideFarmCoins?.toFixed(2)}
+                </div>
+              )}
             </div>
           </div>
         </div>

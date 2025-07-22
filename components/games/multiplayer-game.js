@@ -29,22 +29,57 @@ export default function multiplayerPlatformerSketch(p) {
 
   // CRITICAL: Initialize base game immediately to set up preload function
   console.log('🎮 MultiplayerGame: Initializing base game for asset loading, instance:', instanceId)
+
+  // Initialize base game first to ensure preload is set up
   baseGame = platformerSketch(p)
 
-  // Store reference to the local player
+  // Ensure assets are properly loaded before proceeding
+  let assetsLoaded = false
+  let setupCalled = false
+
+  // Store the original preload function
+  const originalPreload = p.preload
+
+  // Enhanced preload with loading tracking
+  p.preload = () => {
+    console.log('🎮 MultiplayerGame: Enhanced preload starting...')
+
+    // Call original preload first
+    if (originalPreload) {
+      originalPreload()
+    }
+
+    // Add a small delay to ensure all assets are processed
+    setTimeout(() => {
+      assetsLoaded = true
+      console.log('🎮 MultiplayerGame: Assets loading completed')
+    }, 100)
+  }
+
+  // Store reference to the local player after base game is initialized
   if (baseGame && baseGame.getPlayer) {
     localPlayer = baseGame.getPlayer()
   }
-
-  // The base game has now set up p.preload, p.setup, and p.draw
-  // We need to wrap the setup and draw functions to add multiplayer functionality
 
   // Store the original setup function that was set by the base game
   const originalSetup = p.setup
 
   // Override setup to add multiplayer functionality
   p.setup = () => {
-    console.log('MultiplayerGame: Enhanced setup with multiplayer features')
+    console.log('🎮 MultiplayerGame: Enhanced setup with multiplayer features')
+
+    // Ensure assets are loaded before setup
+    if (!assetsLoaded) {
+      console.log('🎮 MultiplayerGame: Waiting for assets to load...')
+      setTimeout(() => p.setup(), 50)
+      return
+    }
+
+    if (setupCalled) {
+      console.log('🎮 MultiplayerGame: Setup already called, skipping')
+      return
+    }
+    setupCalled = true
 
     // Call the original base game setup first
     if (originalSetup) {
@@ -197,27 +232,66 @@ export default function multiplayerPlatformerSketch(p) {
     p.pop()
   }
   
-  // Function to update remote player data
+  // Enhanced function to update remote player data with better synchronization
   const updateRemotePlayer = (playerId, playerData) => {
     if (!playerId || !playerData) return
-    
+
+    console.log('🌐 MultiplayerGame: Updating remote player:', playerId, playerData)
+
+    // Ensure we have a consistent color for each player
+    const getPlayerColor = (id) => {
+      // Simple hash function for consistent colors
+      let hash = 0
+      for (let i = 0; i < id.length; i++) {
+        const char = id.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32-bit integer
+      }
+      return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`
+    }
+
     const existingPlayer = remotePlayers.get(playerId)
-    
+
     if (existingPlayer) {
-      // Update existing player
-      Object.assign(existingPlayer, playerData, {
+      // Update existing player with validated data
+      Object.assign(existingPlayer, {
+        x: Number(playerData.x) || existingPlayer.x || 0,
+        y: Number(playerData.y) || existingPlayer.y || 0,
+        velocityX: Number(playerData.velocityX) || 0,
+        velocityY: Number(playerData.velocityY) || 0,
+        isOnGround: Boolean(playerData.isOnGround),
+        isJumping: Boolean(playerData.isJumping),
+        canDoubleJump: playerData.canDoubleJump !== false,
+        state: playerData.state || existingPlayer.state || 'idle',
+        nickname: playerData.nickname || existingPlayer.nickname || `Player${playerId.slice(-4)}`,
+        color: existingPlayer.color || getPlayerColor(playerId),
+        score: Number(playerData.score) || existingPlayer.score || 0,
+        lives: Number(playerData.lives) || existingPlayer.lives || 3,
+        level: Number(playerData.level) || existingPlayer.level || 1,
         lastUpdate: Date.now(),
         isActive: true
       })
     } else {
-      // Add new remote player
+      // Add new remote player with complete data
       remotePlayers.set(playerId, {
         id: playerId,
-        ...playerData,
+        x: Number(playerData.x) || 0,
+        y: Number(playerData.y) || 0,
+        velocityX: Number(playerData.velocityX) || 0,
+        velocityY: Number(playerData.velocityY) || 0,
+        isOnGround: Boolean(playerData.isOnGround),
+        isJumping: Boolean(playerData.isJumping),
+        canDoubleJump: playerData.canDoubleJump !== false,
+        state: playerData.state || 'idle',
+        nickname: playerData.nickname || `Player${playerId.slice(-4)}`,
+        color: getPlayerColor(playerId),
+        score: Number(playerData.score) || 0,
+        lives: Number(playerData.lives) || 3,
+        level: Number(playerData.level) || 1,
         lastUpdate: Date.now(),
         isActive: true
       })
-      console.log('MultiplayerGame: Added remote player:', playerId)
+      console.log('🌐 MultiplayerGame: Added remote player:', playerId, 'Total players:', remotePlayers.size + 1)
     }
   }
   

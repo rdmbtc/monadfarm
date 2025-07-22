@@ -34,6 +34,7 @@ import { useUnifiedNickname } from "../../../hooks/useUnifiedNickname"
 import ProfileEditModal from "../../../components/profile-edit-modal"
 import { useFarmInventory } from "../../../hooks/useFarmInventory"
 import { TradingSystem } from "../../../components/trading-system"
+import { QuestSystem } from "../../../components/QuestSystem"
 
 type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
 
@@ -92,7 +93,7 @@ function SocialHubPageContent({
   nickname = "FarmerJoe123"
 }: SocialHubPageProps) {
   const [showDailyReward, setShowDailyReward] = useState(false)
-  const [activeTab, setActiveTab] = useState<'social' | 'trading'>('social')
+  const [activeTab, setActiveTab] = useState<'social' | 'quests' | 'trading'>('social')
   const { toast } = useToast()
 
   // Use the unified nickname system
@@ -256,6 +257,16 @@ function SocialHubPageContent({
             💬 Social Feed
           </Button>
           <Button
+            variant={activeTab === 'quests' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('quests')}
+            className={activeTab === 'quests'
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-transparent border-[#333] hover:bg-[#222] text-white"
+            }
+          >
+            🏆 Quests
+          </Button>
+          <Button
             variant={activeTab === 'trading' ? 'default' : 'outline'}
             onClick={() => setActiveTab('trading')}
             className={activeTab === 'trading'
@@ -407,6 +418,16 @@ function SocialHubPageContent({
 
                 <BulletproofSocialFeed />
               </>
+            )}
+
+            {activeTab === 'quests' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <QuestSystem />
+              </motion.div>
             )}
 
             {activeTab === 'trading' && (

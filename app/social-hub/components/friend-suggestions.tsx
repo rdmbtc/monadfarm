@@ -15,6 +15,7 @@ import { ShimmerButton } from "@/components/ui/shimmer-button"
 import { useConnectedUsers, useMyId, useStateTogether, useFunctionTogether, useStateTogetherWithPerUserValues, useIsTogether } from 'react-together'
 import { useUnifiedNickname } from "../../../hooks/useUnifiedNickname"
 import { GameContext } from "../../../context/game-context"
+import { QuestSystem } from "../../../components/QuestSystem"
 
 type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
 
@@ -312,6 +313,16 @@ export default function FriendSuggestions() {
         >
           View All Suggestions
         </Button>
+      </CardContent>
+    </Card>
+
+    {/* Quest System Section */}
+    <Card className="bg-[#111] border-[#333] mt-6">
+      <CardHeader>
+        <CardTitle className="text-white noot-title">Active Quests</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <QuestSystem compact={true} showTitle={false} />
       </CardContent>
     </Card>
   )

@@ -5,6 +5,7 @@ import { Button } from "./ui/button"
 import { Card } from "./ui/card"
 import { CardContent } from "./ui/card"
 import { CardHeader } from "./ui/card"
+import { CardTitle } from "./ui/card"
 import { Avatar } from "./ui/avatar"
 import { AvatarImage } from "./ui/avatar"
 import { AvatarFallback } from "./ui/avatar"
@@ -12,45 +13,11 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useState } from "react"
 import { useToast } from "../hooks/use-toast"
 import { ShimmerButton } from "./ui/shimmer-button"
-import { useConnectedUsers, useMyId, useIsTogether } from 'react-together'
+import { useConnectedUsers, useMyId } from 'react-together'
 import { Badge } from "./ui/badge"
 import { Clock, Zap } from "lucide-react"
 import { useEffect } from "react"
-
-type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
-
-const useSessionStatus = (): CroquetConnectionType => {
-  const [connectionStatus, set_connectionStatus] = useState<CroquetConnectionType>('offline')
-  const isTogether = useIsTogether()
-
-  useEffect(() => {
-    const checkConnectionStatus = () => {
-      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
-      const fatalElement = document.querySelector('.croquet_fatal')
-
-      if      (fatalElement)   set_connectionStatus('fatal') //prettier-ignore
-      else if (spinnerOverlay) set_connectionStatus('connecting') //prettier-ignore
-      else if (isTogether)     set_connectionStatus('online') //prettier-ignore
-      else                     set_connectionStatus('offline') //prettier-ignore
-    }
-
-    //initial check
-    checkConnectionStatus()
-
-    //set up observer to watch for changes in the body
-    const observer = new MutationObserver(checkConnectionStatus)
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class'],
-    })
-
-    return () => observer.disconnect()
-  }, [isTogether])
-
-  return connectionStatus
-}
+import { QuestSystem } from "./QuestSystem"
 
 // Sample friend suggestions data
 const friendSuggestionsData = [
@@ -91,7 +58,7 @@ const friendSuggestionsData = [
   },
 ]
 
-export default function FriendSuggestions() {
+function FriendSuggestionsCard() {
   const [friendSuggestions, setFriendSuggestions] = useState(friendSuggestionsData)
   const [addedFriends, setAddedFriends] = useState<number[]>([])
   const [dismissedFriends, setDismissedFriends] = useState<number[]>([])
@@ -101,66 +68,6 @@ export default function FriendSuggestions() {
   // Get real-time users from React Together
   const myId = useMyId()
   const connectedUsers = useConnectedUsers()
-
-  // Use session status hook to monitor connection
-  const sessionStatus = useSessionStatus();
-
-  // Hide multisynq loading spinner
-  useEffect(() => {
-    // Inject CSS to hide spinner
-    const style = document.createElement('style')
-    style.textContent = `
-      #croquet_spinnerOverlay {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-      }
-      .croquet_spinner {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-      }
-    `
-    document.head.appendChild(style)
-
-    const hideSpinner = () => {
-      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
-      if (spinnerOverlay) {
-        spinnerOverlay.style.display = 'none'
-        spinnerOverlay.style.visibility = 'hidden'
-        spinnerOverlay.style.opacity = '0'
-        console.log('👥 Hidden multisynq loading spinner in friend suggestions (main)', { sessionStatus })
-      }
-
-      // Also hide any spinner elements with class
-      const spinnerElements = document.querySelectorAll('.croquet_spinner')
-      spinnerElements.forEach(element => {
-        (element as HTMLElement).style.display = 'none'
-        ;(element as HTMLElement).style.visibility = 'hidden'
-        ;(element as HTMLElement).style.opacity = '0'
-      })
-    }
-
-    // Hide immediately if present
-    hideSpinner()
-
-    // Set up observer to hide spinner when it appears
-    const observer = new MutationObserver(() => {
-      hideSpinner()
-    })
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    })
-
-    return () => {
-      observer.disconnect()
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }
-  }, [sessionStatus])
 
   // Derived state
   const isConnected = !!myId
@@ -293,4 +200,22 @@ export default function FriendSuggestions() {
       </CardContent>
     </Card>
   )
-} 
+}
+
+export default function FriendSuggestions() {
+  return (
+    <>
+      <FriendSuggestionsCard />
+
+      {/* Quest System Section */}
+      <Card className="bg-[#111] border-[#333] mt-6">
+        <CardHeader>
+          <CardTitle className="text-white noot-title">Active Quests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <QuestSystem compact={true} showTitle={false} />
+        </CardContent>
+      </Card>
+    </>
+  )
+}
