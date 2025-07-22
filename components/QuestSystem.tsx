@@ -1,6 +1,6 @@
 import React from 'react'
 import { Trophy, Sparkles, Coins, Users, ExternalLink, Globe, Calendar, Clock } from 'lucide-react'
-import { Quest, CommunityQuest, useQuestSystem } from '../hooks/useQuestSystem'
+import { Quest, CommunityQuest, useSimpleQuestSystem } from '../hooks/useSimpleQuestSystem'
 
 interface QuestCardProps {
   quest: Quest | CommunityQuest
@@ -143,7 +143,7 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
     getCommunityQuests,
     connectedUsers,
     sessionStatus
-  } = useQuestSystem()
+  } = useSimpleQuestSystem()
 
   const dailyQuests = getDailyQuests()
   const weeklyQuests = getWeeklyQuests()

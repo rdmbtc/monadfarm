@@ -6,7 +6,7 @@ export interface Quest {
   id: string
   title: string
   description: string
-  type: 'daily' | 'weekly' | 'social' | 'multiplayer' | 'community'
+  type: 'daily' | 'weekly' | 'social' | 'community'
   reward: {
     coins?: number
     xp?: number
@@ -19,7 +19,6 @@ export interface Quest {
   icon: string
   category: string
   expiresAt?: number
-  requiresMultiplayer?: boolean
 }
 
 export interface CommunityQuest extends Quest {
@@ -29,85 +28,27 @@ export interface CommunityQuest extends Quest {
   participants: string[]
 }
 
-type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
-
-// Safe hook that doesn't break when Multisynq is not available
-const useSafeMultisynq = () => {
-  const [isMultisynqAvailable, setIsMultisynqAvailable] = useState(false)
-  const [myId, setMyId] = useState<string | null>(null)
-  const [connectedUsers, setConnectedUsers] = useState<any[]>([])
-  const [sessionStatus, setSessionStatus] = useState<CroquetConnectionType>('offline')
-
-  useEffect(() => {
-    // Check if we're in a Multisynq context
-    try {
-      // Try to access window.Croquet or other Multisynq indicators
-      if (typeof window !== 'undefined' && (window as any).Croquet) {
-        setIsMultisynqAvailable(true)
-        setMyId('user-' + Math.random().toString(36).substr(2, 9))
-        setSessionStatus('online')
-      } else {
-        setIsMultisynqAvailable(false)
-        setMyId('local-user')
-        setSessionStatus('offline')
-      }
-    } catch (error) {
-      setIsMultisynqAvailable(false)
-      setMyId('local-user')
-      setSessionStatus('offline')
-    }
-  }, [])
-
-  return {
-    isMultisynqAvailable,
-    myId,
-    connectedUsers,
-    sessionStatus
-  }
-}
-
-export const useQuestSystem = () => {
+export const useSimpleQuestSystem = () => {
   const { farmCoins, addFarmCoins, addXp, cropsHarvested, seedsPlanted, playerLevel } = useContext(GameContext)
-
-  // Use safe Multisynq hook
-  const { isMultisynqAvailable, myId, connectedUsers, sessionStatus } = useSafeMultisynq()
-
-  // Local quest state
+  
+  // Simple local state without Multisynq dependencies
   const [localQuests, setLocalQuests] = useState<Quest[]>([])
+  const [communityQuests, setCommunityQuests] = useState<CommunityQuest[]>([])
+  
+  // Mock multiplayer data for demo purposes
+  const connectedUsers = [] // Empty for now
+  const sessionStatus = 'offline' // Always offline for safety
 
-  // Shared quest state for multiplayer (with fallback to local storage)
-  const [sharedQuests, setSharedQuests] = useState<CommunityQuest[]>([])
-  const [myQuestProgress, setMyQuestProgress] = useState<Record<string, number>>({})
-  const [allQuestProgress, setAllQuestProgress] = useState<Record<string, Record<string, number>>>({})
-
-  // Hide multisynq loading spinner
+  // Hide any loading spinners
   useEffect(() => {
-    // Inject CSS to hide spinner
-    const style = document.createElement('style')
-    style.textContent = `
-      #croquet_spinnerOverlay {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-      }
-      .croquet_spinner {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-      }
-    `
-    document.head.appendChild(style)
-
     const hideSpinner = () => {
       const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
       if (spinnerOverlay) {
         spinnerOverlay.style.display = 'none'
         spinnerOverlay.style.visibility = 'hidden'
         spinnerOverlay.style.opacity = '0'
-        console.log('🎯 Hidden multisynq loading spinner in quest system', { sessionStatus })
       }
 
-      // Also hide any spinner elements with class
       const spinnerElements = document.querySelectorAll('.croquet_spinner')
       spinnerElements.forEach(element => {
         (element as HTMLElement).style.display = 'none'
@@ -116,26 +57,10 @@ export const useQuestSystem = () => {
       })
     }
 
-    // Hide immediately if present
     hideSpinner()
-
-    // Set up observer to hide spinner when it appears
-    const observer = new MutationObserver(() => {
-      hideSpinner()
-    })
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    })
-
-    return () => {
-      observer.disconnect()
-      if (document.head.contains(style)) {
-        document.head.removeChild(style)
-      }
-    }
-  }, [sessionStatus])
+    const interval = setInterval(hideSpinner, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Initialize default quests
   useEffect(() => {
@@ -226,97 +151,43 @@ export const useQuestSystem = () => {
 
   // Initialize community quests
   useEffect(() => {
-    if (sharedQuests.length === 0) {
-      const communityQuests: CommunityQuest[] = [
-        {
-          id: 'community-plant-seeds',
-          title: 'Community Planting',
-          description: 'Plant 100 seeds together as a community',
-          type: 'community',
-          reward: { coins: 500, xp: 250 },
-          progress: 0,
-          maxProgress: 1,
-          completed: false,
-          communityProgress: 0,
-          communityMaxProgress: 100,
-          participantCount: 0,
-          participants: [],
-          icon: '🌍',
-          category: 'community',
-          requiresMultiplayer: true
-        },
-        {
-          id: 'community-harvest-crops',
-          title: 'Harvest Festival',
-          description: 'Harvest 200 crops together as a community',
-          type: 'community',
-          reward: { coins: 750, xp: 375 },
-          progress: 0,
-          maxProgress: 1,
-          completed: false,
-          communityProgress: 0,
-          communityMaxProgress: 200,
-          participantCount: 0,
-          participants: [],
-          icon: '🎉',
-          category: 'community',
-          requiresMultiplayer: true
-        }
-      ]
-
-      setSharedQuests(communityQuests)
-    }
-  }, [sharedQuests.length, setSharedQuests])
-
-  // Update community quest progress (simplified for local mode)
-  useEffect(() => {
-    if (!myId) return
-
-    // Update my progress
-    setMyQuestProgress({
-      'seeds-planted': seedsPlanted,
-      'crops-harvested': cropsHarvested,
-      'farm-coins': farmCoins,
-      'player-level': playerLevel
-    })
-
-    // Update all progress (in local mode, just use my progress)
-    setAllQuestProgress(prev => ({
-      ...prev,
-      [myId]: {
-        'seeds-planted': seedsPlanted,
-        'crops-harvested': cropsHarvested,
-        'farm-coins': farmCoins,
-        'player-level': playerLevel
+    const communityQuestsData: CommunityQuest[] = [
+      {
+        id: 'community-plant-seeds',
+        title: 'Community Planting',
+        description: 'Plant 100 seeds together as a community',
+        type: 'community',
+        reward: { coins: 500, xp: 250 },
+        progress: 0,
+        maxProgress: 1,
+        completed: false,
+        communityProgress: Math.min(seedsPlanted, 100),
+        communityMaxProgress: 100,
+        participantCount: 1,
+        participants: ['local-user'],
+        icon: '🌍',
+        category: 'community'
+      },
+      {
+        id: 'community-harvest-crops',
+        title: 'Harvest Festival',
+        description: 'Harvest 200 crops together as a community',
+        type: 'community',
+        reward: { coins: 750, xp: 375 },
+        progress: 0,
+        maxProgress: 1,
+        completed: false,
+        communityProgress: Math.min(cropsHarvested, 200),
+        communityMaxProgress: 200,
+        participantCount: 1,
+        participants: ['local-user'],
+        icon: '🎉',
+        category: 'community'
       }
-    }))
+    ]
 
-    // Update community quests based on current progress
-    const totalSeeds = seedsPlanted // In local mode, just use my seeds
-    const totalHarvests = cropsHarvested // In local mode, just use my harvests
-
-    setSharedQuests(prev => prev.map(quest => {
-      if (quest.id === 'community-plant-seeds') {
-        return {
-          ...quest,
-          communityProgress: totalSeeds,
-          completed: totalSeeds >= quest.communityMaxProgress,
-          participantCount: connectedUsers.length || 1,
-          participants: [myId]
-        }
-      }
-      if (quest.id === 'community-harvest-crops') {
-        return {
-          ...quest,
-          communityProgress: totalHarvests,
-          completed: totalHarvests >= quest.communityMaxProgress,
-          participantCount: connectedUsers.length || 1,
-          participants: [myId]
-        }
-      }
-      return quest
-    }))
-  }, [seedsPlanted, cropsHarvested, farmCoins, playerLevel, myId, connectedUsers.length])
+    setCommunityQuests(communityQuestsData)
+  }, [seedsPlanted, cropsHarvested])
 
   const completeQuest = (questId: string) => {
     // Handle social quests with external links
@@ -368,11 +239,11 @@ export const useQuestSystem = () => {
   const getDailyQuests = () => localQuests.filter(q => q.type === 'daily')
   const getWeeklyQuests = () => localQuests.filter(q => q.type === 'weekly')
   const getSocialQuests = () => localQuests.filter(q => q.type === 'social')
-  const getCommunityQuests = () => sharedQuests
+  const getCommunityQuests = () => communityQuests
 
   return {
     localQuests,
-    sharedQuests,
+    sharedQuests: communityQuests,
     completeQuest,
     getDailyQuests,
     getWeeklyQuests,
