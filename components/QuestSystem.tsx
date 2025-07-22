@@ -147,10 +147,19 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
     sessionStatus
   } = useQuestSystem()
 
-  const dailyQuests = getDailyQuests()
-  const weeklyQuests = getWeeklyQuests()
-  const socialQuests = getSocialQuests()
-  const communityQuests = getCommunityQuests()
+  const dailyQuests = getDailyQuests() || []
+  const weeklyQuests = getWeeklyQuests() || []
+  const socialQuests = getSocialQuests() || []
+  const communityQuests = getCommunityQuests() || []
+
+  // Early return with loading state if quest data is not ready
+  if (!Array.isArray(dailyQuests) || !Array.isArray(weeklyQuests) || !Array.isArray(socialQuests) || !Array.isArray(communityQuests)) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-white/60">Loading quests...</div>
+      </div>
+    )
+  }
 
   if (compact) {
     // Compact view for sidebar/smaller spaces with minimalistic design
@@ -167,14 +176,14 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
 
         {/* Show only incomplete quests in compact mode */}
         <div className="space-y-3">
-          {[...dailyQuests, ...socialQuests, ...weeklyQuests]
-            .filter((quest: Quest) => !quest.completed)
+          {[...(dailyQuests || []), ...(socialQuests || []), ...(weeklyQuests || [])]
+            .filter((quest: Quest) => quest && !quest.completed)
             .slice(0, 3)
             .map((quest: Quest) => (
               <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
             ))}
 
-          {communityQuests.filter((quest: CommunityQuest) => !quest.completed).slice(0, 1).map((quest: CommunityQuest) => (
+          {(communityQuests || []).filter((quest: CommunityQuest) => quest && !quest.completed).slice(0, 1).map((quest: CommunityQuest) => (
             <QuestCard
               key={quest.id}
               quest={quest}
@@ -207,7 +216,7 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
           </div>
         </div>
         <div className="p-6">
-          {dailyQuests.map((quest: Quest) => (
+          {(dailyQuests || []).map((quest: Quest) => (
             <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
           ))}
         </div>
@@ -230,7 +239,7 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
           </div>
         </div>
         <div className="p-6">
-          {socialQuests.map((quest: Quest) => (
+          {(socialQuests || []).map((quest: Quest) => (
             <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
           ))}
         </div>
@@ -253,7 +262,7 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
           </div>
         </div>
         <div className="p-6">
-          {weeklyQuests.map((quest: Quest) => (
+          {(weeklyQuests || []).map((quest: Quest) => (
             <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
           ))}
         </div>
@@ -286,7 +295,7 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
           </div>
         </div>
         <div className="p-6">
-          {communityQuests.map((quest: CommunityQuest) => (
+          {(communityQuests || []).map((quest: CommunityQuest) => (
             <QuestCard
               key={quest.id}
               quest={quest}

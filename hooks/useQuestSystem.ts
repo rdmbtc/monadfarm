@@ -1,7 +1,25 @@
 import { useState, useEffect, useContext } from 'react'
-import { useStateTogether, useStateTogetherWithPerUserValues, useMyId, useConnectedUsers, useIsTogether } from 'react-together'
 import { GameContext } from '../context/game-context'
 import toast from 'react-hot-toast'
+
+// Safe imports that won't break if Multisynq is not available
+let useMyId: any = null
+let useConnectedUsers: any = null
+let useIsTogether: any = null
+
+// Dynamically import React Together hooks only when available
+const loadMultisynqHooks = async () => {
+  try {
+    const reactTogether = await import('react-together')
+    useMyId = reactTogether.useMyId
+    useConnectedUsers = reactTogether.useConnectedUsers
+    useIsTogether = reactTogether.useIsTogether
+    return true
+  } catch (error) {
+    console.log('React Together not available, using local mode')
+    return false
+  }
+}
 
 export interface Quest {
   id: string
@@ -32,51 +50,92 @@ export interface CommunityQuest extends Quest {
 
 type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
 
-const useSessionStatus = (): CroquetConnectionType => {
-  const [connectionStatus, set_connectionStatus] = useState<CroquetConnectionType>('offline')
-  const isTogether = useIsTogether()
+// Safe hook that detects Multisynq context availability
+const useSafeMultisynq = () => {
+  const [isMultisynqAvailable, setIsMultisynqAvailable] = useState(false)
+  const [myId, setMyId] = useState<string | null>(null)
+  const [connectedUsers, setConnectedUsers] = useState<any[]>([])
+  const [sessionStatus, setSessionStatus] = useState<CroquetConnectionType>('offline')
+  const [sharedQuests, setSharedQuests] = useState<CommunityQuest[]>([])
+  const [allQuestProgress, setAllQuestProgress] = useState<Record<string, Record<string, number>>>({})
 
   useEffect(() => {
-    const checkConnectionStatus = () => {
-      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
-      const fatalElement = document.querySelector('.croquet_fatal')
+    const initializeMultisynq = async () => {
+      try {
+        // Check if we're in a React component that has access to React Together context
+        const hasMultisynqContext = typeof window !== 'undefined' &&
+          (window as any).__REACT_TOGETHER_CONTEXT__ !== undefined
 
-      if      (fatalElement)   set_connectionStatus('fatal') //prettier-ignore
-      else if (spinnerOverlay) set_connectionStatus('connecting') //prettier-ignore
-      else if (isTogether)     set_connectionStatus('online') //prettier-ignore
-      else                     set_connectionStatus('offline') //prettier-ignore
+        if (hasMultisynqContext) {
+          const hooksLoaded = await loadMultisynqHooks()
+          if (hooksLoaded && useMyId && useConnectedUsers && useIsTogether) {
+            try {
+              // Try to use the hooks - this will throw if not in context
+              const id = useMyId()
+              const users = useConnectedUsers()
+              const isTogether = useIsTogether()
+
+              setIsMultisynqAvailable(true)
+              setMyId(id)
+              setConnectedUsers(users)
+              setSessionStatus(isTogether ? 'online' : 'offline')
+              console.log('✅ Multisynq context available, using real-time features')
+              return
+            } catch (contextError) {
+              console.log('⚠️ Multisynq hooks failed, falling back to local mode')
+            }
+          }
+        }
+
+        // Fallback to local mode
+        setIsMultisynqAvailable(false)
+        setMyId('local-user-' + Math.random().toString(36).substring(2, 9))
+        setConnectedUsers([])
+        setSessionStatus('offline')
+        console.log('📱 Using local mode for quest system')
+
+      } catch (error) {
+        console.log('📱 Multisynq not available, using local mode')
+        setIsMultisynqAvailable(false)
+        setMyId('local-user-' + Math.random().toString(36).substring(2, 9))
+        setConnectedUsers([])
+        setSessionStatus('offline')
+      }
     }
 
-    //initial check
-    checkConnectionStatus()
+    initializeMultisynq()
+  }, [])
 
-    //set up observer to watch for changes in the body
-    const observer = new MutationObserver(checkConnectionStatus)
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class'],
-    })
-
-    return () => observer.disconnect()
-  }, [isTogether])
-
-  return connectionStatus
+  return {
+    isMultisynqAvailable,
+    myId,
+    connectedUsers,
+    sessionStatus,
+    sharedQuests,
+    setSharedQuests,
+    allQuestProgress,
+    setAllQuestProgress
+  }
 }
 
 export const useQuestSystem = () => {
   const { farmCoins, addFarmCoins, addXp, cropsHarvested, seedsPlanted, playerLevel } = useContext(GameContext)
-  const myId = useMyId()
-  const connectedUsers = useConnectedUsers()
-  const sessionStatus = useSessionStatus()
+
+  // Use safe Multisynq wrapper
+  const {
+    isMultisynqAvailable,
+    myId,
+    connectedUsers,
+    sessionStatus,
+    sharedQuests,
+    setSharedQuests,
+    allQuestProgress,
+    setAllQuestProgress
+  } = useSafeMultisynq()
 
   // Local quest state
   const [localQuests, setLocalQuests] = useState<Quest[]>([])
-
-  // Shared quest state for multiplayer
-  const [sharedQuests, setSharedQuests] = useStateTogether<CommunityQuest[]>('community-quests', [])
-  const [myQuestProgress, setMyQuestProgress, allQuestProgress] = useStateTogetherWithPerUserValues<Record<string, number>>('quest-progress', {})
+  const [myQuestProgress, setMyQuestProgress] = useState<Record<string, number>>({})
 
   // Hide multisynq loading spinner
   useEffect(() => {
@@ -240,8 +299,7 @@ export const useQuestSystem = () => {
           participantCount: 0,
           participants: [],
           icon: '🌍',
-          category: 'community',
-          requiresMultiplayer: true
+          category: 'community'
         },
         {
           id: 'community-harvest-crops',
@@ -257,8 +315,7 @@ export const useQuestSystem = () => {
           participantCount: 0,
           participants: [],
           icon: '🎉',
-          category: 'community',
-          requiresMultiplayer: true
+          category: 'community'
         }
       ]
 
@@ -266,47 +323,58 @@ export const useQuestSystem = () => {
     }
   }, [sharedQuests.length, setSharedQuests])
 
-  // Update community quest progress with real-time multiplayer
+  // Update community quest progress (works in both local and multiplayer modes)
   useEffect(() => {
     if (!myId) return
 
-    const totalSeeds = Object.values(allQuestProgress).reduce((sum, progress) => sum + (progress['seeds-planted'] || 0), 0)
-    const totalHarvests = Object.values(allQuestProgress).reduce((sum, progress) => sum + (progress['crops-harvested'] || 0), 0)
+    // Update my progress
+    setMyQuestProgress({
+      'seeds-planted': seedsPlanted,
+      'crops-harvested': cropsHarvested,
+      'farm-coins': farmCoins,
+      'player-level': playerLevel
+    })
 
-    setSharedQuests(prev => prev.map(quest => {
+    // Update all progress tracking
+    setAllQuestProgress(prev => ({
+      ...prev,
+      [myId]: {
+        'seeds-planted': seedsPlanted,
+        'crops-harvested': cropsHarvested,
+        'farm-coins': farmCoins,
+        'player-level': playerLevel
+      }
+    }))
+
+    // Calculate totals (in local mode, just use my progress; in multiplayer, aggregate all)
+    const totalSeeds = Object.values(allQuestProgress || {}).reduce((sum, progress: any) =>
+      sum + ((progress && progress['seeds-planted']) || 0), 0) + seedsPlanted
+    const totalHarvests = Object.values(allQuestProgress || {}).reduce((sum, progress: any) =>
+      sum + ((progress && progress['crops-harvested']) || 0), 0) + cropsHarvested
+
+    // Update community quests
+    setSharedQuests(prev => (prev || []).map(quest => {
       if (quest.id === 'community-plant-seeds') {
         return {
           ...quest,
-          communityProgress: totalSeeds,
+          communityProgress: Math.min(totalSeeds, quest.communityMaxProgress),
           completed: totalSeeds >= quest.communityMaxProgress,
-          participantCount: Object.keys(allQuestProgress).length,
-          participants: Object.keys(allQuestProgress)
+          participantCount: Math.max(Object.keys(allQuestProgress || {}).length, 1),
+          participants: Object.keys(allQuestProgress || {}).length > 0 ? Object.keys(allQuestProgress || {}) : [myId || 'local-user']
         }
       }
       if (quest.id === 'community-harvest-crops') {
         return {
           ...quest,
-          communityProgress: totalHarvests,
+          communityProgress: Math.min(totalHarvests, quest.communityMaxProgress),
           completed: totalHarvests >= quest.communityMaxProgress,
-          participantCount: Object.keys(allQuestProgress).length,
-          participants: Object.keys(allQuestProgress)
+          participantCount: Math.max(Object.keys(allQuestProgress || {}).length, 1),
+          participants: Object.keys(allQuestProgress || {}).length > 0 ? Object.keys(allQuestProgress || {}) : [myId || 'local-user']
         }
       }
       return quest
     }))
-  }, [allQuestProgress, myId, setSharedQuests])
-
-  // Update my quest progress
-  useEffect(() => {
-    if (myId) {
-      setMyQuestProgress({
-        'seeds-planted': seedsPlanted,
-        'crops-harvested': cropsHarvested,
-        'farm-coins': farmCoins,
-        'player-level': playerLevel
-      })
-    }
-  }, [seedsPlanted, cropsHarvested, farmCoins, playerLevel, myId, setMyQuestProgress])
+  }, [seedsPlanted, cropsHarvested, farmCoins, playerLevel, myId, allQuestProgress, setSharedQuests, setAllQuestProgress, setMyQuestProgress])
 
   const completeQuest = (questId: string) => {
     // Handle social quests with external links
@@ -355,20 +423,20 @@ export const useQuestSystem = () => {
     }))
   }
 
-  const getDailyQuests = () => localQuests.filter(q => q.type === 'daily')
-  const getWeeklyQuests = () => localQuests.filter(q => q.type === 'weekly')
-  const getSocialQuests = () => localQuests.filter(q => q.type === 'social')
-  const getCommunityQuests = () => sharedQuests
+  const getDailyQuests = () => (localQuests || []).filter(q => q && q.type === 'daily')
+  const getWeeklyQuests = () => (localQuests || []).filter(q => q && q.type === 'weekly')
+  const getSocialQuests = () => (localQuests || []).filter(q => q && q.type === 'social')
+  const getCommunityQuests = () => sharedQuests || []
 
   return {
-    localQuests,
-    sharedQuests,
+    localQuests: localQuests || [],
+    sharedQuests: sharedQuests || [],
     completeQuest,
     getDailyQuests,
     getWeeklyQuests,
     getSocialQuests,
     getCommunityQuests,
-    connectedUsers,
-    sessionStatus
+    connectedUsers: connectedUsers || [],
+    sessionStatus: sessionStatus || 'offline'
   }
 }
