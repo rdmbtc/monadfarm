@@ -293,23 +293,44 @@ export default function multiplayerPlatformerSketch(p) {
   // Cleanup interval
   setInterval(cleanupInactivePlayers, 5000)
   
+  // Function to set game mode (delegate to base game)
+  const setGameMode = (mode) => {
+    console.log('MultiplayerGame: Setting game mode to:', mode)
+    if (baseGame && baseGame.setGameMode) {
+      baseGame.setGameMode(mode)
+    }
+  }
+
+  // Function to set game model callbacks (delegate to base game)
+  const setGameModelCallbacks = (callbacks) => {
+    console.log('MultiplayerGame: Setting game model callbacks:', Object.keys(callbacks))
+    gameModelCallbacks = { ...gameModelCallbacks, ...callbacks }
+    if (baseGame && baseGame.setMultiplayerCallbacks) {
+      baseGame.setMultiplayerCallbacks(callbacks)
+    }
+  }
+
   // Public API for multiplayer functionality
   return {
     // Base game access
     getBaseGame: () => baseGame,
     getLocalPlayer: () => localPlayer,
-    
+
     // Multiplayer functions
     updateRemotePlayer,
     removeRemotePlayer,
     getLocalPlayerData,
     setMultiplayerCallbacks,
     handlePlayerAction,
-    
+
+    // Game mode functions
+    setGameMode,
+    setGameModelCallbacks,
+
     // State access
     getRemotePlayers: () => Array.from(remotePlayers.values()),
     getPlayerCount: () => remotePlayers.size + 1,
-    
+
     // Utility
     isMultiplayerActive: () => remotePlayers.size > 0
   }

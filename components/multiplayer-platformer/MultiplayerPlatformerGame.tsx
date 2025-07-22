@@ -1,13 +1,48 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useMyId, useConnectedUsers } from 'react-together'
+import { useMyId, useConnectedUsers, useIsTogether } from 'react-together'
 import { usePlatformerGameModel } from '../../hooks/usePlatformerGameModel'
 import { useUnifiedNickname } from '../../hooks/useUnifiedNickname'
 import { ReactP5Wrapper } from 'react-p5-wrapper'
 import multiplayerPlatformerSketch from '../games/multiplayer-game'
 import GameLobby from './GameLobby'
 import { Users, MessageCircle, Play, RotateCcw, Gamepad2, Wifi } from 'lucide-react'
+
+type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
+
+const useSessionStatus = (): CroquetConnectionType => {
+  const [connectionStatus, set_connectionStatus] = useState<CroquetConnectionType>('offline')
+  const isTogether = useIsTogether()
+
+  useEffect(() => {
+    const checkConnectionStatus = () => {
+      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
+      const fatalElement = document.querySelector('.croquet_fatal')
+
+      if      (fatalElement)   set_connectionStatus('fatal') //prettier-ignore
+      else if (spinnerOverlay) set_connectionStatus('connecting') //prettier-ignore
+      else if (isTogether)     set_connectionStatus('online') //prettier-ignore
+      else                     set_connectionStatus('offline') //prettier-ignore
+    }
+
+    //initial check
+    checkConnectionStatus()
+
+    //set up observer to watch for changes in the body
+    const observer = new MutationObserver(checkConnectionStatus)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    })
+
+    return () => observer.disconnect()
+  }, [isTogether])
+
+  return connectionStatus
+}
 
 interface MultiplayerPlatformerGameProps {
   farmCoins?: number
@@ -28,6 +63,7 @@ export default function MultiplayerPlatformerGame({
   const myId = useMyId()
   const connectedUsers = useConnectedUsers()
   const { nickname: currentNickname } = useUnifiedNickname()
+  const sessionStatus = useSessionStatus()
 
   // Game mode and state
   const [localGameMode, setLocalGameMode] = useState<GameMode>('single')
@@ -83,6 +119,61 @@ export default function MultiplayerPlatformerGame({
   // Client-side initialization
   useEffect(() => {
     setIsClient(true)
+  }, [])
+
+  // Hide multisynq loading spinner
+  useEffect(() => {
+    // Inject CSS to hide spinner
+    const style = document.createElement('style')
+    style.textContent = `
+      #croquet_spinnerOverlay {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+      .croquet_spinner {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+    `
+    document.head.appendChild(style)
+
+    const hideSpinner = () => {
+      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
+      if (spinnerOverlay) {
+        spinnerOverlay.style.display = 'none'
+        spinnerOverlay.style.visibility = 'hidden'
+        spinnerOverlay.style.opacity = '0'
+        console.log('🎮 Hidden multisynq loading spinner')
+      }
+
+      // Also hide any spinner elements with class
+      const spinnerElements = document.querySelectorAll('.croquet_spinner')
+      spinnerElements.forEach(element => {
+        (element as HTMLElement).style.display = 'none'
+        ;(element as HTMLElement).style.visibility = 'hidden'
+        ;(element as HTMLElement).style.opacity = '0'
+      })
+    }
+
+    // Hide immediately if present
+    hideSpinner()
+
+    // Set up observer to hide spinner when it appears
+    const observer = new MutationObserver(() => {
+      hideSpinner()
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    })
+
+    return () => {
+      observer.disconnect()
+      document.head.removeChild(style)
+    }
   }, [])
 
   // Connection monitoring
