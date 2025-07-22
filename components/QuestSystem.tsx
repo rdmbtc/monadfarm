@@ -1,6 +1,6 @@
 import React from 'react'
 import { Trophy, Sparkles, Coins, Users, ExternalLink, Globe, Calendar, Clock } from 'lucide-react'
-import { Quest, CommunityQuest, useSimpleQuestSystem } from '../hooks/useSimpleQuestSystem'
+import { Quest, CommunityQuest, useQuestSystem } from '../hooks/useQuestSystem'
 
 interface QuestCardProps {
   quest: Quest | CommunityQuest
@@ -40,87 +40,89 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, onComplete, showCommunityP
   const isExternal = quest.type === 'social' && quest.externalLink
 
   return (
-    <div className="flex items-center justify-between p-3 border border-[#333] mb-2 bg-[#111] noot-text hover:bg-[#1a1a1a] transition-colors">
+    <div className="group flex items-center justify-between p-4 border border-[#333]/50 mb-3 bg-[#0a0a0a] hover:bg-[#111] hover:border-[#444] transition-all duration-200 rounded-lg">
       <div className="flex items-center flex-1">
-        <div className="w-8 h-8 border border-[#333] flex items-center justify-center mr-3 bg-[#222]">
+        <div className="w-10 h-10 flex items-center justify-center mr-4 bg-gradient-to-br from-[#222] to-[#111] rounded-lg border border-[#333]/50">
           {getQuestIcon(quest.icon)}
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <div className="text-white font-medium">{quest.title}</div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="text-white font-medium text-sm">{quest.title}</div>
             {getTypeIcon(quest.type)}
             {isExternal && <ExternalLink className="h-3 w-3 text-blue-400" />}
           </div>
-          <div className="text-white/60 text-xs mb-1">{quest.description}</div>
-          
+          <div className="text-white/60 text-xs mb-2">{quest.description}</div>
+
           {/* Progress Bar */}
-          <div className="w-full h-1 bg-[#222] rounded">
-            <div 
-              className={`h-full rounded transition-all duration-300 ${
-                quest.completed ? 'bg-green-500' : 
-                progressPercentage >= 100 ? 'bg-yellow-500' : 'bg-white'
+          <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                quest.completed ? 'bg-gradient-to-r from-green-500 to-green-400' :
+                progressPercentage >= 100 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' : 'bg-gradient-to-r from-blue-500 to-blue-400'
               }`}
               style={{ width: `${Math.min(progressPercentage, 100)}%` }}
             />
           </div>
-          
+
           {/* Progress Text */}
-          <div className="text-xs text-white/50 mt-1">
-            {isCommunityQuest && showCommunityProgress ? (
-              <>
-                Community: {quest.communityProgress}/{quest.communityMaxProgress}
-                {quest.participantCount > 0 && (
-                  <span className="ml-2">({quest.participantCount} players)</span>
-                )}
-              </>
-            ) : (
-              `${quest.progress}/${quest.maxProgress}`
+          <div className="text-xs text-white/50 mt-1.5 flex items-center justify-between">
+            <span>
+              {isCommunityQuest && showCommunityProgress ? (
+                <>
+                  Community: {quest.communityProgress}/{quest.communityMaxProgress}
+                  {quest.participantCount > 0 && (
+                    <span className="ml-2 text-blue-400">({quest.participantCount} players)</span>
+                  )}
+                </>
+              ) : (
+                `${quest.progress}/${quest.maxProgress}`
+              )}
+            </span>
+
+            {/* Expiry Info */}
+            {quest.expiresAt && (
+              <span className="text-orange-400">
+                Expires: {new Date(quest.expiresAt).toLocaleDateString()}
+              </span>
             )}
           </div>
-          
-          {/* Expiry Info */}
-          {quest.expiresAt && (
-            <div className="text-xs text-orange-400 mt-1">
-              Expires: {new Date(quest.expiresAt).toLocaleDateString()}
-            </div>
-          )}
         </div>
       </div>
-      
-      <div className="flex items-center gap-3">
+
+      <div className="flex items-center gap-4 ml-4">
         {/* Rewards */}
-        <div className="flex items-center gap-2 text-white/80">
+        <div className="flex items-center gap-3 text-white/80">
           {quest.reward.coins && (
-            <div className="flex items-center">
+            <div className="flex items-center bg-[#222] px-2 py-1 rounded-md">
               <Coins className="h-3 w-3 mr-1 text-yellow-400" />
-              <span className="text-xs">{quest.reward.coins}</span>
+              <span className="text-xs font-medium">{quest.reward.coins}</span>
             </div>
           )}
           {quest.reward.xp && (
-            <div className="flex items-center">
+            <div className="flex items-center bg-[#222] px-2 py-1 rounded-md">
               <Sparkles className="h-3 w-3 mr-1 text-purple-400" />
-              <span className="text-xs">{quest.reward.xp}</span>
+              <span className="text-xs font-medium">{quest.reward.xp}</span>
             </div>
           )}
         </div>
-        
+
         {/* Complete Button */}
         {!quest.completed && (
           <button
             onClick={() => onComplete(quest.id)}
             disabled={!canComplete && !isExternal}
-            className={`px-3 py-1 text-xs rounded transition-all ${
+            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
               canComplete || isExternal
-                ? 'bg-green-600 hover:bg-green-700 text-white'
+                ? 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg hover:shadow-green-500/25'
                 : 'bg-[#333] text-white/50 cursor-not-allowed'
             }`}
           >
             {isExternal ? 'Visit' : canComplete ? 'Complete' : 'Locked'}
           </button>
         )}
-        
+
         {quest.completed && (
-          <div className="px-3 py-1 text-xs bg-green-600 text-white rounded">
+          <div className="px-4 py-2 text-xs font-medium bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg shadow-lg">
             ✓ Done
           </div>
         )}
@@ -143,7 +145,7 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
     getCommunityQuests,
     connectedUsers,
     sessionStatus
-  } = useSimpleQuestSystem()
+  } = useQuestSystem()
 
   const dailyQuests = getDailyQuests()
   const weeklyQuests = getWeeklyQuests()
@@ -151,115 +153,144 @@ export const QuestSystem: React.FC<QuestSystemProps> = ({ showTitle = true, comp
   const communityQuests = getCommunityQuests()
 
   if (compact) {
-    // Compact view for sidebar/smaller spaces
+    // Compact view for sidebar/smaller spaces with minimalistic design
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {showTitle && (
-          <h3 className="text-white font-bold flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
-            Active Quests
-          </h3>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Trophy className="h-4 w-4 text-white" />
+            </div>
+            <h3 className="text-white font-semibold">Active Quests</h3>
+          </div>
         )}
-        
+
         {/* Show only incomplete quests in compact mode */}
-        {[...dailyQuests, ...socialQuests, ...weeklyQuests]
-          .filter(quest => !quest.completed)
-          .slice(0, 3)
-          .map(quest => (
-            <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
+        <div className="space-y-3">
+          {[...dailyQuests, ...socialQuests, ...weeklyQuests]
+            .filter((quest: Quest) => !quest.completed)
+            .slice(0, 3)
+            .map((quest: Quest) => (
+              <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
+            ))}
+
+          {communityQuests.filter((quest: CommunityQuest) => !quest.completed).slice(0, 1).map((quest: CommunityQuest) => (
+            <QuestCard
+              key={quest.id}
+              quest={quest}
+              onComplete={completeQuest}
+              showCommunityProgress={true}
+            />
           ))}
-        
-        {communityQuests.filter(quest => !quest.completed).slice(0, 1).map(quest => (
-          <QuestCard 
-            key={quest.id} 
-            quest={quest} 
-            onComplete={completeQuest} 
-            showCommunityProgress={true}
-          />
-        ))}
+        </div>
       </div>
     )
   }
 
-  // Full quest system view
+  // Full quest system view with minimalistic design
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn">
       {/* Daily Quests */}
-      <div className="noot-card">
-        <div className="border-b border-[#333] p-4">
-          <h2 className="noot-header flex items-center text-white noot-title">
-            <Sparkles className="h-5 w-5 mr-2" />
-            Daily Quests
-          </h2>
-          <p className="text-white/60 text-sm noot-text">
-            Resets every 24 hours
-          </p>
+      <div className="bg-gradient-to-br from-[#0a0a0a] to-[#111] border border-[#333]/50 rounded-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-[#111] to-[#0a0a0a] p-6 border-b border-[#333]/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-3">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold text-lg">Daily Quests</h2>
+                <p className="text-white/60 text-sm">Resets every 24 hours</p>
+              </div>
+            </div>
+            <Calendar className="h-5 w-5 text-blue-400" />
+          </div>
         </div>
-        <div className="p-4">
-          {dailyQuests.map(quest => (
+        <div className="p-6">
+          {dailyQuests.map((quest: Quest) => (
             <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
           ))}
         </div>
       </div>
 
       {/* Social Quests */}
-      <div className="noot-card">
-        <div className="border-b border-[#333] p-4">
-          <h2 className="noot-header flex items-center text-white noot-title">
-            <ExternalLink className="h-5 w-5 mr-2" />
-            Social Quests
-          </h2>
-          <p className="text-white/60 text-sm noot-text">
-            Connect with the community
-          </p>
+      <div className="bg-gradient-to-br from-[#0a0a0a] to-[#111] border border-[#333]/50 rounded-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-[#111] to-[#0a0a0a] p-6 border-b border-[#333]/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mr-3">
+                <ExternalLink className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold text-lg">Social Quests</h2>
+                <p className="text-white/60 text-sm">Connect with the community</p>
+              </div>
+            </div>
+            <Globe className="h-5 w-5 text-green-400" />
+          </div>
         </div>
-        <div className="p-4">
-          {socialQuests.map(quest => (
+        <div className="p-6">
+          {socialQuests.map((quest: Quest) => (
             <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
           ))}
         </div>
       </div>
 
       {/* Weekly Quests */}
-      <div className="noot-card">
-        <div className="border-b border-[#333] p-4">
-          <h2 className="noot-header flex items-center text-white noot-title">
-            <Trophy className="h-5 w-5 mr-2" />
-            Weekly Quests
-          </h2>
-          <p className="text-white/60 text-sm noot-text">
-            Resets every 7 days
-          </p>
+      <div className="bg-gradient-to-br from-[#0a0a0a] to-[#111] border border-[#333]/50 rounded-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-[#111] to-[#0a0a0a] p-6 border-b border-[#333]/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                <Trophy className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold text-lg">Weekly Quests</h2>
+                <p className="text-white/60 text-sm">Resets every 7 days</p>
+              </div>
+            </div>
+            <Clock className="h-5 w-5 text-purple-400" />
+          </div>
         </div>
-        <div className="p-4">
-          {weeklyQuests.map(quest => (
+        <div className="p-6">
+          {weeklyQuests.map((quest: Quest) => (
             <QuestCard key={quest.id} quest={quest} onComplete={completeQuest} />
           ))}
         </div>
       </div>
 
       {/* Community Quests */}
-      <div className="noot-card">
-        <div className="border-b border-[#333] p-4">
-          <h2 className="noot-header flex items-center text-white noot-title">
-            <Users className="h-5 w-5 mr-2" />
-            Community Quests
-          </h2>
-          <p className="text-white/60 text-sm noot-text">
-            Work together with {connectedUsers.length} players
-            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-              sessionStatus === 'online' ? 'bg-green-600' : 'bg-red-600'
-            }`}>
-              {sessionStatus === 'online' ? 'Online' : 'Offline'}
-            </span>
-          </p>
+      <div className="bg-gradient-to-br from-[#0a0a0a] to-[#111] border border-[#333]/50 rounded-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-[#111] to-[#0a0a0a] p-6 border-b border-[#333]/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center mr-3">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold text-lg">Community Quests</h2>
+                <p className="text-white/60 text-sm">
+                  Work together with {connectedUsers.length} players
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                sessionStatus === 'online'
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
+              }`}>
+                {sessionStatus === 'online' ? '● Online' : '● Offline'}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="p-4">
-          {communityQuests.map(quest => (
-            <QuestCard 
-              key={quest.id} 
-              quest={quest} 
-              onComplete={completeQuest} 
+        <div className="p-6">
+          {communityQuests.map((quest: CommunityQuest) => (
+            <QuestCard
+              key={quest.id}
+              quest={quest}
+              onComplete={completeQuest}
               showCommunityProgress={true}
             />
           ))}

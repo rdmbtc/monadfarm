@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
+import { useStateTogether, useStateTogetherWithPerUserValues, useMyId, useConnectedUsers, useIsTogether } from 'react-together'
 import { GameContext } from '../context/game-context'
 import toast from 'react-hot-toast'
 
@@ -31,54 +32,51 @@ export interface CommunityQuest extends Quest {
 
 type CroquetConnectionType = 'connecting' | 'online' | 'fatal' | 'offline'
 
-// Safe hook that doesn't break when Multisynq is not available
-const useSafeMultisynq = () => {
-  const [isMultisynqAvailable, setIsMultisynqAvailable] = useState(false)
-  const [myId, setMyId] = useState<string | null>(null)
-  const [connectedUsers, setConnectedUsers] = useState<any[]>([])
-  const [sessionStatus, setSessionStatus] = useState<CroquetConnectionType>('offline')
+const useSessionStatus = (): CroquetConnectionType => {
+  const [connectionStatus, set_connectionStatus] = useState<CroquetConnectionType>('offline')
+  const isTogether = useIsTogether()
 
   useEffect(() => {
-    // Check if we're in a Multisynq context
-    try {
-      // Try to access window.Croquet or other Multisynq indicators
-      if (typeof window !== 'undefined' && (window as any).Croquet) {
-        setIsMultisynqAvailable(true)
-        setMyId('user-' + Math.random().toString(36).substr(2, 9))
-        setSessionStatus('online')
-      } else {
-        setIsMultisynqAvailable(false)
-        setMyId('local-user')
-        setSessionStatus('offline')
-      }
-    } catch (error) {
-      setIsMultisynqAvailable(false)
-      setMyId('local-user')
-      setSessionStatus('offline')
-    }
-  }, [])
+    const checkConnectionStatus = () => {
+      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay')
+      const fatalElement = document.querySelector('.croquet_fatal')
 
-  return {
-    isMultisynqAvailable,
-    myId,
-    connectedUsers,
-    sessionStatus
-  }
+      if      (fatalElement)   set_connectionStatus('fatal') //prettier-ignore
+      else if (spinnerOverlay) set_connectionStatus('connecting') //prettier-ignore
+      else if (isTogether)     set_connectionStatus('online') //prettier-ignore
+      else                     set_connectionStatus('offline') //prettier-ignore
+    }
+
+    //initial check
+    checkConnectionStatus()
+
+    //set up observer to watch for changes in the body
+    const observer = new MutationObserver(checkConnectionStatus)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    })
+
+    return () => observer.disconnect()
+  }, [isTogether])
+
+  return connectionStatus
 }
 
 export const useQuestSystem = () => {
   const { farmCoins, addFarmCoins, addXp, cropsHarvested, seedsPlanted, playerLevel } = useContext(GameContext)
-
-  // Use safe Multisynq hook
-  const { isMultisynqAvailable, myId, connectedUsers, sessionStatus } = useSafeMultisynq()
+  const myId = useMyId()
+  const connectedUsers = useConnectedUsers()
+  const sessionStatus = useSessionStatus()
 
   // Local quest state
   const [localQuests, setLocalQuests] = useState<Quest[]>([])
 
-  // Shared quest state for multiplayer (with fallback to local storage)
-  const [sharedQuests, setSharedQuests] = useState<CommunityQuest[]>([])
-  const [myQuestProgress, setMyQuestProgress] = useState<Record<string, number>>({})
-  const [allQuestProgress, setAllQuestProgress] = useState<Record<string, Record<string, number>>>({})
+  // Shared quest state for multiplayer
+  const [sharedQuests, setSharedQuests] = useStateTogether<CommunityQuest[]>('community-quests', [])
+  const [myQuestProgress, setMyQuestProgress, allQuestProgress] = useStateTogetherWithPerUserValues<Record<string, number>>('quest-progress', {})
 
   // Hide multisynq loading spinner
   useEffect(() => {
@@ -268,32 +266,12 @@ export const useQuestSystem = () => {
     }
   }, [sharedQuests.length, setSharedQuests])
 
-  // Update community quest progress (simplified for local mode)
+  // Update community quest progress with real-time multiplayer
   useEffect(() => {
     if (!myId) return
 
-    // Update my progress
-    setMyQuestProgress({
-      'seeds-planted': seedsPlanted,
-      'crops-harvested': cropsHarvested,
-      'farm-coins': farmCoins,
-      'player-level': playerLevel
-    })
-
-    // Update all progress (in local mode, just use my progress)
-    setAllQuestProgress(prev => ({
-      ...prev,
-      [myId]: {
-        'seeds-planted': seedsPlanted,
-        'crops-harvested': cropsHarvested,
-        'farm-coins': farmCoins,
-        'player-level': playerLevel
-      }
-    }))
-
-    // Update community quests based on current progress
-    const totalSeeds = seedsPlanted // In local mode, just use my seeds
-    const totalHarvests = cropsHarvested // In local mode, just use my harvests
+    const totalSeeds = Object.values(allQuestProgress).reduce((sum, progress) => sum + (progress['seeds-planted'] || 0), 0)
+    const totalHarvests = Object.values(allQuestProgress).reduce((sum, progress) => sum + (progress['crops-harvested'] || 0), 0)
 
     setSharedQuests(prev => prev.map(quest => {
       if (quest.id === 'community-plant-seeds') {
@@ -301,8 +279,8 @@ export const useQuestSystem = () => {
           ...quest,
           communityProgress: totalSeeds,
           completed: totalSeeds >= quest.communityMaxProgress,
-          participantCount: connectedUsers.length || 1,
-          participants: [myId]
+          participantCount: Object.keys(allQuestProgress).length,
+          participants: Object.keys(allQuestProgress)
         }
       }
       if (quest.id === 'community-harvest-crops') {
@@ -310,13 +288,25 @@ export const useQuestSystem = () => {
           ...quest,
           communityProgress: totalHarvests,
           completed: totalHarvests >= quest.communityMaxProgress,
-          participantCount: connectedUsers.length || 1,
-          participants: [myId]
+          participantCount: Object.keys(allQuestProgress).length,
+          participants: Object.keys(allQuestProgress)
         }
       }
       return quest
     }))
-  }, [seedsPlanted, cropsHarvested, farmCoins, playerLevel, myId, connectedUsers.length])
+  }, [allQuestProgress, myId, setSharedQuests])
+
+  // Update my quest progress
+  useEffect(() => {
+    if (myId) {
+      setMyQuestProgress({
+        'seeds-planted': seedsPlanted,
+        'crops-harvested': cropsHarvested,
+        'farm-coins': farmCoins,
+        'player-level': playerLevel
+      })
+    }
+  }, [seedsPlanted, cropsHarvested, farmCoins, playerLevel, myId, setMyQuestProgress])
 
   const completeQuest = (questId: string) => {
     // Handle social quests with external links
