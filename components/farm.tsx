@@ -62,7 +62,7 @@ import EnhancedSlotMachine from "@/app/slot-machine/components/enhanced-slot-mac
 // Import SportBettingPage (aliased from Home)
 import SportBettingPage from "@/app/sport-betting/app/page"; // Assuming this is the correct path now
 // Import SocialHubPage for social tab
-import { SocialHubPage } from "@/app/social-hub/app/social-hub-page"; // Path to the new SocialHubPage component
+import SocialHubPage from "@/app/social-hub/page"; // Path to the SocialHubPage component
 
 // Import MonIoWrapper for Mon.io game
 import MonIoWrapper from '@/components/mon-io/MonIoWrapper';
@@ -314,9 +314,6 @@ export function Farm() {
   const [showNootGamesDropdown, setShowNootGamesDropdown] = useState(false);
   const gamesDropdownRef = useRef<HTMLDivElement>(null); // Ref for the dropdown
 
-  // State for one-time bonus coin feature
-  const [bonusClaimed, setBonusClaimed] = useState(false);
-
 
   // Update local edit state when local nickname/bio changes (e.g., initial load)
   useEffect(() => {
@@ -467,12 +464,6 @@ export function Farm() {
   // Load player data from localStorage on mount - Context handles profile loading now
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Load bonus claimed state
-      const savedBonusClaimed = localStorage.getItem('bonus-claimed');
-      if (savedBonusClaimed === 'true') {
-        setBonusClaimed(true);
-      }
-
       const savedDailyTasks = localStorage.getItem('daily-tasks');
       
       // Check if daily tasks need resetting (new day)
@@ -1391,32 +1382,15 @@ export function Farm() {
   // Add this code in useEffect to ensure the user has some boosters for testing
   // Add after other useEffect declarations
 
-  // Add a function to give one-time bonus coins
+  // Add a function to give emergency coins
   const handleEmergencyCoins = () => {
-    // Check if bonus has already been claimed
-    if (bonusClaimed) {
-      toast.error("You have already claimed your one-time bonus!", {
-        icon: "❌",
-        duration: 3000
-      });
-      return;
-    }
-
-    // Give the player bonus coins
+    // Give the player some emergency coins
     addFarmCoins(100);
     addCoinsEarned(100);
-
-    // Mark bonus as claimed
-    setBonusClaimed(true);
-
-    // Save to localStorage to persist the claimed state
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bonus-claimed', 'true');
-    }
-
-    toast.success("One-time bonus claimed: +100 coins!", {
+    
+    toast.success("Emergency funds: +100 coins!", { 
       icon: "💰",
-      duration: 3000
+      duration: 3000 
     });
   };
   
@@ -2579,32 +2553,20 @@ export function Farm() {
         {/* Farm Tab */}
         {activeTab === "farm" && (
           <>
-            {/* One-Time Bonus Coins */}
-            {!bonusClaimed ? (
-              <div className="w-full bg-black border border-yellow-500 p-3 mb-4 flex justify-between items-center animate-fadeIn">
-                <div className="flex items-center">
-                  <Coins className="h-5 w-5 mr-2 text-yellow-500" />
-                  <span className="text-white noot-text">Need coins? Get a bonus! Only one time bonus!</span>
-                </div>
-                <Button
-                  onClick={handleEmergencyCoins}
-                  className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-400 hover:to-yellow-500 border-0 rounded-none"
-                  size="sm"
-                >
-                  Get 100 Coins
-                </Button>
+            {/* Emergency Funds Button */}
+            <div className="w-full bg-black border border-yellow-500 p-3 mb-4 flex justify-between items-center animate-fadeIn">
+              <div className="flex items-center">
+                <Coins className="h-5 w-5 mr-2 text-yellow-500" />
+                <span className="text-white noot-text">Need coins? Get a bonus!</span>
               </div>
-            ) : (
-              <div className="w-full bg-black border border-gray-500 p-3 mb-4 flex justify-between items-center animate-fadeIn opacity-60">
-                <div className="flex items-center">
-                  <CheckIcon className="h-5 w-5 mr-2 text-green-500" />
-                  <span className="text-gray-400 noot-text">One-time bonus already claimed!</span>
-                </div>
-                <div className="text-gray-500 text-sm">
-                  ✓ Claimed
-                </div>
-              </div>
-            )}
+              <Button
+                onClick={handleEmergencyCoins}
+                className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-400 hover:to-yellow-500 border-0 rounded-none"
+                size="sm"
+              >
+                Get 100 Coins
+              </Button>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
               {/* Left sidebar - Seeds and tools */}
