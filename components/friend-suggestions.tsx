@@ -1,6 +1,6 @@
 "use client"
 
-import { UserPlus, Users, X } from "lucide-react"
+import { UserPlus, Users, X, Trophy } from "lucide-react"
 import { Button } from "./ui/button"
 import { Card } from "./ui/card"
 import { CardContent } from "./ui/card"
@@ -208,14 +208,22 @@ export default function FriendSuggestions() {
       <FriendSuggestionsCard />
 
       {/* Quest System Section */}
-      <Card className="bg-[#111] border-[#333] mt-6">
-        <CardHeader>
-          <CardTitle className="text-white noot-title">Active Quests</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-gradient-to-br from-[#0a0a0a] to-[#111] border border-[#333]/50 rounded-xl overflow-hidden mt-6">
+        <div className="bg-gradient-to-r from-[#111] to-[#0a0a0a] p-6 border-b border-[#333]/50">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+              <Trophy className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-white font-semibold text-lg">Active Quests</h2>
+              <p className="text-white/60 text-sm">Complete quests to earn rewards</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
           <QuestSystem compact={true} showTitle={false} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </>
   )
 }

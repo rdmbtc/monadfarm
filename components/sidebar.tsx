@@ -348,7 +348,7 @@ export const Sidebar = ({
             className="flex w-full items-center rounded-none border border-transparent px-3 py-2 text-white/80 hover:bg-[#222] hover:text-white noot-text transition-all duration-200 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"
           >
             <Package className="h-4 w-4 mr-2" />
-            <span className="text-sm">Noot Gamble</span>
+            <span className="text-sm">Mon Gamble</span>
           </Link>
           
           <Button
@@ -405,20 +405,20 @@ export const Sidebar = ({
         {/* Tokenomics information */}
         <div className="p-4 border-t border-[#333] text-xs text-white/60 space-y-2 noot-text">
           <div className="flex justify-between">
-            <span>Total Supply</span>
-            <span>1,000,000,000 $NOOT</span>
+            <span>Blockchain</span>
+            <span>Monad</span>
           </div>
           <div className="flex justify-between">
-            <span>Network</span>
-            <span>Abstract</span>
+            <span>Transactions per second</span>
+            <span>10K TPS</span>
           </div>
           <div className="flex justify-between">
-            <span>Taxes</span>
-            <span>No taxes</span>
+            <span>Testnet tokens</span>
+            <span>https://testnet.monad.xyz/</span>
           </div>
           <div className="flex justify-between">
-            <span>Liquidity</span>
-            <span>Locked</span>
+            <span>Created with Love</span>
+            <span>by DR RDM</span>
           </div>
         </div>
       </div>
