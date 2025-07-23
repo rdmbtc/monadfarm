@@ -16,6 +16,7 @@ export default class Crop extends Phaser.GameObjects.Container {
     this.health = 100;
     this.maxHealth = 100;
     this.isActive = true;
+    this.isGrowing = false;
     this.damageSound = null;
     this.value = 2; // Coins per harvest
     this.growthMultiplier = 1.0; // Multiplier from upgrades
@@ -93,10 +94,13 @@ export default class Crop extends Phaser.GameObjects.Container {
     if (this.growthTimer) {
       return; // Already growing
     }
-    
+
+    // Set growing flag
+    this.isGrowing = true;
+
     // Calculate actual growth delay based on growth speed and multiplier
     const growthDelay = Math.max(500, 1000 / this.growthMultiplier);
-    
+
     // Create a timer that increments growth
     this.growthTimer = this.scene.time.addEvent({
       delay: growthDelay,
@@ -104,21 +108,34 @@ export default class Crop extends Phaser.GameObjects.Container {
       callbackScope: this,
       loop: true
     });
+
+    console.log(`Started growth for ${this.cropType} crop with delay ${growthDelay}ms`);
   }
   
   grow() {
     if (!this.isActive || this.growthProgress >= this.maxGrowth) {
       return;
     }
-    
+
     // Increment growth based on growth speed and multiplier
     const effectiveGrowthSpeed = this.growthRate * this.growthMultiplier;
     this.growthProgress += effectiveGrowthSpeed;
-    
+
+    console.log(`Crop growing: ${this.growthProgress.toFixed(1)}/${this.maxGrowth} (${this.growthState})`);
+
     // Cap growth
     if (this.growthProgress >= this.maxGrowth) {
       this.growthProgress = this.maxGrowth;
       this.setGrowthState('mature');
+      this.isGrowing = false; // Stop growing when mature
+
+      // Stop the growth timer
+      if (this.growthTimer) {
+        this.growthTimer.destroy();
+        this.growthTimer = null;
+      }
+
+      console.log(`Crop fully grown and ready for harvest!`);
     } else if (this.growthProgress >= this.maxGrowth / 2 && this.growthState === 'seedling') {
       this.setGrowthState('growing');
     }
@@ -200,10 +217,11 @@ export default class Crop extends Phaser.GameObjects.Container {
   
   harvest() {
     if (!this.isActive || !this.isHarvestable) {
+      console.log(`Harvest failed: isActive=${this.isActive}, isHarvestable=${this.isHarvestable}`);
       return 0;
     }
-    
-    console.log(`Harvesting ${this.cropType} crop at ${this.x}, ${this.y}, generating coins`);
+
+    console.log(`🌾 HARVESTING ${this.cropType} crop at ${this.x}, ${this.y}, generating coins`);
     
     // Play harvest sound
     if (this.scene.soundManager) {
@@ -214,14 +232,18 @@ export default class Crop extends Phaser.GameObjects.Container {
     this.growthProgress = 0;
     this.isHarvestable = false;
     this.setGrowthState('seedling');
+
+    // Restart growth cycle
+    this.startGrowth();
     
     // Calculate yield
     const yieldAmount = this.calculateYield();
     
     // Generate coins
     if (typeof this.scene.updateFarmCoins === 'function') {
+      console.log(`💰 Giving ${yieldAmount} coins to player!`);
       this.scene.updateFarmCoins(yieldAmount);
-      
+
       // Show floating coins with animation
       this.scene.showFloatingText(this.x, this.y, `+${yieldAmount}`, 0xFFFF00);
       
@@ -241,7 +263,9 @@ export default class Crop extends Phaser.GameObjects.Container {
   calculateYield() {
     // Base yield with some randomness, modified by yield multiplier
     const baseYield = this.value + Math.random() * 2;
-    return Math.floor(baseYield * this.yieldMultiplier);
+    const finalYield = Math.floor(baseYield * this.yieldMultiplier);
+    console.log(`Calculating yield: base=${this.value}, random bonus=${(baseYield - this.value).toFixed(2)}, multiplier=${this.yieldMultiplier}, final=${finalYield}`);
+    return finalYield;
   }
   
   damage(amount) {
@@ -278,7 +302,21 @@ export default class Crop extends Phaser.GameObjects.Container {
   }
   
   update() {
-    // Override in subclasses if needed
+    // Update health bar visibility based on damage
+    if (this.healthBar) {
+      const healthPercentage = this.health / this.maxHealth;
+      if (healthPercentage < 1.0) {
+        this.healthBar.setVisible(true);
+        this.updateHealthBar();
+      } else {
+        this.healthBar.setVisible(false);
+      }
+    }
+
+    // Debug: Log crop state periodically
+    if (this.scene.time.now % 2000 < 16) { // Every ~2 seconds
+      console.log(`Crop ${this.cropType}: growth=${this.growthProgress.toFixed(1)}/${this.maxGrowth}, state=${this.growthState}, harvestable=${this.isHarvestable}, growing=${this.isGrowing}`);
+    }
   }
   
   adjustForWave() {
