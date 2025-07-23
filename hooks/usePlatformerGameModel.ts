@@ -105,7 +105,19 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
 
   // Shared state for multiplayer platformer game
   const [players, setPlayers] = useStateTogether<Record<string, PlatformerPlayer>>('platformer-players', {})
-  const [gameSession, setGameSession] = useStateTogether<GameSession | null>('platformer-session', null)
+  const [gameSession, setGameSession] = useStateTogether<GameSession | null>('platformer-session', {
+    id: 'default-session',
+    currentLevel: 1,
+    isActive: false,
+    maxPlayers: 4,
+    gameMode: 'cooperative',
+    startTime: Date.now(),
+    state: 'lobby',
+    playMode: 'online',
+    requiredPlayers: 1,
+    starsCollectedThisLevel: {},
+    levelCompleteRequirement: 'any_player'
+  })
   const [gameEvents, setGameEvents] = useStateTogether<GameEvent[]>('platformer-events', [])
   const [chatMessages, setChatMessages] = useStateTogether<ChatMessage[]>('platformer-chat', [])
 

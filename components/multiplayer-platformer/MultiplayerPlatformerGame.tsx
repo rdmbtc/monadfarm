@@ -542,13 +542,46 @@ export default function MultiplayerPlatformerGame({
   if (!isClient) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-900 rounded-lg">
-        <div className="text-white">Loading multiplayer platformer...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="text-white">Loading multiplayer platformer...</div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="w-full bg-black rounded-lg overflow-hidden relative">
+      {/* Game Status Bar */}
+      <div className="bg-gray-900 p-3 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${localGameMode === 'online' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+              <span className="text-white text-sm font-medium">
+                {localGameMode === 'online' ? 'Online Mode' : 'Single Player'}
+              </span>
+            </div>
+            <div className="text-gray-400 text-sm">
+              Players: {playerCount}
+            </div>
+            {localGameMode === 'online' && myId && (
+              <div className="text-gray-400 text-sm">
+                ID: {currentNickname || myId.substring(0, 8)}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleGameModeChange(localGameMode === 'online' ? 'single' : 'online')}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
+            >
+              Switch to {localGameMode === 'online' ? 'Single' : 'Online'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Debug Info */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-red-900 p-2 text-xs text-white">
