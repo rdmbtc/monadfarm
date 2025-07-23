@@ -221,7 +221,21 @@ if (isBrowser) {
             this.load.image('enemy_dragon', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon14.png');
             this.load.image('enemy_demon', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon15.png');
             
-            // Old wizard/cannon textures removed - using character defense system now
+            // Load defense character textures for the new defense system
+            this.load.image('chog_idle', '/defense/chog_idle.png');
+            this.load.image('chog_attack', '/defense/chog_idle.png'); // Use idle for attack for now
+            this.load.image('molandak_idle', '/defense/molandak_idle.png');
+            this.load.image('molandak_attack', '/defense/molandak_idle.png'); // Use idle for attack for now
+            this.load.image('moyaki_idle', '/defense/moyaki_idle.png');
+            this.load.image('moyaki_attack', '/defense/moyaki_idle.png'); // Use idle for attack for now
+            this.load.image('keon_idle', '/defense/keon_idle.png');
+            this.load.image('keon_attack', '/defense/keon_idle.png'); // Use idle for attack for now
+
+            // Load legacy ABS and MON defense textures (still used in some places)
+            this.load.image('ABS_idle', '/defense/abster idle.png');
+            this.load.image('ABS_attack', '/defense/abster attacks.png');
+            this.load.image('MON_idle', '/defense/noot idle.png');
+            this.load.image('MON_attack', '/defense/noot attack.png');
             
             // Load shadows
             this.load.image('shadow1', '/characters/2 Objects/1 Shadow/1.png');
@@ -270,7 +284,9 @@ if (isBrowser) {
                 if (fileObj.key === 'chog_idle' || fileObj.key === 'chog_attack' ||
                     fileObj.key === 'molandak_idle' || fileObj.key === 'molandak_attack' ||
                     fileObj.key === 'moyaki_idle' || fileObj.key === 'moyaki_attack' ||
-                    fileObj.key === 'keon_idle' || fileObj.key === 'keon_attack') {
+                    fileObj.key === 'keon_idle' || fileObj.key === 'keon_attack' ||
+                    fileObj.key === 'ABS_idle' || fileObj.key === 'ABS_attack' ||
+                    fileObj.key === 'MON_idle' || fileObj.key === 'MON_attack') {
                   console.log(`Creating placeholder for missing asset: ${fileObj.key}`);
 
                   // We'll create the fallbacks in the complete handler
@@ -309,7 +325,7 @@ if (isBrowser) {
                 console.log('Created fallback texture for fireball_red on load complete');
               }
               
-              // Create fallback textures for defense characters
+              // Create fallback textures for defense characters if they fail to load
               if (!this.textures.exists('chog_idle')) {
                 const chogGraphics = this.make.graphics();
                 chogGraphics.fillStyle(0x00AA00, 1);
@@ -320,32 +336,16 @@ if (isBrowser) {
                 console.log('Created fallback texture for chog_idle');
               }
 
-              if (!this.textures.exists('chog_attack')) {
-                if (this.textures.exists('chog_idle')) {
-                  const idleTexture = this.textures.get('chog_idle');
-                  this.textures.addImage('chog_attack', idleTexture.getSourceImage());
-                }
-                console.log('Created fallback texture for chog_attack');
-              }
-
               if (!this.textures.exists('molandak_idle')) {
                 const molandakGraphics = this.make.graphics();
                 molandakGraphics.fillStyle(0x0088FF, 1);
                 molandakGraphics.fillCircle(20, 20, 18);
                 molandakGraphics.fillStyle(0x66CCFF, 1);
-                // Create ice crystal shape manually (no fillStar method)
+                // Create ice crystal shape manually
                 molandakGraphics.fillTriangle(20, 10, 15, 20, 25, 20); // Top triangle
                 molandakGraphics.fillTriangle(20, 30, 15, 20, 25, 20); // Bottom triangle
                 molandakGraphics.generateTexture('molandak_idle', 40, 40);
                 console.log('Created fallback texture for molandak_idle');
-              }
-
-              if (!this.textures.exists('molandak_attack')) {
-                if (this.textures.exists('molandak_idle')) {
-                  const idleTexture = this.textures.get('molandak_idle');
-                  this.textures.addImage('molandak_attack', idleTexture.getSourceImage());
-                }
-                console.log('Created fallback texture for molandak_attack');
               }
 
               if (!this.textures.exists('moyaki_idle')) {
@@ -358,14 +358,6 @@ if (isBrowser) {
                 console.log('Created fallback texture for moyaki_idle');
               }
 
-              if (!this.textures.exists('moyaki_attack')) {
-                if (this.textures.exists('moyaki_idle')) {
-                  const idleTexture = this.textures.get('moyaki_idle');
-                  this.textures.addImage('moyaki_attack', idleTexture.getSourceImage());
-                }
-                console.log('Created fallback texture for moyaki_attack');
-              }
-
               if (!this.textures.exists('keon_idle')) {
                 const keonGraphics = this.make.graphics();
                 keonGraphics.fillStyle(0xFFD700, 1);
@@ -376,14 +368,44 @@ if (isBrowser) {
                 console.log('Created fallback texture for keon_idle');
               }
 
-              if (!this.textures.exists('keon_attack')) {
-                if (this.textures.exists('keon_idle')) {
-                  const idleTexture = this.textures.get('keon_idle');
-                  this.textures.addImage('keon_attack', idleTexture.getSourceImage());
-                }
-                console.log('Created fallback texture for keon_attack');
+              // Create attack textures by copying idle textures
+              if (!this.textures.exists('chog_attack') && this.textures.exists('chog_idle')) {
+                const idleTexture = this.textures.get('chog_idle');
+                this.textures.addImage('chog_attack', idleTexture.getSourceImage());
               }
-              
+              if (!this.textures.exists('molandak_attack') && this.textures.exists('molandak_idle')) {
+                const idleTexture = this.textures.get('molandak_idle');
+                this.textures.addImage('molandak_attack', idleTexture.getSourceImage());
+              }
+              if (!this.textures.exists('moyaki_attack') && this.textures.exists('moyaki_idle')) {
+                const idleTexture = this.textures.get('moyaki_idle');
+                this.textures.addImage('moyaki_attack', idleTexture.getSourceImage());
+              }
+              if (!this.textures.exists('keon_attack') && this.textures.exists('keon_idle')) {
+                const idleTexture = this.textures.get('keon_idle');
+                this.textures.addImage('keon_attack', idleTexture.getSourceImage());
+              }
+
+              // Create fallback textures for ABS and MON if they don't exist
+              if (!this.textures.exists('ABS_idle')) {
+                const absGraphics = this.make.graphics();
+                absGraphics.fillStyle(0x0088FF, 1);
+                absGraphics.fillCircle(20, 20, 18);
+                absGraphics.fillStyle(0x66CCFF, 1);
+                absGraphics.fillTriangle(20, 10, 15, 20, 25, 20); // Ice crystal
+                absGraphics.generateTexture('ABS_idle', 40, 40);
+                console.log('Created fallback texture for ABS_idle');
+              }
+
+              if (!this.textures.exists('MON_idle')) {
+                const monGraphics = this.make.graphics();
+                monGraphics.fillStyle(0xFF4400, 1);
+                monGraphics.fillCircle(20, 20, 18);
+                monGraphics.fillStyle(0xFF8844, 1);
+                monGraphics.fillTriangle(15, 25, 25, 25, 20, 15); // Fire
+                monGraphics.generateTexture('MON_idle', 40, 40);
+                console.log('Created fallback texture for MON_idle');
+              }
 
             });
           } catch (error) {
