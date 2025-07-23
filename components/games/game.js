@@ -82,6 +82,22 @@ export default function platformerSketch(p) {
   let internalMasterVolume = 1.0; // Renamed to avoid conflict with wrapper state
   const sfxVolumeMultiplier = 0.3; // Multiplier for sound effects (30%)
 
+  // Callback system for external components
+  let gameCallbacks = {
+    onScoreUpdate: null,
+    onGameStart: null,
+    onGameReset: null,
+    onGameOver: null,
+    onLevelComplete: null
+  };
+
+  // Trigger callbacks when appropriate
+  const triggerCallback = (callbackName, ...args) => {
+    if (gameCallbacks[callbackName] && typeof gameCallbacks[callbackName] === 'function') {
+      gameCallbacks[callbackName](...args);
+    }
+  };
+
   // Multiplayer game mode variables
   let gameMode = 'single'; // 'single' or 'online'
   let multiplayerCallbacks = {
@@ -796,6 +812,7 @@ export default function platformerSketch(p) {
           if (!star.isCollected && ellipseRectCollision(star, player)) {
               star.isCollected = true;
               score += 10;
+              triggerCallback('onScoreUpdate', score); // Trigger score update callback
               playSound(coinSound);
               // --- Enhanced Star Collection Feedback ---
               emitParticles(star.x, star.y, 35, p.color(255, 235, 50, 240), { speed: 4.5, life: 50, size: 12, gravity: 0.05 }); // Brighter, more particles, slight lift
@@ -841,6 +858,7 @@ export default function platformerSketch(p) {
                   const baseScore = 50;
                   const comboScore = baseScore * stompComboCount; // Score increases with combo
                   score += comboScore;
+                  triggerCallback('onScoreUpdate', score); // Trigger score update callback
 
                   let enemyX = enemy.x; 
                   let enemyY = enemy.y;
@@ -1552,6 +1570,8 @@ export default function platformerSketch(p) {
       // --> Explicitly reset game state flags before loading <--
       isGameOver = false;
       isGameWon = false;
+      triggerCallback('onGameReset'); // Trigger game reset callback
+      triggerCallback('onScoreUpdate', score); // Trigger score update callback
       // Reset other states if necessary (like player powerups immediately)
       if (player) removePowerup();
       particles = [];
@@ -2190,6 +2210,35 @@ export default function platformerSketch(p) {
 
   const getGameMode = () => gameMode;
 
+  // Game control functions for external access
+  const startGame = () => {
+    console.log('[Game] Starting game from external call');
+    if (isGameOver) {
+      resetGame();
+    }
+    isGameOver = false;
+    isGameWon = false;
+  };
+
+  const restartGame = () => {
+    console.log('[Game] Restarting game from external call');
+    resetGame();
+  };
+
+  const getScore = () => score;
+  const getGameState = () => ({
+    isGameOver,
+    isGameWon,
+    isGameComplete,
+    score,
+    currentLevel: currentLevelIndex
+  });
+
+  const setGameCallbacks = (callbacks) => {
+    console.log('[Game] Setting game callbacks:', Object.keys(callbacks));
+    gameCallbacks = { ...gameCallbacks, ...callbacks };
+  };
+
   return {
     getPlayer: () => player,
     nootIdleImg: nootIdleImg,
@@ -2198,6 +2247,12 @@ export default function platformerSketch(p) {
     enemyFoxImg: enemyFoxImg,
     enemyRabbitImg: enemyRabbitImg,
     enemyBirdImg: enemyBirdImg,
+    // Game control functions
+    startGame,
+    resetGame: restartGame,
+    getScore,
+    getGameState,
+    setGameCallbacks,
     // Multiplayer functions
     setGameMode,
     setMultiplayerCallbacks,
