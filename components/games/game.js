@@ -83,12 +83,35 @@ export default function platformerSketch(p) {
   const sfxVolumeMultiplier = 0.3; // Multiplier for sound effects (30%)
 
   // Multiplayer game mode variables
-  let gameMode = 'single'; // 'single' or 'online'
+  let gameMode = 'single'; // 'single' or 'online' - ALWAYS START IN SINGLE MODE
   let multiplayerCallbacks = {
     onStarCollected: null, // Callback when a star is collected
     onLevelComplete: null, // Callback when level should be completed
     checkCanAdvanceLevel: null // Callback to check if level can advance
   }
+
+  // Callback system for external components
+  let gameCallbacks = {
+    onScoreUpdate: null,
+    onGameStart: null,
+    onGameReset: null,
+    onGameOver: null,
+    onLevelComplete: null
+  };
+
+  // Trigger callbacks when appropriate
+  const triggerCallback = (callbackName, ...args) => {
+    try {
+      if (gameCallbacks && gameCallbacks[callbackName] && typeof gameCallbacks[callbackName] === 'function') {
+        gameCallbacks[callbackName](...args);
+        console.log(`✅ Callback ${callbackName} triggered successfully`);
+      } else {
+        console.log(`ℹ️ Callback ${callbackName} not set or not a function`);
+      }
+    } catch (error) {
+      console.warn(`❌ Error calling callback ${callbackName}:`, error);
+    }
+  };
 
   // --- ADDED: Screen Shake Function ---
   const triggerShake = (intensity, duration) => {
@@ -1720,6 +1743,11 @@ export default function platformerSketch(p) {
       resetGame(); // Calls loadLevelData(0) internally
       console.log("🎮 Platforms after resetGame:", platforms ? platforms.length : "missing");
 
+      // Debug game mode and callback system
+      console.log(`🎮 Game mode initialized: ${gameMode}`);
+      console.log(`🎮 Callback system ready: triggerCallback = ${typeof triggerCallback}`);
+      console.log(`🎮 Game callbacks:`, Object.keys(gameCallbacks));
+
       console.log("p5 setup complete. Procedural generation active. Interaction needed for audio context.");
   };
 
@@ -2207,6 +2235,35 @@ export default function platformerSketch(p) {
 
   const getGameMode = () => gameMode;
 
+  // Game control functions for external access
+  const startGame = () => {
+    console.log('[Game] Starting game from external call');
+    if (isGameOver) {
+      resetGame();
+    }
+    isGameOver = false;
+    isGameWon = false;
+  };
+
+  const restartGame = () => {
+    console.log('[Game] Restarting game from external call');
+    resetGame();
+  };
+
+  const getScore = () => score;
+  const getGameState = () => ({
+    isGameOver,
+    isGameWon,
+    isGameComplete,
+    score,
+    currentLevel: currentLevelIndex
+  });
+
+  const setGameCallbacks = (callbacks) => {
+    console.log('[Game] Setting game callbacks:', Object.keys(callbacks));
+    gameCallbacks = { ...gameCallbacks, ...callbacks };
+  };
+
   return {
     getPlayer: () => player,
     nootIdleImg: nootIdleImg,
@@ -2215,6 +2272,12 @@ export default function platformerSketch(p) {
     enemyFoxImg: enemyFoxImg,
     enemyRabbitImg: enemyRabbitImg,
     enemyBirdImg: enemyBirdImg,
+    // Game control functions
+    startGame,
+    resetGame: restartGame,
+    getScore,
+    getGameState,
+    setGameCallbacks,
     // Multiplayer functions
     setGameMode,
     setMultiplayerCallbacks,

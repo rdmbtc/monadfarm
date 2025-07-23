@@ -150,7 +150,6 @@ const ABSTRACT_TESTNET_CHAIN_ID = "0x2b74";
 
 // Add wallet connection options
 const WALLET_OPTIONS = {
-  AGW: "agw",
   METAMASK: "metamask" 
 }
 

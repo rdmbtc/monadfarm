@@ -185,26 +185,32 @@ export const Sidebar = ({
       if (!window.confirm("Are you sure you want to delete your account? This will reset all your progress, farm coins, and game data. This action cannot be undone.")) {
         return; // User canceled
       }
-      
+
       // Call the reset game function from the game component
       if (typeof window !== 'undefined') {
-        // Clear all game data from localStorage
+        // Clear all game data from localStorage including specific items
         localStorage.clear();
-        
+
+        // Explicitly reset farm coins to 0 in localStorage
+        localStorage.setItem('farm-coins', '0');
+
+        // Reset bonus claimed state
+        localStorage.removeItem('bonus-claimed');
+
         // Call context resetGame function
         resetGame();
-        
+
         // Call game component resetGame if available
         if (window.gameFunctions?.resetGame) {
           window.gameFunctions.resetGame();
           console.log("Game reset successfully");
         }
-        
+
         // Show success message to user
-        alert("Account deleted successfully. Your game data has been reset.");
-        
-        // Redirect to home page
-        window.location.href = '/';
+        alert("Account deleted successfully. Your game data has been reset and coins set to 0.");
+
+        // Force reload to ensure all state is reset
+        window.location.reload();
       } else {
         console.error("Reset game function not available");
       }
@@ -245,9 +251,6 @@ export const Sidebar = ({
       window.location.href = '/';
     } else if (tab === "market") {
       setActiveView('market');
-    } else if (tab === "social") {
-      setActiveView('social');
-      window.location.href = '/social-hub';
     } else if (tab === "case-simulator") {
       setActiveView('case-simulator');
       window.location.href = '/case-simulator';
@@ -351,17 +354,18 @@ export const Sidebar = ({
             <span className="text-sm">Mon Gamble</span>
           </Link>
           
-          <Button
-            variant={activeTab === "social" ? "default" : "ghost"}
-            className={`w-full justify-start rounded-none border border-transparent noot-text transition-all duration-200 ${activeTab === "social" ? "bg-white text-black hover:bg-white/90" : "text-white/80 hover:bg-[#222] hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"}`}
-            onClick={() => handleTabClick("social")}
-          >
-            <Users className="h-4 w-4 mr-2" />
-            <span>Social Hub</span>
-            {activeTab === "social" && (
-              <ChevronRight className="h-4 w-4 ml-auto" />
-            )}
-          </Button>
+          <Link href="/social-hub" passHref legacyBehavior>
+            <Button
+              variant={activeTab === "social" ? "default" : "ghost"}
+              className={`w-full justify-start rounded-none border border-transparent noot-text transition-all duration-200 ${activeTab === "social" ? "bg-white text-black hover:bg-white/90" : "text-white/80 hover:bg-[#222] hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"}`}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              <span>Social Hub</span>
+              {activeTab === "social" && (
+                <ChevronRight className="h-4 w-4 ml-auto" />
+              )}
+            </Button>
+          </Link>
           
           <div className="flex-grow"></div>
           

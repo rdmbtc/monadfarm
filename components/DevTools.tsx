@@ -38,7 +38,7 @@ const DevTools: React.FC = () => {
         </button>
         
         <div className="flex items-center justify-between">
-          <span>Noot Pro Status:</span>
+          <span>Mon Pro Status:</span>
           <label className="relative inline-flex items-center cursor-pointer">
             <input 
               type="checkbox" 

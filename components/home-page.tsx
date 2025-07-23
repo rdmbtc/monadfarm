@@ -322,14 +322,14 @@ export default function HomePage() {
         
         {/* NOOT Contract Address Display */}
         <div className="fixed bottom-4 left-4 md:left-1/2 md:transform md:-translate-x-1/2 z-10 bg-[#111] border border-[#333] py-1 px-3 text-xs font-mono text-white/60 flex items-center noot-text">
-          <span className="mr-2">$NOOT:</span>
-          <span className="hidden md:inline">0x85Ca16Fd0e81659e0b8Be337294149E722528731</span>
-          <span className="md:hidden">0x85Ca...28731</span>
+          <span className="mr-2">Testnet tokens get here</span>
+          <span className="hidden md:inline">https://testnet.monad.xyz/</span>
+          <span className="md:hidden">testnet.monad.xyz/</span>
           <button 
             className="ml-2 text-white/40 hover:text-white" 
             onClick={() => {
               if (isMounted) {
-                copyToClipboard("0x85Ca16Fd0e81659e0b8Be337294149E722528731");
+                copyToClipboard("https://testnet.monad.xyz/");
               }
             }}
           >
