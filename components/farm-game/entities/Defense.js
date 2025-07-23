@@ -111,9 +111,16 @@ export default class Defense {
   
   createChogMage() {
     // Create visual representation of CHOG character
+    console.log(`🛡️ Creating CHOG sprite at (${this.x}, ${this.y}) using texture 'chog_idle'`);
     this.sprite = this.scene.add.image(this.x, this.y, 'chog_idle');
     this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
     this.sprite.setDepth(101); // Ensure visible above ground tiles
+    console.log(`✅ CHOG sprite created successfully, visible: ${this.sprite.visible}`);
+
+    // Verify sprite was created properly
+    if (!this.sprite) {
+      console.error("❌ CHOG sprite creation failed!");
+    }
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
@@ -132,9 +139,11 @@ export default class Defense {
 
   createMolandakMage() {
     // Create visual representation of MOLANDAK character
+    console.log(`❄️ Creating MOLANDAK sprite at (${this.x}, ${this.y}) using texture 'molandak_idle'`);
     this.sprite = this.scene.add.image(this.x, this.y, 'molandak_idle');
     this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
     this.sprite.setDepth(101); // Ensure visible above ground tiles
+    console.log(`✅ MOLANDAK sprite created successfully, visible: ${this.sprite.visible}`);
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
@@ -153,9 +162,11 @@ export default class Defense {
 
   createMoyakiMage() {
     // Create visual representation of MOYAKI character
+    console.log(`🔥 Creating MOYAKI sprite at (${this.x}, ${this.y}) using texture 'moyaki_idle'`);
     this.sprite = this.scene.add.image(this.x, this.y, 'moyaki_idle');
     this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
     this.sprite.setDepth(101); // Ensure visible above ground tiles
+    console.log(`✅ MOYAKI sprite created successfully, visible: ${this.sprite.visible}`);
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
@@ -174,9 +185,11 @@ export default class Defense {
 
   createKeonMage() {
     // Create visual representation of KEON character (premium)
+    console.log(`👑 Creating KEON sprite at (${this.x}, ${this.y}) using texture 'keon_idle'`);
     this.sprite = this.scene.add.image(this.x, this.y, 'keon_idle');
     this.sprite.setDisplaySize(52, 52); // Slightly larger for premium unit
     this.sprite.setDepth(101); // Ensure visible above ground tiles
+    console.log(`✅ KEON sprite created successfully, visible: ${this.sprite.visible}`);
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);

@@ -380,6 +380,17 @@ if (isBrowser) {
         
         create() {
           try {
+            // Verify Monad character textures are loaded
+            console.log("🎮 Verifying Monad character textures...");
+            const monadTextures = ['chog_idle', 'molandak_idle', 'moyaki_idle', 'keon_idle'];
+            monadTextures.forEach(textureKey => {
+              if (this.textures.exists(textureKey)) {
+                console.log(`✅ ${textureKey} texture loaded successfully`);
+              } else {
+                console.warn(`❌ ${textureKey} texture NOT found - will use fallback`);
+              }
+            });
+
             // --- Force unlock Web Audio context ---
             if (this.sound && this.sound.unlock) {
               this.sound.unlock();
@@ -2661,69 +2672,66 @@ if (isBrowser) {
             }
 
 
-            // --- Advanced defenses ---
-            let wizardButton, cannonButton;
-            let wizardImage, cannonImage;
-            let wizardCostText, cannonCostText;
-
-            // Wizard Button
-            wizardButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
-            wizardButton.setInteractive({ useHandCursor: true });
-            wizardButton.input.hitArea.setTo(-40, -30, 80, 60);
-            wizardButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'wizard';
+            // Add MOYAKI button (fire warrior)
+            const moyakiButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
+            moyakiButton.setInteractive({ useHandCursor: true });
+            moyakiButton.input.hitArea.setTo(-40, -30, 80, 60);
+            moyakiButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'moyaki';
               this.pendingDefensePlacement = true;
-              this.setToolMode('wizard');
-              this.showFloatingText(400, 300, "Wizard selected - Click map to place", 0xFF00FF);
+              this.setToolMode('moyaki');
+              this.showFloatingText(400, 300, "MOYAKI Warrior selected - Click map to place", 0xFF4400);
             });
-            addBounceEffect(wizardButton); // Add bounce effect
-            this.toolbarButtons.wizard = wizardButton; // Store reference
+            addBounceEffect(moyakiButton); // Add bounce effect
+            this.toolbarButtons.moyaki = moyakiButton; // Store reference
 
-            if (this.textures.exists('wizard_idle')) {
-              wizardImage = this.add.image(320, 550, 'wizard_idle').setDepth(2001);
-              wizardImage.setDisplaySize(iconSize, iconSize);
-              wizardImage.setInteractive({ useHandCursor: true });
-              wizardImage.on('pointerdown', () => { wizardButton.emit('pointerdown'); });
+            // Use MOYAKI image
+            const moyakiImageKey = 'moyaki_idle';
+            let moyakiImage;
+            if (this.textures.exists(moyakiImageKey)) {
+              moyakiImage = this.add.image(320, 550, moyakiImageKey).setDepth(2001);
+              moyakiImage.setDisplaySize(iconSize, iconSize);
+              moyakiImage.setInteractive({ useHandCursor: true });
+              moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
             } else {
-              wizardImage = this.add.text(320, 550, '🧙', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
-              wizardImage.setInteractive({ useHandCursor: true });
-              wizardImage.on('pointerdown', () => { wizardButton.emit('pointerdown'); });
+              moyakiImage = this.add.text(320, 550, '🔥', {
+                fontFamily: 'Arial', fontSize: '32px'
+              }).setOrigin(0.5).setDepth(2001);
+              moyakiImage.setInteractive({ useHandCursor: true });
+              moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
             }
-            wizardCostText = this.add.text(320, 570, '125', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-            this.toolbarButtons.wizardImage = wizardImage; // Store reference
-            this.toolbarButtons.wizardCostText = wizardCostText; // Store reference
 
-            // Cannon Button
-            cannonButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x990000).setDepth(2000);
-            cannonButton.setInteractive({ useHandCursor: true });
-            cannonButton.input.hitArea.setTo(-40, -30, 80, 60);
-            cannonButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'cannon';
+            // Add KEON button (premium champion)
+            const keonButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x996600).setDepth(2000);
+            keonButton.setInteractive({ useHandCursor: true });
+            keonButton.input.hitArea.setTo(-40, -30, 80, 60);
+            keonButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'keon';
               this.pendingDefensePlacement = true;
-              this.setToolMode('cannon');
-              this.showFloatingText(400, 300, "Cannon selected - Click map to place", 0xFF0000);
+              this.setToolMode('keon');
+              this.showFloatingText(400, 300, "KEON Champion selected - Click map to place", 0xFFD700);
             });
-            addBounceEffect(cannonButton); // Add bounce effect
-            this.toolbarButtons.cannon = cannonButton; // Store reference
+            addBounceEffect(keonButton); // Add bounce effect
+            this.toolbarButtons.keon = keonButton; // Store reference
 
 
-            if (this.textures.exists('cannon_idle')) {
-              cannonImage = this.add.image(390, 550, 'cannon_idle').setDepth(2001);
-              cannonImage.setDisplaySize(iconSize, iconSize);
-              cannonImage.setInteractive({ useHandCursor: true });
-               cannonImage.on('pointerdown', () => { cannonButton.emit('pointerdown'); });
+            // Use KEON image
+            const keonImageKey = 'keon_idle';
+            let keonImage;
+            if (this.textures.exists(keonImageKey)) {
+              keonImage = this.add.image(390, 550, keonImageKey).setDepth(2001);
+              keonImage.setDisplaySize(iconSize + 4, iconSize + 4); // Slightly larger for premium
+              keonImage.setInteractive({ useHandCursor: true });
+              keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
             } else {
-              cannonImage = this.add.text(390, 550, '💣', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
-              cannonImage.setInteractive({ useHandCursor: true });
-               cannonImage.on('pointerdown', () => { cannonButton.emit('pointerdown'); });
+              keonImage = this.add.text(390, 550, '👑', {
+                fontFamily: 'Arial', fontSize: '32px'
+              }).setOrigin(0.5).setDepth(2001);
+              keonImage.setInteractive({ useHandCursor: true });
+              keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
             }
-            cannonCostText = this.add.text(390, 570, '200', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-             this.toolbarButtons.cannonImage = cannonImage; // Store reference
-             this.toolbarButtons.cannonCostText = cannonCostText; // Store reference
 
-            // Hide advanced defenses by default
-            wizardButton.visible = false; wizardImage.visible = false; wizardCostText.visible = false;
-            cannonButton.visible = false; cannonImage.visible = false; cannonCostText.visible = false;
+            // All Monad defenses are visible by default (no unlock system for now)
 
 
             // Add upgrade button
