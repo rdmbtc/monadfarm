@@ -105,19 +105,7 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
 
   // Shared state for multiplayer platformer game
   const [players, setPlayers] = useStateTogether<Record<string, PlatformerPlayer>>('platformer-players', {})
-  const [gameSession, setGameSession] = useStateTogether<GameSession | null>('platformer-session', {
-    id: 'default-session',
-    currentLevel: 1,
-    isActive: false,
-    maxPlayers: 4,
-    gameMode: 'cooperative',
-    startTime: Date.now(),
-    state: 'lobby',
-    playMode: 'online',
-    requiredPlayers: 1,
-    starsCollectedThisLevel: {},
-    levelCompleteRequirement: 'any_player'
-  })
+  const [gameSession, setGameSession] = useStateTogether<GameSession | null>('platformer-session', null)
   const [gameEvents, setGameEvents] = useStateTogether<GameEvent[]>('platformer-events', [])
   const [chatMessages, setChatMessages] = useStateTogether<ChatMessage[]>('platformer-chat', [])
 
@@ -318,8 +306,39 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
     setChatMessages(prev => [...(prev || []).slice(-49), message])
   }, [setChatMessages])
 
+  // Utility function to check if player is active (moved before startGame)
+  const isPlayerActive = useCallback((playerId: string): boolean => {
+    const player = players[playerId]
+    if (!player) return false
+
+    // Consider player active if they've updated within the last 5 seconds
+    const now = Date.now()
+    const timeSinceUpdate = now - (player.lastUpdate || 0)
+    return timeSinceUpdate < 5000
+  }, [players])
+
   const startGame = useCallback((level = 1, gameMode = 'cooperative', playMode: 'single' | 'online' = 'online') => {
     console.log('usePlatformerGameModel: Starting game:', { level, gameMode, playMode })
+
+    // Check if we have enough players for multiplayer
+    const activePlayerCount = Object.values(players).filter(p => isPlayerActive(p.id)).length
+    const requiredPlayers = playMode === 'single' ? 1 : 2
+
+    if (playMode === 'online' && activePlayerCount < requiredPlayers) {
+      console.log(`🎮 Cannot start game: Need ${requiredPlayers} players, have ${activePlayerCount}`)
+
+      // Add message about waiting for players
+      const waitMessage: ChatMessage = {
+        id: `msg_${Date.now()}`,
+        playerId: 'system',
+        nickname: 'System',
+        text: `Waiting for ${requiredPlayers - activePlayerCount} more player(s) to join...`,
+        timestamp: Date.now(),
+        type: 'system'
+      }
+      setChatMessages(prev => [...(prev || []).slice(-49), waitMessage])
+      return
+    }
 
     setGameSession(prev => {
       if (!prev) {
@@ -332,7 +351,7 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
           startTime: Date.now(),
           state: 'playing',
           playMode,
-          requiredPlayers: playMode === 'single' ? 1 : 2,
+          requiredPlayers,
           starsCollectedThisLevel: {},
           levelCompleteRequirement: playMode === 'single' ? 'any_player' : 'all_players'
         }
@@ -345,7 +364,7 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
         startTime: Date.now(),
         state: 'playing',
         playMode,
-        requiredPlayers: playMode === 'single' ? 1 : 2,
+        requiredPlayers,
         starsCollectedThisLevel: {},
         levelCompleteRequirement: playMode === 'single' ? 'any_player' : 'all_players'
       }
@@ -356,12 +375,14 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
       id: `msg_${Date.now()}`,
       playerId: 'system',
       nickname: 'System',
-      text: `Game started! Level ${level}`,
+      text: `🎮 Game started! Level ${level} (${activePlayerCount} players)`,
       timestamp: Date.now(),
       type: 'system'
     }
     setChatMessages(prev => [...(prev || []).slice(-49), message])
-  }, [setGameSession, setChatMessages])
+
+    console.log('🎮 Game successfully started with', activePlayerCount, 'players')
+  }, [setGameSession, setChatMessages, players, isPlayerActive])
 
   const resetGame = useCallback(() => {
     console.log('usePlatformerGameModel: Resetting game')
@@ -410,16 +431,6 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
   // Utility functions
   const getPlayerById = useCallback((playerId: string): PlatformerPlayer | null => {
     return players[playerId] || null
-  }, [players])
-
-  const isPlayerActive = useCallback((playerId: string): boolean => {
-    const player = players[playerId]
-    if (!player) return false
-
-    // Consider player active if they've updated within the last 5 seconds
-    const now = Date.now()
-    const timeSinceUpdate = now - (player.lastUpdate || 0)
-    return timeSinceUpdate < 5000
   }, [players])
 
   // New lobby and game state management functions

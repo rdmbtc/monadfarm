@@ -506,34 +506,192 @@ export default function MultiplayerPlatformerGame({
       console.error('❌ Error creating real game:', error)
     }
 
-    // Fallback: Simple working game
-    console.log('🎮 Using fallback simple game')
+    // Fallback: Enhanced game with asset loading and lobby system
+    console.log('🎮 Using enhanced fallback game with asset loading')
+
+    let assetsLoaded = false
+    let gameStarted = false
+    let loadingProgress = 0
+    const assets: {
+      images: Record<string, any>,
+      totalAssets: number,
+      loadedAssets: number
+    } = { images: {}, totalAssets: 0, loadedAssets: 0 }
+
+    // Preload essential assets
+    p.preload = () => {
+      console.log('🎮 Starting asset preload...')
+
+      const imageAssets = [
+        { key: 'player', path: '/defense/noot idle.png' }
+      ]
+
+      assets.totalAssets = imageAssets.length
+
+      imageAssets.forEach((asset) => {
+        try {
+          assets.images[asset.key] = p.loadImage(asset.path,
+            () => {
+              assets.loadedAssets++
+              loadingProgress = (assets.loadedAssets / assets.totalAssets) * 100
+              console.log(`✅ Loaded ${asset.key}: ${loadingProgress.toFixed(1)}%`)
+
+              if (assets.loadedAssets >= assets.totalAssets) {
+                assetsLoaded = true
+                console.log('🎮 All assets loaded!')
+
+                // Auto-start single player mode
+                if (localGameMode === 'single') {
+                  gameStarted = true
+                }
+              }
+            },
+            () => {
+              console.warn(`⚠️ Failed to load ${asset.key}`)
+              assets.loadedAssets++
+              loadingProgress = (assets.loadedAssets / assets.totalAssets) * 100
+
+              if (assets.loadedAssets >= assets.totalAssets) {
+                assetsLoaded = true
+                if (localGameMode === 'single') {
+                  gameStarted = true
+                }
+              }
+            }
+          )
+        } catch (error) {
+          console.error(`❌ Error loading ${asset.key}:`, error)
+          assets.loadedAssets++
+        }
+      })
+    }
+
     p.setup = () => {
-      console.log('🎮 Fallback setup called')
+      console.log('🎮 Enhanced game setup called')
       p.createCanvas(800, 600)
     }
 
     p.draw = () => {
       p.background(50, 100, 150)
+
+      if (!assetsLoaded) {
+        drawLoadingScreen()
+      } else if (localGameMode === 'online' && !gameStarted) {
+        drawLobbyScreen()
+      } else {
+        drawGame()
+      }
+    }
+
+    const drawLoadingScreen = () => {
       p.fill(255)
       p.textAlign(p.CENTER, p.CENTER)
       p.textSize(24)
-      p.text(`MonFarm Platformer - ${localGameMode.toUpperCase()} MODE`, p.width/2, p.height/2 - 50)
-      p.textSize(16)
-      p.text(`Players: ${playerCount}`, p.width/2, p.height/2)
-      p.text('Simple mode - Real game failed to load', p.width/2, p.height/2 + 30)
+      p.text('Loading MonFarm Platformer...', p.width/2, p.height/2 - 50)
 
-      // Moving rectangle
-      p.fill(255, 100, 100)
-      p.rect(p.width/2 - 25 + Math.sin(p.frameCount * 0.05) * 100, p.height/2 + 100, 50, 50)
+      // Loading bar
+      const barWidth = 300
+      const barHeight = 20
+      const barX = p.width/2 - barWidth/2
+      const barY = p.height/2
 
-      // Mode indicator
-      p.fill(localGameMode === 'online' ? 'green' : 'blue')
-      p.circle(50, 50, 30)
+      p.stroke(255)
+      p.noFill()
+      p.rect(barX, barY, barWidth, barHeight)
+
+      p.noStroke()
+      p.fill(100, 200, 100)
+      p.rect(barX, barY, (loadingProgress / 100) * barWidth, barHeight)
+
       p.fill(255)
-      p.textAlign(p.LEFT, p.TOP)
-      p.textSize(12)
-      p.text(localGameMode === 'online' ? 'ONLINE' : 'SINGLE', 70, 45)
+      p.textSize(16)
+      p.text(`${loadingProgress.toFixed(1)}%`, p.width/2, p.height/2 + 40)
+    }
+
+    const drawLobbyScreen = () => {
+      p.fill(255)
+      p.textAlign(p.CENTER, p.CENTER)
+      p.textSize(28)
+      p.text('Multiplayer Lobby', p.width/2, p.height/2 - 100)
+
+      p.textSize(18)
+      p.text(`Players: ${playerCount}/2`, p.width/2, p.height/2 - 50)
+
+      if (currentNickname) {
+        p.textSize(16)
+        p.text(`You: ${currentNickname}`, p.width/2, p.height/2 - 20)
+      }
+
+      if (playerCount < 2) {
+        p.fill(255, 255, 0)
+        p.textSize(16)
+        p.text('Waiting for more players to join...', p.width/2, p.height/2 + 20)
+
+        // Animated dots
+        const dots = '.'.repeat((Math.floor(p.frameCount / 30) % 3) + 1)
+        p.text(dots, p.width/2, p.height/2 + 50)
+      } else {
+        p.fill(100, 255, 100)
+        p.textSize(18)
+        p.text('Ready to start!', p.width/2, p.height/2 + 20)
+
+        if (!gameStarted) {
+          gameStarted = true
+          console.log('🎮 Multiplayer: Starting game with', playerCount, 'players')
+        }
+      }
+    }
+
+    const drawGame = () => {
+      // Draw game world
+      p.fill(255)
+      p.textAlign(p.CENTER, p.CENTER)
+      p.textSize(24)
+      p.text('MonFarm Platformer', p.width/2, 50)
+
+      p.textSize(16)
+      p.fill(localGameMode === 'online' ? '#00ff00' : '#0088ff')
+      p.text(`${localGameMode.toUpperCase()} MODE`, p.width/2, 80)
+
+      // Draw player with loaded asset if available
+      const playerX = p.width/2 + Math.sin(p.frameCount * 0.05) * 100
+      const playerY = p.height/2 + 50
+
+      if (assets.images.player && assets.images.player.width > 0) {
+        p.imageMode(p.CENTER)
+        p.image(assets.images.player, playerX, playerY, 50, 50)
+      } else {
+        p.fill(255, 100, 100)
+        p.rect(playerX - 25, playerY - 25, 50, 50)
+      }
+
+      // Draw ground
+      p.fill(100, 200, 100)
+      p.rect(0, p.height/2 + 100, p.width, 100)
+
+      // Draw instructions
+      p.fill(255, 255, 255, 200)
+      p.textSize(14)
+      p.text('Use WASD or Arrow Keys to move • Space to jump', p.width/2, p.height - 40)
+
+      // Connection status
+      if (localGameMode === 'online') {
+        p.fill(myId ? '#00ff00' : '#ff0000')
+        p.textSize(12)
+        p.textAlign(p.LEFT, p.TOP)
+        p.text(`Status: ${myId ? 'Connected' : 'Connecting...'}`, 10, 10)
+        p.text(`Players: ${playerCount}`, 10, 30)
+      }
+    }
+
+    // Handle keyboard input
+    p.keyPressed = () => {
+      if (gameStarted && assetsLoaded) {
+        console.log('Game input:', p.key)
+        if (p.key === ' ') {
+          console.log('Jump!')
+        }
+      }
     }
 
     console.log('✅ Fallback game setup complete')
@@ -542,46 +700,13 @@ export default function MultiplayerPlatformerGame({
   if (!isClient) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-900 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-          <div className="text-white">Loading multiplayer platformer...</div>
-        </div>
+        <div className="text-white">Loading multiplayer platformer...</div>
       </div>
     )
   }
 
   return (
     <div className="w-full bg-black rounded-lg overflow-hidden relative">
-      {/* Game Status Bar */}
-      <div className="bg-gray-900 p-3 border-b border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${localGameMode === 'online' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-              <span className="text-white text-sm font-medium">
-                {localGameMode === 'online' ? 'Online Mode' : 'Single Player'}
-              </span>
-            </div>
-            <div className="text-gray-400 text-sm">
-              Players: {playerCount}
-            </div>
-            {localGameMode === 'online' && myId && (
-              <div className="text-gray-400 text-sm">
-                ID: {currentNickname || myId.substring(0, 8)}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleGameModeChange(localGameMode === 'online' ? 'single' : 'online')}
-              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
-            >
-              Switch to {localGameMode === 'online' ? 'Single' : 'Online'}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Debug Info */}
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-red-900 p-2 text-xs text-white">
