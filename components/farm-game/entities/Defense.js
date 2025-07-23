@@ -117,7 +117,7 @@ export default class Defense {
     if (this.scene.textures.exists('chog_idle')) {
       console.log(`✅ chog_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'chog_idle');
-      this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+      this.sprite.setDisplaySize(32, 32); // Reduced size for better gameplay
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ CHOG sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -156,7 +156,7 @@ export default class Defense {
     if (this.scene.textures.exists('molandak_idle')) {
       console.log(`✅ molandak_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'molandak_idle');
-      this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+      this.sprite.setDisplaySize(32, 32); // Reduced size for better gameplay
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ MOLANDAK sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -190,7 +190,7 @@ export default class Defense {
     if (this.scene.textures.exists('moyaki_idle')) {
       console.log(`✅ moyaki_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'moyaki_idle');
-      this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+      this.sprite.setDisplaySize(32, 32); // Reduced size for better gameplay
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ MOYAKI sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -224,7 +224,7 @@ export default class Defense {
     if (this.scene.textures.exists('keon_idle')) {
       console.log(`✅ keon_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'keon_idle');
-      this.sprite.setDisplaySize(52, 52); // Slightly larger for premium unit
+      this.sprite.setDisplaySize(36, 36); // Slightly larger for premium unit but still reasonable
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ KEON sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -252,11 +252,11 @@ export default class Defense {
   
   // Visual effect methods for different tiers
   createBasicIdleEffect() {
-    // Simple pulsing effect for basic CHOG unit
+    // Simple pulsing effect for basic CHOG unit - reduced scaling
     this.scene.tweens.add({
       targets: this.sprite,
-      scaleX: 1.05,
-      scaleY: 1.05,
+      scaleX: 1.02,
+      scaleY: 1.02,
       duration: 2000,
       yoyo: true,
       repeat: -1,
@@ -1677,11 +1677,11 @@ export default class Defense {
     
     // Visual feedback for power upgrade
     if (this.sprite) {
-      // Create a pulse effect
+      // Create a pulse effect - reduced scaling
       this.scene.tweens.add({
         targets: this.sprite,
-        scaleX: 1.3,
-        scaleY: 1.3,
+        scaleX: 1.15,
+        scaleY: 1.15,
         duration: 200,
         yoyo: true,
         repeat: 1,
@@ -1884,11 +1884,11 @@ export default class Defense {
     
     // Special attack animation
     if (this.sprite) {
-      // Make the mage grow and glow
+      // Make the mage grow and glow - reduced scaling
       this.scene.tweens.add({
         targets: this.sprite,
-        scaleX: 1.5,
-        scaleY: 1.5,
+        scaleX: 1.25,
+        scaleY: 1.25,
         duration: 400,
         yoyo: true,
         onComplete: () => {
