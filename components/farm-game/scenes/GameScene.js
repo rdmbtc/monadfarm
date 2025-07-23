@@ -4,6 +4,8 @@
 import SoundManager from '../utils/SoundManager';
 // Import the VolumeControls
 import VolumeControls from '../utils/volume-controls.js';
+// Import the Defense class
+import Defense from '../entities/Defense.js';
 
 // Set up a global flag to prevent recursive/overlapping updates
 let isUpdating = false;
@@ -435,7 +437,11 @@ if (isBrowser) {
             // Initialize Volume Controls AFTER SoundManager
             this.volumeControls = new VolumeControls(this, this.soundManager);
             this.volumeControls.createUI(); // Create the UI but keep it hidden
-            
+
+            // Register the Defense class in the scene registry
+            this.registry.set('DefenseClass', Defense);
+            console.log("Defense class registered in scene registry");
+
             // console.log("GameScene create start"); // Removed duplicate log
             
             // Add mute button for audio
@@ -643,7 +649,7 @@ if (isBrowser) {
                 return;
               }
               
-              // DEFENSE PLACEMENT MODE - For both scarecrow and dog
+              // DEFENSE PLACEMENT MODE - For both chog and molandak
               if (this.pendingDefensePlacement && this.pendingDefenseType) {
                 // Check valid placement area
                 if (pointer.x < 200) {
@@ -652,7 +658,7 @@ if (isBrowser) {
                 }
                 
                 // Calculate cost
-                const cost = this.pendingDefenseType === 'scarecrow' ? 35 : 50;
+                const cost = this.pendingDefenseType === 'chog' ? 35 : 50;
                 
                 // Check if enough coins
                 if (this.gameState.farmCoins < cost) {
@@ -667,12 +673,12 @@ if (isBrowser) {
                   
                   // Show success message and range indicator
                   if (defense) {
-                    const defenseName = this.pendingDefenseType === 'scarecrow' ? 'Ice Mage' : 'Fire Mage';
-                    const color = this.pendingDefenseType === 'scarecrow' ? 0x0088FF : 0xFF4400;
+                    const defenseName = this.pendingDefenseType === 'chog' ? 'Ice Mage' : 'Fire Mage';
+                    const color = this.pendingDefenseType === 'chog' ? 0x0088FF : 0xFF4400;
                     this.showFloatingText(pointer.x, pointer.y - 30, `${defenseName} placed!`, color);
                     
                     // Create range visual effect
-                    const range = this.pendingDefenseType === 'scarecrow' ? 250 : 200;
+                    const range = this.pendingDefenseType === 'chog' ? 250 : 200;
                     const rangeEffect = this.add.circle(pointer.x, pointer.y, range, color, 0.2);
                     rangeEffect.setStrokeStyle(2, color);
                     this.tweens.add({
@@ -1241,10 +1247,10 @@ if (isBrowser) {
                 // Calculate cost based on defense type
                 let cost = 0;
                 switch (defenseType) {
-                  case 'scarecrow': cost = 35; break;
-                  case 'dog': cost = 50; break;
-                  case 'wizard': cost = 100; break;
-                  case 'cannon': cost = 150; break;
+                  case 'chog': cost = 35; break;
+                  case 'molandak': cost = 50; break;
+                  case 'keon': cost = 100; break;
+                  case 'moyaki': cost = 150; break;
                   default: cost = 50; break;
                 }
                 
@@ -1404,7 +1410,7 @@ if (isBrowser) {
             }
             
             // For defense placement preview
-            else if (this.toolMode === 'scarecrow' || this.toolMode === 'dog') {
+            else if (this.toolMode === 'chog' || this.toolMode === 'molandak') {
               // Check if position is valid (right side)
               const isValidPosition = pointer.x >= 200;
               
@@ -1414,13 +1420,13 @@ if (isBrowser) {
                 this.placementCircle.y = pointer.y;
                 this.placementCircle.setStrokeStyle(2, 
                   isValidPosition ? 
-                  (this.toolMode === 'scarecrow' ? 0x0088FF : 0xFF4400) : 
+                  (this.toolMode === 'chog' ? 0x0088FF : 0xFF4400) : 
                   0xFF0000);
                 this.placementCircle.setVisible(true);
               }
               
               // Show defense preview sprite if it doesn't exist
-              const spriteKey = this.toolMode === 'scarecrow' ? 'ABS_idle' : 'MON_idle';
+              const spriteKey = this.toolMode === 'chog' ? 'ABS_idle' : 'MON_idle';
               if (!this.defensePreview && this.textures.exists(spriteKey)) {
                 this.defensePreview = this.add.image(pointer.x, pointer.y, spriteKey);
                 this.defensePreview.setDisplaySize(48, 48);
@@ -2636,18 +2642,18 @@ if (isBrowser) {
             }
 
 
-            // Add scarecrow button (ABS mage)
-            const scarecrowButton = this.add.rectangle(180, 550, buttonWidth, buttonHeight, 0x000066).setDepth(2000);
-            scarecrowButton.setInteractive({ useHandCursor: true });
-            scarecrowButton.input.hitArea.setTo(-40, -30, 80, 60);
-            scarecrowButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'scarecrow';
+            // Add chog button (ABS mage)
+            const chogButton = this.add.rectangle(180, 550, buttonWidth, buttonHeight, 0x000066).setDepth(2000);
+            chogButton.setInteractive({ useHandCursor: true });
+            chogButton.input.hitArea.setTo(-40, -30, 80, 60);
+            chogButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'chog';
               this.pendingDefensePlacement = true;
-              this.setToolMode('scarecrow');
+              this.setToolMode('chog');
               this.showFloatingText(400, 300, "ABS Ice Mage selected - Click map to place", 0x0088FF);
             });
-             addBounceEffect(scarecrowButton); // Add bounce effect
-             this.toolbarButtons.scarecrow = scarecrowButton; // Store reference
+             addBounceEffect(chogButton); // Add bounce effect
+             this.toolbarButtons.chog = chogButton; // Store reference
 
             // Use ABS image instead of emoji
             const absImageKey = 'ABS_idle';
@@ -2656,28 +2662,28 @@ if (isBrowser) {
               absImage = this.add.image(180, 550, absImageKey).setDepth(2001);
               absImage.setDisplaySize(iconSize, iconSize); // Use variable size
               absImage.setInteractive({ useHandCursor: true });
-              absImage.on('pointerdown', () => { scarecrowButton.emit('pointerdown'); });
+              absImage.on('pointerdown', () => { chogButton.emit('pointerdown'); });
             } else {
               absImage = this.add.text(180, 550, '🧙‍♂️', {
                 fontFamily: 'Arial', fontSize: '32px'
               }).setOrigin(0.5).setDepth(2001);
               absImage.setInteractive({ useHandCursor: true });
-              absImage.on('pointerdown', () => { scarecrowButton.emit('pointerdown'); });
+              absImage.on('pointerdown', () => { chogButton.emit('pointerdown'); });
             }
 
 
-            // Add dog button (MON mage)
-            const dogButton = this.add.rectangle(250, 550, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
-            dogButton.setInteractive({ useHandCursor: true });
-            dogButton.input.hitArea.setTo(-40, -30, 80, 60);
-            dogButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'dog';
+            // Add molandak button (MON mage)
+            const molandakButton = this.add.rectangle(250, 550, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
+            molandakButton.setInteractive({ useHandCursor: true });
+            molandakButton.input.hitArea.setTo(-40, -30, 80, 60);
+            molandakButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'molandak';
               this.pendingDefensePlacement = true;
-              this.setToolMode('dog');
+              this.setToolMode('molandak');
               this.showFloatingText(400, 300, "MON Fire Mage selected - Click map to place", 0xFF4400);
             });
-            addBounceEffect(dogButton); // Add bounce effect
-            this.toolbarButtons.dog = dogButton; // Store reference
+            addBounceEffect(molandakButton); // Add bounce effect
+            this.toolbarButtons.molandak = molandakButton; // Store reference
 
 
             // Use MON image instead of emoji
@@ -2687,79 +2693,79 @@ if (isBrowser) {
               monImage = this.add.image(250, 550, monImageKey).setDepth(2001);
               monImage.setDisplaySize(iconSize, iconSize); // Use variable size
               monImage.setInteractive({ useHandCursor: true });
-              monImage.on('pointerdown', () => { dogButton.emit('pointerdown'); });
+              monImage.on('pointerdown', () => { molandakButton.emit('pointerdown'); });
             } else {
               monImage = this.add.text(250, 550, '🧙‍♀️', {
                 fontFamily: 'Arial', fontSize: '32px'
               }).setOrigin(0.5).setDepth(2001);
               monImage.setInteractive({ useHandCursor: true });
-              monImage.on('pointerdown', () => { dogButton.emit('pointerdown'); });
+              monImage.on('pointerdown', () => { molandakButton.emit('pointerdown'); });
             }
 
 
             // --- Advanced defenses ---
-            let wizardButton, cannonButton;
-            let wizardImage, cannonImage;
-            let wizardCostText, cannonCostText;
+            let keonButton, moyakiButton;
+            let keonImage, moyakiImage;
+            let keonCostText, moyakiCostText;
 
-            // Wizard Button
-            wizardButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
-            wizardButton.setInteractive({ useHandCursor: true });
-            wizardButton.input.hitArea.setTo(-40, -30, 80, 60);
-            wizardButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'wizard';
+            // keon Button
+            keonButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
+            keonButton.setInteractive({ useHandCursor: true });
+            keonButton.input.hitArea.setTo(-40, -30, 80, 60);
+            keonButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'keon';
               this.pendingDefensePlacement = true;
-              this.setToolMode('wizard');
-              this.showFloatingText(400, 300, "Wizard selected - Click map to place", 0xFF00FF);
+              this.setToolMode('keon');
+              this.showFloatingText(400, 300, "keon selected - Click map to place", 0xFF00FF);
             });
-            addBounceEffect(wizardButton); // Add bounce effect
-            this.toolbarButtons.wizard = wizardButton; // Store reference
+            addBounceEffect(keonButton); // Add bounce effect
+            this.toolbarButtons.keon = keonButton; // Store reference
 
-            if (this.textures.exists('wizard_idle')) {
-              wizardImage = this.add.image(320, 550, 'wizard_idle').setDepth(2001);
-              wizardImage.setDisplaySize(iconSize, iconSize);
-              wizardImage.setInteractive({ useHandCursor: true });
-              wizardImage.on('pointerdown', () => { wizardButton.emit('pointerdown'); });
+            if (this.textures.exists('keon_idle')) {
+              keonImage = this.add.image(320, 550, 'keon_idle').setDepth(2001);
+              keonImage.setDisplaySize(iconSize, iconSize);
+              keonImage.setInteractive({ useHandCursor: true });
+              keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
             } else {
-              wizardImage = this.add.text(320, 550, '🧙', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
-              wizardImage.setInteractive({ useHandCursor: true });
-              wizardImage.on('pointerdown', () => { wizardButton.emit('pointerdown'); });
+              keonImage = this.add.text(320, 550, '🧙', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
+              keonImage.setInteractive({ useHandCursor: true });
+              keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
             }
-            wizardCostText = this.add.text(320, 570, '125', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-            this.toolbarButtons.wizardImage = wizardImage; // Store reference
-            this.toolbarButtons.wizardCostText = wizardCostText; // Store reference
+            keonCostText = this.add.text(320, 570, '125', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            this.toolbarButtons.keonImage = keonImage; // Store reference
+            this.toolbarButtons.keonCostText = keonCostText; // Store reference
 
-            // Cannon Button
-            cannonButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x990000).setDepth(2000);
-            cannonButton.setInteractive({ useHandCursor: true });
-            cannonButton.input.hitArea.setTo(-40, -30, 80, 60);
-            cannonButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'cannon';
+            // moyaki Button
+            moyakiButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x990000).setDepth(2000);
+            moyakiButton.setInteractive({ useHandCursor: true });
+            moyakiButton.input.hitArea.setTo(-40, -30, 80, 60);
+            moyakiButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'moyaki';
               this.pendingDefensePlacement = true;
-              this.setToolMode('cannon');
-              this.showFloatingText(400, 300, "Cannon selected - Click map to place", 0xFF0000);
+              this.setToolMode('moyaki');
+              this.showFloatingText(400, 300, "moyaki selected - Click map to place", 0xFF0000);
             });
-            addBounceEffect(cannonButton); // Add bounce effect
-            this.toolbarButtons.cannon = cannonButton; // Store reference
+            addBounceEffect(moyakiButton); // Add bounce effect
+            this.toolbarButtons.moyaki = moyakiButton; // Store reference
 
 
-            if (this.textures.exists('cannon_idle')) {
-              cannonImage = this.add.image(390, 550, 'cannon_idle').setDepth(2001);
-              cannonImage.setDisplaySize(iconSize, iconSize);
-              cannonImage.setInteractive({ useHandCursor: true });
-               cannonImage.on('pointerdown', () => { cannonButton.emit('pointerdown'); });
+            if (this.textures.exists('moyaki_idle')) {
+              moyakiImage = this.add.image(390, 550, 'moyaki_idle').setDepth(2001);
+              moyakiImage.setDisplaySize(iconSize, iconSize);
+              moyakiImage.setInteractive({ useHandCursor: true });
+               moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
             } else {
-              cannonImage = this.add.text(390, 550, '💣', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
-              cannonImage.setInteractive({ useHandCursor: true });
-               cannonImage.on('pointerdown', () => { cannonButton.emit('pointerdown'); });
+              moyakiImage = this.add.text(390, 550, '💣', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
+              moyakiImage.setInteractive({ useHandCursor: true });
+               moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
             }
-            cannonCostText = this.add.text(390, 570, '200', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-             this.toolbarButtons.cannonImage = cannonImage; // Store reference
-             this.toolbarButtons.cannonCostText = cannonCostText; // Store reference
+            moyakiCostText = this.add.text(390, 570, '200', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+             this.toolbarButtons.moyakiImage = moyakiImage; // Store reference
+             this.toolbarButtons.moyakiCostText = moyakiCostText; // Store reference
 
             // Hide advanced defenses by default
-            wizardButton.visible = false; wizardImage.visible = false; wizardCostText.visible = false;
-            cannonButton.visible = false; cannonImage.visible = false; cannonCostText.visible = false;
+            keonButton.visible = false; keonImage.visible = false; keonCostText.visible = false;
+            moyakiButton.visible = false; moyakiImage.visible = false; moyakiCostText.visible = false;
 
 
             // Add upgrade button
@@ -2853,14 +2859,14 @@ if (isBrowser) {
               this.plantingHelpText.visible = false;
               
               // Show defense range if applicable
-              if (defenseType === 'scarecrow') {
+              if (defenseType === 'chog') {
                 this.showDefenseRange(gridX, gridY, 150);  // ABS mage range: 150
-              } else if (defenseType === 'dog') {
+              } else if (defenseType === 'molandak') {
                 this.showDefenseRange(gridX, gridY, 100);  // MON mage range: 100
-              } else if (defenseType === 'wizard') {
-                this.showDefenseRange(gridX, gridY, 120);  // Wizard range: 120
-              } else if (defenseType === 'cannon') {
-                this.showDefenseRange(gridX, gridY, 180);  // Cannon range: 180
+              } else if (defenseType === 'keon') {
+                this.showDefenseRange(gridX, gridY, 120);  // keon range: 120
+              } else if (defenseType === 'moyaki') {
+                this.showDefenseRange(gridX, gridY, 180);  // moyaki range: 180
               }
             } else {
               this.plantingIndicator.setStrokeStyle(2, 0xFF0000);
@@ -2906,7 +2912,7 @@ if (isBrowser) {
             }
             
             // Calculate cost based on defense type
-            const cost = defenseType === 'scarecrow' ? 45 : defenseType === 'dog' ? 65 : defenseType === 'wizard' ? 125 : 200;
+            const cost = defenseType === 'chog' ? 30 : defenseType === 'molandak' ? 65 : defenseType === 'moyaki' ? 75 : defenseType === 'keon' ? 200 : 50;
             
             // Check if player has enough coins
             if (this.gameState.farmCoins < cost) {
@@ -2935,7 +2941,7 @@ if (isBrowser) {
             this.updateFarmCoins(-cost);
             
             // Show success message
-            const defenseName = defenseType === 'scarecrow' ? 'ABS ice mage' : defenseType === 'dog' ? 'MON fire mage' : defenseType === 'wizard' ? 'Wizard' : 'Cannon';
+            const defenseName = defenseType === 'chog' ? 'CHOG Defender' : defenseType === 'molandak' ? 'MOLANDAK Guardian' : defenseType === 'moyaki' ? 'MOYAKI Warrior' : defenseType === 'keon' ? 'KEON Champion' : 'Defense';
             this.showFloatingText(x, y, `${defenseName} placed!`, 0x00FFFF);
             
             console.log(`Defense ${defenseType} placed at ${x},${y}`);
@@ -3573,10 +3579,10 @@ if (isBrowser) {
         showDefensePlacementIndicator(pointer, type) {
           try {
             // Get defense cost to check affordability
-            const cost = type === 'scarecrow' ? 45 : 
-                         type === 'dog' ? 65 : 
-                         type === 'wizard' ? 125 : 
-                         type === 'cannon' ? 200 : 0;
+            const cost = type === 'chog' ? 45 : 
+                         type === 'molandak' ? 65 : 
+                         type === 'keon' ? 125 : 
+                         type === 'moyaki' ? 200 : 0;
             
             // Only allow placement on right side of map
             const canAfford = this.gameState.farmCoins >= cost;
@@ -3620,17 +3626,17 @@ if (isBrowser) {
               textColor = "#FFFF00";
             } else {
               // Set text based on defense type
-              if (type === 'scarecrow') {
+              if (type === 'chog') {
                 text = "ABS Ice Mage (45 coins)";
                 textColor = "#00AAFF";
-              } else if (type === 'dog') {
+              } else if (type === 'molandak') {
                 text = "MON Fire Mage (65 coins)";
                 textColor = "#FF4400";
-              } else if (type === 'wizard') {
-                text = "Wizard (125 coins)";
+              } else if (type === 'keon') {
+                text = "keon (125 coins)";
                 textColor = "#FF00FF";
-              } else if (type === 'cannon') {
-                text = "Cannon (200 coins)";
+              } else if (type === 'moyaki') {
+                text = "moyaki (200 coins)";
                 textColor = "#FF0000";
               }
             }
@@ -3684,8 +3690,8 @@ if (isBrowser) {
             
             // Provide feedback if special attack was used
             if (result) {
-              const color = closestDefense.type === 'scarecrow' ? 0x00FFFF : 0xFF6600;
-              const text = closestDefense.type === 'scarecrow' ? 'ICE STORM!' : 'FIRE BLAST!';
+              const color = closestDefense.type === 'chog' ? 0x00FFFF : 0xFF6600;
+              const text = closestDefense.type === 'chog' ? 'ICE STORM!' : 'FIRE BLAST!';
               
               // Show floating text above the mage
               this.showFloatingText(closestDefense.x, closestDefense.y - 60, text, color);
@@ -3751,22 +3757,22 @@ if (isBrowser) {
                 let spriteKey = null; // Key for preview sprite
                 
                 // Set range and color based on defense type
-                if (mode === 'scarecrow') {
+                if (mode === 'chog') {
                   range = 250;
                   color = 0x0088FF; // Blue for ABS
                   spriteKey = 'ABS_idle';
-                } else if (mode === 'dog') {
+                } else if (mode === 'molandak') {
                   range = 200;
                   color = 0xFF4400; // Red for MON
                   spriteKey = 'MON_idle';
-                } else if (mode === 'wizard') {
+                } else if (mode === 'keon') {
                   range = 300;
-                  color = 0xFF00FF; // Purple for wizard
-                  spriteKey = 'wizard_idle'; // Use wizard sprite key
-                } else if (mode === 'cannon') {
+                  color = 0xFF00FF; // Purple for keon
+                  spriteKey = 'keon_idle'; // Use keon sprite key
+                } else if (mode === 'moyaki') {
                   range = 350;
-                  color = 0xFF0000; // Red for cannon
-                  spriteKey = 'cannon_idle'; // Use cannon sprite key
+                  color = 0xFF0000; // Red for moyaki
+                  spriteKey = 'moyaki_idle'; // Use moyaki sprite key
                 }
                 
                 // Create circle if it doesn't exist
@@ -3823,20 +3829,20 @@ if (isBrowser) {
                 infoText = "PLANT MODE: Plant crops (5 coins)";
                 textColor = 0x00FF00;
                 break;
-              case 'scarecrow':
+              case 'chog':
                 infoText = "ABS ICE MAGE: Click to place (45 coins)";
                 textColor = 0x0088FF;
                 break;
-              case 'dog':
+              case 'molandak':
                 infoText = "MON FIRE MAGE: Click to place (65 coins)";
                 textColor = 0xFF8800;
                 break;
-              case 'wizard':
-                infoText = "WIZARD: Click to place (125 coins)";
+              case 'keon':
+                infoText = "keon: Click to place (125 coins)";
                 textColor = 0xFF00FF;
                 break;
-              case 'cannon':
-                infoText = "CANNON: Click to place (200 coins)";
+              case 'moyaki':
+                infoText = "moyaki: Click to place (200 coins)";
                 textColor = 0xFF0000;
                 break;
             }
@@ -3852,7 +3858,7 @@ if (isBrowser) {
 
         // Helper method to check if a mode is a defense mode
         isDefenseMode(mode) {
-          return ['scarecrow', 'dog', 'wizard', 'cannon'].includes(mode);
+          return ['chog', 'molandak', 'keon', 'moyaki'].includes(mode);
         }
 
         // Get color for tool buttons
@@ -3860,20 +3866,20 @@ if (isBrowser) {
           const colors = {
             attack: 0x333333, // Darker base for inactive
             plant: 0x333333,
-            scarecrow: 0x333333,
-            dog: 0x333333,
-            wizard: 0x333333, // Add wizard base color
-            cannon: 0x333333, // Add cannon base color
+            chog: 0x333333,
+            molandak: 0x333333,
+            keon: 0x333333, // Add keon base color
+            moyaki: 0x333333, // Add moyaki base color
             upgrade: 0x555500 // Keep upgrade color distinct
           };
           
           const activeColors = {
             attack: 0xFF4400, // Use defined active colors
             plant: 0x00AA00,
-            scarecrow: 0x0088FF,
-            dog: 0xFF8800,
-            wizard: 0xFF00FF, // Active wizard color
-            cannon: 0xCC0000, // Active cannon color
+            chog: 0x0088FF,
+            molandak: 0xFF8800,
+            keon: 0xFF00FF, // Active keon color
+            moyaki: 0xCC0000, // Active moyaki color
             upgrade: 0xFFFF00 // Active upgrade color
           };
           
@@ -3900,10 +3906,10 @@ if (isBrowser) {
             }
             
             // Check defense costs
-            const cost = type === 'scarecrow' ? 45 : 
-                         type === 'dog' ? 65 : 
-                         type === 'wizard' ? 125 : // Add wizard cost
-                         type === 'cannon' ? 200 : 0; // Add cannon cost
+            const cost = type === 'chog' ? 45 : 
+                         type === 'molandak' ? 65 : 
+                         type === 'keon' ? 125 : // Add keon cost
+                         type === 'moyaki' ? 200 : 0; // Add moyaki cost
             
             // Check if player has enough coins
             if (this.gameState.farmCoins < cost) {
@@ -3931,23 +3937,23 @@ if (isBrowser) {
                 x,
                 y,
                 active: true,
-                range: type === 'scarecrow' ? 250 : 
-                       type === 'dog' ? 200 : 
-                       type === 'wizard' ? 300 : 
-                       type === 'cannon' ? 350 : 200,
+                range: type === 'chog' ? 250 : 
+                       type === 'molandak' ? 200 : 
+                       type === 'keon' ? 300 : 
+                       type === 'moyaki' ? 350 : 200,
                 sprite: this.add.rectangle(x, y, 40, 40, 
-                  type === 'scarecrow' ? 0x0088FF : 
-                  type === 'dog' ? 0xFF4400 : 
-                  type === 'wizard' ? 0xFF00FF : 
-                  type === 'cannon' ? 0xFF0000 : 0x666666)
+                  type === 'chog' ? 0x0088FF : 
+                  type === 'molandak' ? 0xFF4400 : 
+                  type === 'keon' ? 0xFF00FF : 
+                  type === 'moyaki' ? 0xFF0000 : 0x666666)
               };
               
               // Add defense type text
               const emojiMap = {
-                'scarecrow': '🧙‍♂️',
-                'dog': '🧙‍♀️',
-                'wizard': '🧙',
-                'cannon': '💣'
+                'chog': '🧙‍♂️',
+                'molandak': '🧙‍♀️',
+                'keon': '🧙',
+                'moyaki': '💣'
               };
               
               const emoji = emojiMap[type] || '❓';
@@ -3965,10 +3971,10 @@ if (isBrowser) {
             
             // Show confirmation text
             const defenseNames = {
-              'scarecrow': 'ABS Ice Mage',
-              'dog': 'MON Fire Mage',
-              'wizard': 'Wizard',
-              'cannon': 'Cannon'
+              'chog': 'ABS Ice Mage',
+              'molandak': 'MON Fire Mage',
+              'keon': 'keon',
+              'moyaki': 'moyaki'
             };
             
             const defenseName = defenseNames[type] || type;
@@ -4027,57 +4033,57 @@ if (isBrowser) {
             console.log("Checking for advanced defense textures");
             
             // Only create fallback textures if the actual textures aren't loaded
-            // Wizard textures
-            if (!this.textures.exists('wizard_idle')) {
-              console.log("Creating fallback wizard_idle texture");
-              const wizardGraphics = this.make.graphics();
-              wizardGraphics.fillStyle(0xFF00FF, 1);
-              wizardGraphics.fillCircle(20, 20, 20);
-              wizardGraphics.fillStyle(0x9900CC, 1);
-              wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
-              wizardGraphics.generateTexture('wizard_idle', 40, 40);
+            // keon textures
+            if (!this.textures.exists('keon_idle')) {
+              console.log("Creating fallback keon_idle texture");
+              const keonGraphics = this.make.graphics();
+              keonGraphics.fillStyle(0xFF00FF, 1);
+              keonGraphics.fillCircle(20, 20, 20);
+              keonGraphics.fillStyle(0x9900CC, 1);
+              keonGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
+              keonGraphics.generateTexture('keon_idle', 40, 40);
             }
             
-            if (!this.textures.exists('wizard_attack')) {
-              console.log("Creating fallback wizard_attack texture");
-              if (this.textures.exists('wizard_idle')) {
+            if (!this.textures.exists('keon_attack')) {
+              console.log("Creating fallback keon_attack texture");
+              if (this.textures.exists('keon_idle')) {
                 // Replace addKey with the correct way to reuse a texture
-                const idleTexture = this.textures.get('wizard_idle');
-                this.textures.addImage('wizard_attack', idleTexture.getSourceImage());
+                const idleTexture = this.textures.get('keon_idle');
+                this.textures.addImage('keon_attack', idleTexture.getSourceImage());
               } else {
-                const wizardGraphics = this.make.graphics();
-                wizardGraphics.fillStyle(0xFF00FF, 1);
-                wizardGraphics.fillCircle(20, 20, 18);
-                wizardGraphics.fillStyle(0x9900CC, 1);
-                wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
-                wizardGraphics.generateTexture('wizard_attack', 40, 40);
+                const keonGraphics = this.make.graphics();
+                keonGraphics.fillStyle(0xFF00FF, 1);
+                keonGraphics.fillCircle(20, 20, 18);
+                keonGraphics.fillStyle(0x9900CC, 1);
+                keonGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
+                keonGraphics.generateTexture('keon_attack', 40, 40);
               }
             }
             
-            // Create cannon textures
-            if (!this.textures.exists('cannon_idle')) {
-              console.log("Creating fallback cannon_idle texture");
-              const cannonGraphics = this.make.graphics();
-              cannonGraphics.fillStyle(0x666666, 1);
-              cannonGraphics.fillRect(10, 20, 20, 15);
-              cannonGraphics.fillStyle(0xFF0000, 1);
-              cannonGraphics.fillRect(18, 10, 15, 10);
-              cannonGraphics.generateTexture('cannon_idle', 40, 40);
+            // Create moyaki textures
+            if (!this.textures.exists('moyaki_idle')) {
+              console.log("Creating fallback moyaki_idle texture");
+              const moyakiGraphics = this.make.graphics();
+              moyakiGraphics.fillStyle(0x666666, 1);
+              moyakiGraphics.fillRect(10, 20, 20, 15);
+              moyakiGraphics.fillStyle(0xFF0000, 1);
+              moyakiGraphics.fillRect(18, 10, 15, 10);
+              moyakiGraphics.generateTexture('moyaki_idle', 40, 40);
             }
             
-            if (!this.textures.exists('cannon_attack')) {
-              console.log("Creating fallback cannon_attack texture");
-              if (this.textures.exists('cannon_idle')) {
+            if (!this.textures.exists('moyaki_attack')) {
+              console.log("Creating fallback moyaki_attack texture");
+              if (this.textures.exists('moyaki_idle')) {
                 // Replace addKey with the correct way to reuse a texture
-                const idleTexture = this.textures.get('cannon_idle');
-                this.textures.addImage('cannon_attack', idleTexture.getSourceImage());
+                const idleTexture = this.textures.get('moyaki_idle');
+                this.textures.addImage('moyaki_attack', idleTexture.getSourceImage());
               } else {
-                const cannonGraphics = this.make.graphics();
-                cannonGraphics.fillStyle(0x666666, 1);
-                cannonGraphics.fillRect(10, 20, 20, 15);
-                cannonGraphics.fillStyle(0xFF0000, 1);
-                cannonGraphics.fillRect(18, 10, 15, 10);
-                cannonGraphics.generateTexture('cannon_attack', 40, 40);
+                const moyakiGraphics = this.make.graphics();
+                moyakiGraphics.fillStyle(0x666666, 1);
+                moyakiGraphics.fillRect(10, 20, 20, 15);
+                moyakiGraphics.fillStyle(0xFF0000, 1);
+                moyakiGraphics.fillRect(18, 10, 15, 10);
+                moyakiGraphics.generateTexture('moyaki_attack', 40, 40);
               }
             }
             
@@ -4250,35 +4256,35 @@ if (isBrowser) {
           }
           
           try {
-            // Update wizard button
-            if (this.toolbarButtons.wizard) {
-              const wizardVisible = this.upgradeSystem.isDefenseUnlocked('wizard');
-              this.toolbarButtons.wizard.visible = wizardVisible;
+            // Update keon button
+            if (this.toolbarButtons.keon) {
+              const keonVisible = this.upgradeSystem.isDefenseUnlocked('keon');
+              this.toolbarButtons.keon.visible = keonVisible;
               
               // Use stored references
-              if (this.toolbarButtons.wizardImage) this.toolbarButtons.wizardImage.visible = wizardVisible;
-              if (this.toolbarButtons.wizardCostText) this.toolbarButtons.wizardCostText.visible = wizardVisible;
+              if (this.toolbarButtons.keonImage) this.toolbarButtons.keonImage.visible = keonVisible;
+              if (this.toolbarButtons.keonCostText) this.toolbarButtons.keonCostText.visible = keonVisible;
               
               // Show notification when first unlocked
-              if (wizardVisible && !this.wizardUnlockNotified) {
-                this.showFloatingText(400, 300, "Wizard Defense Unlocked!", 0xFF00FF);
-                this.wizardUnlockNotified = true;
+              if (keonVisible && !this.keonUnlockNotified) {
+                this.showFloatingText(400, 300, "keon Defense Unlocked!", 0xFF00FF);
+                this.keonUnlockNotified = true;
               }
             }
             
-            // Update cannon button
-            if (this.toolbarButtons.cannon) {
-              const cannonVisible = this.upgradeSystem.isDefenseUnlocked('cannon');
-              this.toolbarButtons.cannon.visible = cannonVisible;
+            // Update moyaki button
+            if (this.toolbarButtons.moyaki) {
+              const moyakiVisible = this.upgradeSystem.isDefenseUnlocked('moyaki');
+              this.toolbarButtons.moyaki.visible = moyakiVisible;
               
               // Use stored references
-              if (this.toolbarButtons.cannonImage) this.toolbarButtons.cannonImage.visible = cannonVisible;
-              if (this.toolbarButtons.cannonCostText) this.toolbarButtons.cannonCostText.visible = cannonVisible;
+              if (this.toolbarButtons.moyakiImage) this.toolbarButtons.moyakiImage.visible = moyakiVisible;
+              if (this.toolbarButtons.moyakiCostText) this.toolbarButtons.moyakiCostText.visible = moyakiVisible;
               
               // Show notification when first unlocked
-              if (cannonVisible && !this.cannonUnlockNotified) {
-                this.showFloatingText(400, 300, "Cannon Defense Unlocked!", 0xFF0000);
-                this.cannonUnlockNotified = true;
+              if (moyakiVisible && !this.moyakiUnlockNotified) {
+                this.showFloatingText(400, 300, "moyaki Defense Unlocked!", 0xFF0000);
+                this.moyakiUnlockNotified = true;
               }
             }
           } catch (error) {
@@ -4330,10 +4336,10 @@ if (isBrowser) {
               case 'MON': // Fire Mage
                 color = 0xff6600;
                 break;
-              case 'wizard':
+              case 'keon':
                 color = 0xff00ff;
                 break;
-              case 'cannon':
+              case 'moyaki':
                 color = 0xff0000;
                 break;
             }
