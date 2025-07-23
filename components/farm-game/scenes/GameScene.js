@@ -311,17 +311,77 @@ if (isBrowser) {
                 console.log('Created fallback texture for fireball_red on load complete');
               }
               
-              // Create fallback for wizard assets
-              if (!this.textures.exists('wizard_idle')) {
-                const wizardGraphics = this.make.graphics();
-                // Create a purple wizard shape
-                wizardGraphics.fillStyle(0xFF00FF, 1);
-                wizardGraphics.fillCircle(20, 20, 18);
-                wizardGraphics.fillStyle(0x9900CC, 1);
-                // Add a wizard hat
-                wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
-                wizardGraphics.generateTexture('wizard_idle', 40, 40);
-                console.log('Created fallback texture for wizard_idle');
+              // Create fallback textures for defense characters
+              if (!this.textures.exists('chog_idle')) {
+                const chogGraphics = this.make.graphics();
+                chogGraphics.fillStyle(0x00AA00, 1);
+                chogGraphics.fillCircle(20, 20, 18);
+                chogGraphics.fillStyle(0x006600, 1);
+                chogGraphics.fillRect(15, 10, 10, 8); // Shield
+                chogGraphics.generateTexture('chog_idle', 40, 40);
+                console.log('Created fallback texture for chog_idle');
+              }
+
+              if (!this.textures.exists('chog_attack')) {
+                if (this.textures.exists('chog_idle')) {
+                  const idleTexture = this.textures.get('chog_idle');
+                  this.textures.addImage('chog_attack', idleTexture.getSourceImage());
+                }
+                console.log('Created fallback texture for chog_attack');
+              }
+
+              if (!this.textures.exists('molandak_idle')) {
+                const molandakGraphics = this.make.graphics();
+                molandakGraphics.fillStyle(0x0088FF, 1);
+                molandakGraphics.fillCircle(20, 20, 18);
+                molandakGraphics.fillStyle(0x66CCFF, 1);
+                molandakGraphics.fillStar(20, 20, 6, 8, 12); // Ice crystal
+                molandakGraphics.generateTexture('molandak_idle', 40, 40);
+                console.log('Created fallback texture for molandak_idle');
+              }
+
+              if (!this.textures.exists('molandak_attack')) {
+                if (this.textures.exists('molandak_idle')) {
+                  const idleTexture = this.textures.get('molandak_idle');
+                  this.textures.addImage('molandak_attack', idleTexture.getSourceImage());
+                }
+                console.log('Created fallback texture for molandak_attack');
+              }
+
+              if (!this.textures.exists('moyaki_idle')) {
+                const moyakiGraphics = this.make.graphics();
+                moyakiGraphics.fillStyle(0xFF4400, 1);
+                moyakiGraphics.fillCircle(20, 20, 18);
+                moyakiGraphics.fillStyle(0xFF8844, 1);
+                moyakiGraphics.fillTriangle(15, 25, 25, 25, 20, 15); // Fire
+                moyakiGraphics.generateTexture('moyaki_idle', 40, 40);
+                console.log('Created fallback texture for moyaki_idle');
+              }
+
+              if (!this.textures.exists('moyaki_attack')) {
+                if (this.textures.exists('moyaki_idle')) {
+                  const idleTexture = this.textures.get('moyaki_idle');
+                  this.textures.addImage('moyaki_attack', idleTexture.getSourceImage());
+                }
+                console.log('Created fallback texture for moyaki_attack');
+              }
+
+              if (!this.textures.exists('keon_idle')) {
+                const keonGraphics = this.make.graphics();
+                keonGraphics.fillStyle(0xFFD700, 1);
+                keonGraphics.fillCircle(20, 20, 20);
+                keonGraphics.fillStyle(0xFFFF00, 1);
+                keonGraphics.fillRect(15, 8, 10, 6); // Crown
+                keonGraphics.generateTexture('keon_idle', 40, 40);
+                console.log('Created fallback texture for keon_idle');
+              }
+
+              if (!this.textures.exists('keon_attack')) {
+                if (this.textures.exists('keon_idle')) {
+                  const idleTexture = this.textures.get('keon_idle');
+                  this.textures.addImage('keon_attack', idleTexture.getSourceImage());
+                }
+                console.log('Created fallback texture for keon_attack');
               }
               
               if (!this.textures.exists('wizard_attack')) {
@@ -2661,10 +2721,7 @@ if (isBrowser) {
             }
 
 
-            // --- Advanced defenses ---
-            let wizardButton, cannonButton;
-            let wizardImage, cannonImage;
-            let wizardCostText, cannonCostText;
+            // --- Character defenses are now handled above ---
 
             // Wizard Button
             wizardButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
@@ -3537,10 +3594,10 @@ if (isBrowser) {
         showDefensePlacementIndicator(pointer, type) {
           try {
             // Get defense cost to check affordability
-            const cost = type === 'scarecrow' ? 45 : 
-                         type === 'dog' ? 65 : 
-                         type === 'wizard' ? 125 : 
-                         type === 'cannon' ? 200 : 0;
+            const cost = type === 'chog' ? 30 :
+                         type === 'molandak' ? 65 :
+                         type === 'moyaki' ? 75 :
+                         type === 'keon' ? 200 : 0;
             
             // Only allow placement on right side of map
             const canAfford = this.gameState.farmCoins >= cost;
@@ -3584,18 +3641,18 @@ if (isBrowser) {
               textColor = "#FFFF00";
             } else {
               // Set text based on defense type
-              if (type === 'scarecrow') {
-                text = "ABS Ice Mage (45 coins)";
-                textColor = "#00AAFF";
-              } else if (type === 'dog') {
-                text = "MON Fire Mage (65 coins)";
+              if (type === 'chog') {
+                text = "CHOG Defender (30 coins)";
+                textColor = "#00AA00";
+              } else if (type === 'molandak') {
+                text = "MOLANDAK Guardian (65 coins)";
+                textColor = "#0088FF";
+              } else if (type === 'moyaki') {
+                text = "MOYAKI Warrior (75 coins)";
                 textColor = "#FF4400";
-              } else if (type === 'wizard') {
-                text = "Wizard (125 coins)";
-                textColor = "#FF00FF";
-              } else if (type === 'cannon') {
-                text = "Cannon (200 coins)";
-                textColor = "#FF0000";
+              } else if (type === 'keon') {
+                text = "KEON Champion (200 coins)";
+                textColor = "#FFD700";
               }
             }
             
@@ -3724,11 +3781,11 @@ if (isBrowser) {
                   color = 0x0088FF; // Blue for MOLANDAK
                   spriteKey = 'molandak_idle';
                 } else if (mode === 'moyaki') {
-                  range = 200;
+                  range = 190;
                   color = 0xFF4400; // Orange for MOYAKI
                   spriteKey = 'moyaki_idle';
                 } else if (mode === 'keon') {
-                  range = 250;
+                  range = 280;
                   color = 0xFFD700; // Gold for KEON
                   spriteKey = 'keon_idle';
                 }
@@ -3796,11 +3853,11 @@ if (isBrowser) {
                 textColor = 0x0088FF;
                 break;
               case 'moyaki':
-                infoText = "MOYAKI WARRIOR: Click to place (65 coins)";
+                infoText = "MOYAKI WARRIOR: Click to place (75 coins)";
                 textColor = 0xFF4400;
                 break;
               case 'keon':
-                infoText = "KEON CHAMPION: Click to place (120 coins)";
+                infoText = "KEON CHAMPION: Click to place (200 coins)";
                 textColor = 0xFFD700;
                 break;
             }
@@ -3834,10 +3891,10 @@ if (isBrowser) {
           const activeColors = {
             attack: 0xFF4400, // Use defined active colors
             plant: 0x00AA00,
-            chog: 0x00AA00, // Green for CHOG
-            molandak: 0x0088FF, // Blue for MOLANDAK
-            moyaki: 0xFF4400, // Orange for MOYAKI
-            keon: 0xFFD700, // Gold for KEON
+            chog: 0x00AA00,
+            molandak: 0x0088FF,
+            moyaki: 0xFF4400,
+            keon: 0xFFD700,
             upgrade: 0xFFFF00 // Active upgrade color
           };
           
