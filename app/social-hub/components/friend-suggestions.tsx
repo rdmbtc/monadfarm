@@ -1,6 +1,6 @@
 "use client"
 
-import { UserPlus, Users, X, Trophy } from "lucide-react"
+import { UserPlus, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CardContent } from "@/components/ui/card"
@@ -300,12 +300,65 @@ export default function FriendSuggestions() {
             </motion.div>
           ) : (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-4 text-center text-muted-foreground"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4"
             >
-              <p>No more suggestions right now.</p>
-              <p className="text-sm">Check back later!</p>
+              {/* Achievement-style empty state cards */}
+              <div className="flex items-center gap-3 border border-[#333] p-3 bg-[#111] rounded-none">
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="h-12 w-12 flex items-center justify-center border border-[#333] bg-[#171717] text-2xl rounded-none"
+                >
+                  🌾
+                </motion.div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-medium text-white">Social Farmer</h4>
+                    <span className="text-xs font-medium text-white/70">Uncommon</span>
+                  </div>
+                  <p className="text-xs text-white/60 mb-1">Connect with fellow farmers</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 bg-[#222] flex-1 rounded-none">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-500 to-green-400"
+                        style={{ width: '86%' }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-white/60">861/1000</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 border border-[#333] p-3 bg-[#111] rounded-none">
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  className="h-12 w-12 flex items-center justify-center border border-[#333] bg-[#171717] text-2xl rounded-none"
+                >
+                  🦋
+                </motion.div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-medium text-white">Community Builder</h4>
+                    <span className="text-xs font-medium text-white/80">Rare</span>
+                  </div>
+                  <p className="text-xs text-white/60 mb-1">Build lasting friendships</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 bg-[#222] flex-1 rounded-none">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-blue-400"
+                        style={{ width: '42%' }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-white/60">42/100</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center py-2">
+                <p className="text-xs text-white/40">Check back later for more friend suggestions!</p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -319,22 +372,14 @@ export default function FriendSuggestions() {
     </Card>
 
     {/* Quest System Section */}
-    <div className="bg-gradient-to-br from-[#0a0a0a] to-[#111] border border-[#333]/50 rounded-xl overflow-hidden mt-6">
-      <div className="bg-gradient-to-r from-[#111] to-[#0a0a0a] p-6 border-b border-[#333]/50">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
-            <Trophy className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-white font-semibold text-lg">Active Quests</h2>
-            <p className="text-white/60 text-sm">Complete quests to earn rewards</p>
-          </div>
-        </div>
-      </div>
-      <div className="p-6">
+    <Card className="bg-[#111] border-[#333] mt-6">
+      <CardHeader>
+        <CardTitle className="text-white noot-title">Active Quests</CardTitle>
+      </CardHeader>
+      <CardContent>
         <QuestSystem compact={true} showTitle={false} />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
     </>
   )
 }
