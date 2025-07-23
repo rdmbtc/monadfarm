@@ -288,14 +288,6 @@ if (isBrowser) {
             
             // Create fallback textures for commonly missing assets as a failsafe
             this.load.on('complete', () => {
-              console.log('🎮 Load complete event triggered - checking textures...');
-
-              // Log which Monad textures exist
-              console.log('Monad texture status:');
-              console.log('  chog_idle:', this.textures.exists('chog_idle'));
-              console.log('  molandak_idle:', this.textures.exists('molandak_idle'));
-              console.log('  moyaki_idle:', this.textures.exists('moyaki_idle'));
-              console.log('  keon_idle:', this.textures.exists('keon_idle'));
               // Check if fireball textures exist, if not create them
               if (!this.textures.exists('fireball_blue')) {
                 const blueGraphics = this.make.graphics();
@@ -379,10 +371,6 @@ if (isBrowser) {
                 }
                 console.log('Created fallback texture for cannon_attack');
               }
-
-              // Set flag that textures are ready
-              this.texturesReady = true;
-              console.log('🎮 All textures are now ready for use!');
             });
           } catch (error) {
             console.error("Error in GameScene preload:", error);
@@ -3727,22 +3715,22 @@ if (isBrowser) {
                 let spriteKey = null; // Key for preview sprite
                 
                 // Set range and color based on defense type
-                if (mode === 'scarecrow') {
-                  range = 250;
-                  color = 0x0088FF; // Blue for ABS
-                  spriteKey = 'ABS_idle';
-                } else if (mode === 'dog') {
+                if (mode === 'chog') {
+                  range = 180;
+                  color = 0x00AA00; // Green for CHOG
+                  spriteKey = 'chog_idle';
+                } else if (mode === 'molandak') {
                   range = 200;
-                  color = 0xFF4400; // Red for MON
-                  spriteKey = 'MON_idle';
-                } else if (mode === 'wizard') {
-                  range = 300;
-                  color = 0xFF00FF; // Purple for wizard
-                  spriteKey = 'wizard_idle'; // Use wizard sprite key
-                } else if (mode === 'cannon') {
-                  range = 350;
-                  color = 0xFF0000; // Red for cannon
-                  spriteKey = 'cannon_idle'; // Use cannon sprite key
+                  color = 0x0088FF; // Blue for MOLANDAK
+                  spriteKey = 'molandak_idle';
+                } else if (mode === 'moyaki') {
+                  range = 200;
+                  color = 0xFF4400; // Orange for MOYAKI
+                  spriteKey = 'moyaki_idle';
+                } else if (mode === 'keon') {
+                  range = 250;
+                  color = 0xFFD700; // Gold for KEON
+                  spriteKey = 'keon_idle';
                 }
                 
                 // Create circle if it doesn't exist
@@ -3799,21 +3787,21 @@ if (isBrowser) {
                 infoText = "PLANT MODE: Plant crops (5 coins)";
                 textColor = 0x00FF00;
                 break;
-              case 'scarecrow':
-                infoText = "ABS ICE MAGE: Click to place (45 coins)";
+              case 'chog':
+                infoText = "CHOG DEFENDER: Click to place (30 coins)";
+                textColor = 0x00AA00;
+                break;
+              case 'molandak':
+                infoText = "MOLANDAK GUARDIAN: Click to place (65 coins)";
                 textColor = 0x0088FF;
                 break;
-              case 'dog':
-                infoText = "MON FIRE MAGE: Click to place (65 coins)";
-                textColor = 0xFF8800;
+              case 'moyaki':
+                infoText = "MOYAKI WARRIOR: Click to place (65 coins)";
+                textColor = 0xFF4400;
                 break;
-              case 'wizard':
-                infoText = "WIZARD: Click to place (125 coins)";
-                textColor = 0xFF00FF;
-                break;
-              case 'cannon':
-                infoText = "CANNON: Click to place (200 coins)";
-                textColor = 0xFF0000;
+              case 'keon':
+                infoText = "KEON CHAMPION: Click to place (120 coins)";
+                textColor = 0xFFD700;
                 break;
             }
             
@@ -3828,7 +3816,7 @@ if (isBrowser) {
 
         // Helper method to check if a mode is a defense mode
         isDefenseMode(mode) {
-          return ['scarecrow', 'dog', 'wizard', 'cannon'].includes(mode);
+          return ['chog', 'molandak', 'moyaki', 'keon'].includes(mode);
         }
 
         // Get color for tool buttons
@@ -3836,20 +3824,20 @@ if (isBrowser) {
           const colors = {
             attack: 0x333333, // Darker base for inactive
             plant: 0x333333,
-            scarecrow: 0x333333,
-            dog: 0x333333,
-            wizard: 0x333333, // Add wizard base color
-            cannon: 0x333333, // Add cannon base color
+            chog: 0x333333,
+            molandak: 0x333333,
+            moyaki: 0x333333,
+            keon: 0x333333,
             upgrade: 0x555500 // Keep upgrade color distinct
           };
-          
+
           const activeColors = {
             attack: 0xFF4400, // Use defined active colors
             plant: 0x00AA00,
-            scarecrow: 0x0088FF,
-            dog: 0xFF8800,
-            wizard: 0xFF00FF, // Active wizard color
-            cannon: 0xCC0000, // Active cannon color
+            chog: 0x00AA00, // Green for CHOG
+            molandak: 0x0088FF, // Blue for MOLANDAK
+            moyaki: 0xFF4400, // Orange for MOYAKI
+            keon: 0xFFD700, // Gold for KEON
             upgrade: 0xFFFF00 // Active upgrade color
           };
           
@@ -3868,18 +3856,7 @@ if (isBrowser) {
         placeDefense(x, y, type) {
           try {
             console.log(`Placing defense: ${type} at ${x}, ${y}`);
-
-            // Check if textures are ready for Monad characters
-            if (['chog', 'molandak', 'moyaki', 'keon'].includes(type) && !this.texturesReady) {
-              console.warn(`⏳ Textures not ready yet for ${type}, waiting...`);
-              this.showFloatingText(x, y, "Loading textures...", 0xFFFF00);
-              // Retry after a short delay
-              this.time.delayedCall(500, () => {
-                this.placeDefense(x, y, type);
-              });
-              return false;
-            }
-
+            
             // Only allow placement on right side
             if (x < 200) {
               this.showFloatingText(x, y, "Place on RIGHT side only!", 0xFF0000);
