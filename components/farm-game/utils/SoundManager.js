@@ -15,7 +15,7 @@ export default class SoundManager {
     this.volumes = {
       music: 0.6, // Default music volume
       ui: 0.3,    // Click, error
-      coin: 0.4,  // Coins
+      coin: 0.3,  // Coins
       action: 0.4,// Plant, harvest, defense_placed
       enemy: 0.3, // Hit, defeat, escaped
       attack: 0.4,// Defense attacks, special attacks

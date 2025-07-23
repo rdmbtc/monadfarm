@@ -443,9 +443,6 @@ if (isBrowser) {
 
             // Set up audio context unlock on first user interaction
             this.setupAudioUnlock();
-
-            // Add a test sound button for debugging
-            this.createSoundTestButton();
             
             // Initialize Volume Controls AFTER SoundManager
             this.volumeControls = new VolumeControls(this, this.soundManager);
@@ -1628,34 +1625,7 @@ if (isBrowser) {
           this.events.once('wake', unlockAudio);
         }
 
-        // Create a test sound button for debugging
-        createSoundTestButton() {
-          const testButton = this.add.rectangle(700, 50, 80, 30, 0x4444FF)
-            .setInteractive({ useHandCursor: true })
-            .setDepth(3000);
 
-          const testText = this.add.text(700, 50, 'Test Sound', {
-            fontSize: '12px',
-            color: '#FFFFFF'
-          }).setOrigin(0.5).setDepth(3001);
-
-          testButton.on('pointerdown', () => {
-            console.log("=== SOUND TEST ===");
-            console.log("Audio context state:", this.sound?.context?.state);
-            console.log("SoundManager exists:", !!this.soundManager);
-            console.log("Available sounds:", this.soundManager ? Object.keys(this.soundManager.sounds) : 'No SoundManager');
-
-            if (this.soundManager) {
-              console.log("Testing click sound...");
-              this.soundManager.play('click', { volume: 0.5 });
-
-              setTimeout(() => {
-                console.log("Testing coins sound...");
-                this.soundManager.play('coins', { volume: 0.5 });
-              }, 500);
-            }
-          });
-        }
 
         // Show floating text that fades up and out
         showFloatingText(x, y, message, color = 0xFFFFFF) {
