@@ -73,8 +73,8 @@ import MonIoWrapper from '@/components/mon-io/MonIoWrapper';
 //   loading: () => <LoadingPlaceholder /> // Use your LoadingPlaceholder here
 // });
 
-// Dynamically import Multiplayer Platformer Wrapper with SSR disabled
-const DynamicMultiplayerPlatformerWrapper = dynamic(() => import('./multiplayer-platformer/MultiplayerPlatformerWrapper'), {
+// Dynamically import Single-Player Platformer with SSR disabled
+const DynamicPlatformerGame = dynamic(() => import('./multiplayer-platformer/PlatformerGame'), {
   ssr: false,
   loading: () => <LoadingPlaceholder />
 });
@@ -3834,11 +3834,11 @@ export function Farm() {
         {activeTab === "platformer" && (
           <div className="animate-fadeIn">
             <h2 className="text-xl font-semibold text-white border-b border-white/10 pb-2 mb-4">
-              MonFarm Platformer - Multiplayer
+              MonFarm Platformer
             </h2>
             <div className="noot-card p-1 overflow-hidden">
-              {/* Use the multiplayer platformer wrapper */}
-              <DynamicMultiplayerPlatformerWrapper
+              {/* Use the single-player platformer game */}
+              <DynamicPlatformerGame
                 farmCoins={farmCoins}
                 addFarmCoins={addFarmCoins}
                 nickname={nickname}

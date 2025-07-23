@@ -190,88 +190,75 @@ export default function MultiplayerPlatformerGame({
     }
   }, [localGameMode, myId, currentNickname])
 
-  // Enhanced join game with session synchronization - STABLE VERSION WITH RETRY
-  useEffect(() => {
-    if (localGameMode === 'online' && myId && currentNickname && !myPlayer) {
-      console.log('🌐 Joining online game as:', currentNickname, 'ID:', myId?.slice(0, 8))
+  if (!isClient) {
+    return (
+      <div className="flex items-center justify-center h-64 bg-gray-900 rounded-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="text-white">Loading platformer game...</div>
+        </div>
+      </div>
+    )
+  }
 
-      const attemptJoin = (attempt: number = 1) => {
-        const maxAttempts = 3
-        const delay = Math.min(1000 * attempt, 5000) // Exponential backoff, max 5s
+  return (
+    <div className="w-full bg-black rounded-lg overflow-hidden relative">
+      {/* Game Status Bar */}
+      <div className="bg-gray-900 p-3 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span className="text-white text-sm font-medium">Single Player</span>
+            </div>
+            <div className="text-gray-400 text-sm">
+              Score: {score}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={resetGame}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded flex items-center gap-1"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset
+            </button>
+            <button
+              onClick={startGame}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded flex items-center gap-1"
+            >
+              <Play className="h-3 w-3" />
+              {gameStarted ? 'Restart' : 'Start'}
+            </button>
+          </div>
+        </div>
+      </div>
 
-        console.log(`🌐 Join attempt ${attempt}/${maxAttempts}`)
-        setRetryCount(attempt)
+      {/* Game Canvas */}
+      <div className="flex justify-center items-center bg-black">
+        <ReactP5Wrapper
+          sketch={createGameSketch}
+          key="single-player-platformer"
+        />
+      </div>
 
-        const joinTimeout = setTimeout(() => {
-          try {
-            if (multiplayerData?.joinGame) {
-              // Enhanced join with session data to ensure players are in same world
-              const joinData = {
-                playerId: myId,
-                nickname: currentNickname,
-                sessionId: gameSession?.id || 'default-session',
-                gameMode: localGameMode,
-                timestamp: Date.now(),
-                clientVersion: '1.0.0' // Add version for compatibility
-              }
+      {/* Game Instructions */}
+      <div className="bg-gray-900 p-3 border-t border-gray-700">
+        <div className="text-center text-gray-400 text-sm">
+          <div className="flex items-center justify-center gap-4">
+            <span>🎮 Use WASD or Arrow Keys to move</span>
+            <span>⏰ Space to jump</span>
+            <span>🎯 Collect items to increase score</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-              multiplayerData.joinGame(myId, currentNickname)
-              console.log('🌐 Join attempt successful with session data:', {
-                sessionId: joinData.sessionId,
-                playerId: myId.slice(0, 8),
-                nickname: currentNickname
-              })
-            } else {
-              throw new Error('joinGame function not available')
-            }
-          } catch (error) {
-            console.error(`🌐 Join attempt ${attempt} failed:`, error)
-            if (attempt < maxAttempts) {
-              console.log(`🌐 Retrying in ${delay}ms...`)
-              setTimeout(() => attemptJoin(attempt + 1), delay)
-            } else {
-              console.error('🌐 All join attempts failed')
-              setConnectionStatus('error')
-            }
-          }
-        }, delay)
 
-        return joinTimeout
-      }
 
-      const timeout = attemptJoin(1)
-      return () => clearTimeout(timeout)
-    }
-  }, [localGameMode, myId, currentNickname, gameSession?.id]) // Added gameSession dependency
 
-  // Leave game when switching to single player mode
-  useEffect(() => {
-    return () => {
-      if (localGameMode === 'online' && myId && leaveGame) {
-        console.log('Leaving online game')
-        leaveGame(myId)
-      }
-    }
-  }, [localGameMode, myId, leaveGame])
-
-  // Update multiplayer callbacks when dependencies change - STABLE VERSION
-  useEffect(() => {
-    if (localGameMode === 'online' && gameInstanceRef.current && gameInstanceRef.current.setMultiplayerCallbacks) {
-      console.log('🔄 Setting up multiplayer callbacks')
-      gameInstanceRef.current.setMultiplayerCallbacks({
-        onPlayerUpdate: (playerData: any) => {
-          if (myId && multiplayerData?.updatePlayerPosition) {
-            multiplayerData.updatePlayerPosition(myId, playerData)
-          }
-        },
-        onPlayerAction: (action: string, data: any) => {
-          if (myId && multiplayerData?.performPlayerAction) {
-            multiplayerData.performPlayerAction(myId, action, data)
-          }
-        }
-      })
-    }
-  }, [localGameMode, myId]) // Removed unstable dependencies
 
   // Enhanced sync for remote players with better error handling and validation
   useEffect(() => {
@@ -506,192 +493,34 @@ export default function MultiplayerPlatformerGame({
       console.error('❌ Error creating real game:', error)
     }
 
-    // Fallback: Enhanced game with asset loading and lobby system
-    console.log('🎮 Using enhanced fallback game with asset loading')
-
-    let assetsLoaded = false
-    let gameStarted = false
-    let loadingProgress = 0
-    const assets: {
-      images: Record<string, any>,
-      totalAssets: number,
-      loadedAssets: number
-    } = { images: {}, totalAssets: 0, loadedAssets: 0 }
-
-    // Preload essential assets
-    p.preload = () => {
-      console.log('🎮 Starting asset preload...')
-
-      const imageAssets = [
-        { key: 'player', path: '/defense/noot idle.png' }
-      ]
-
-      assets.totalAssets = imageAssets.length
-
-      imageAssets.forEach((asset) => {
-        try {
-          assets.images[asset.key] = p.loadImage(asset.path,
-            () => {
-              assets.loadedAssets++
-              loadingProgress = (assets.loadedAssets / assets.totalAssets) * 100
-              console.log(`✅ Loaded ${asset.key}: ${loadingProgress.toFixed(1)}%`)
-
-              if (assets.loadedAssets >= assets.totalAssets) {
-                assetsLoaded = true
-                console.log('🎮 All assets loaded!')
-
-                // Auto-start single player mode
-                if (localGameMode === 'single') {
-                  gameStarted = true
-                }
-              }
-            },
-            () => {
-              console.warn(`⚠️ Failed to load ${asset.key}`)
-              assets.loadedAssets++
-              loadingProgress = (assets.loadedAssets / assets.totalAssets) * 100
-
-              if (assets.loadedAssets >= assets.totalAssets) {
-                assetsLoaded = true
-                if (localGameMode === 'single') {
-                  gameStarted = true
-                }
-              }
-            }
-          )
-        } catch (error) {
-          console.error(`❌ Error loading ${asset.key}:`, error)
-          assets.loadedAssets++
-        }
-      })
-    }
-
+    // Fallback: Simple working game
+    console.log('🎮 Using fallback simple game')
     p.setup = () => {
-      console.log('🎮 Enhanced game setup called')
+      console.log('🎮 Fallback setup called')
       p.createCanvas(800, 600)
     }
 
     p.draw = () => {
       p.background(50, 100, 150)
-
-      if (!assetsLoaded) {
-        drawLoadingScreen()
-      } else if (localGameMode === 'online' && !gameStarted) {
-        drawLobbyScreen()
-      } else {
-        drawGame()
-      }
-    }
-
-    const drawLoadingScreen = () => {
       p.fill(255)
       p.textAlign(p.CENTER, p.CENTER)
       p.textSize(24)
-      p.text('Loading MonFarm Platformer...', p.width/2, p.height/2 - 50)
-
-      // Loading bar
-      const barWidth = 300
-      const barHeight = 20
-      const barX = p.width/2 - barWidth/2
-      const barY = p.height/2
-
-      p.stroke(255)
-      p.noFill()
-      p.rect(barX, barY, barWidth, barHeight)
-
-      p.noStroke()
-      p.fill(100, 200, 100)
-      p.rect(barX, barY, (loadingProgress / 100) * barWidth, barHeight)
-
-      p.fill(255)
+      p.text(`MonFarm Platformer - ${localGameMode.toUpperCase()} MODE`, p.width/2, p.height/2 - 50)
       p.textSize(16)
-      p.text(`${loadingProgress.toFixed(1)}%`, p.width/2, p.height/2 + 40)
-    }
+      p.text(`Players: ${playerCount}`, p.width/2, p.height/2)
+      p.text('Simple mode - Real game failed to load', p.width/2, p.height/2 + 30)
 
-    const drawLobbyScreen = () => {
+      // Moving rectangle
+      p.fill(255, 100, 100)
+      p.rect(p.width/2 - 25 + Math.sin(p.frameCount * 0.05) * 100, p.height/2 + 100, 50, 50)
+
+      // Mode indicator
+      p.fill(localGameMode === 'online' ? 'green' : 'blue')
+      p.circle(50, 50, 30)
       p.fill(255)
-      p.textAlign(p.CENTER, p.CENTER)
-      p.textSize(28)
-      p.text('Multiplayer Lobby', p.width/2, p.height/2 - 100)
-
-      p.textSize(18)
-      p.text(`Players: ${playerCount}/2`, p.width/2, p.height/2 - 50)
-
-      if (currentNickname) {
-        p.textSize(16)
-        p.text(`You: ${currentNickname}`, p.width/2, p.height/2 - 20)
-      }
-
-      if (playerCount < 2) {
-        p.fill(255, 255, 0)
-        p.textSize(16)
-        p.text('Waiting for more players to join...', p.width/2, p.height/2 + 20)
-
-        // Animated dots
-        const dots = '.'.repeat((Math.floor(p.frameCount / 30) % 3) + 1)
-        p.text(dots, p.width/2, p.height/2 + 50)
-      } else {
-        p.fill(100, 255, 100)
-        p.textSize(18)
-        p.text('Ready to start!', p.width/2, p.height/2 + 20)
-
-        if (!gameStarted) {
-          gameStarted = true
-          console.log('🎮 Multiplayer: Starting game with', playerCount, 'players')
-        }
-      }
-    }
-
-    const drawGame = () => {
-      // Draw game world
-      p.fill(255)
-      p.textAlign(p.CENTER, p.CENTER)
-      p.textSize(24)
-      p.text('MonFarm Platformer', p.width/2, 50)
-
-      p.textSize(16)
-      p.fill(localGameMode === 'online' ? '#00ff00' : '#0088ff')
-      p.text(`${localGameMode.toUpperCase()} MODE`, p.width/2, 80)
-
-      // Draw player with loaded asset if available
-      const playerX = p.width/2 + Math.sin(p.frameCount * 0.05) * 100
-      const playerY = p.height/2 + 50
-
-      if (assets.images.player && assets.images.player.width > 0) {
-        p.imageMode(p.CENTER)
-        p.image(assets.images.player, playerX, playerY, 50, 50)
-      } else {
-        p.fill(255, 100, 100)
-        p.rect(playerX - 25, playerY - 25, 50, 50)
-      }
-
-      // Draw ground
-      p.fill(100, 200, 100)
-      p.rect(0, p.height/2 + 100, p.width, 100)
-
-      // Draw instructions
-      p.fill(255, 255, 255, 200)
-      p.textSize(14)
-      p.text('Use WASD or Arrow Keys to move • Space to jump', p.width/2, p.height - 40)
-
-      // Connection status
-      if (localGameMode === 'online') {
-        p.fill(myId ? '#00ff00' : '#ff0000')
-        p.textSize(12)
-        p.textAlign(p.LEFT, p.TOP)
-        p.text(`Status: ${myId ? 'Connected' : 'Connecting...'}`, 10, 10)
-        p.text(`Players: ${playerCount}`, 10, 30)
-      }
-    }
-
-    // Handle keyboard input
-    p.keyPressed = () => {
-      if (gameStarted && assetsLoaded) {
-        console.log('Game input:', p.key)
-        if (p.key === ' ') {
-          console.log('Jump!')
-        }
-      }
+      p.textAlign(p.LEFT, p.TOP)
+      p.textSize(12)
+      p.text(localGameMode === 'online' ? 'ONLINE' : 'SINGLE', 70, 45)
     }
 
     console.log('✅ Fallback game setup complete')
