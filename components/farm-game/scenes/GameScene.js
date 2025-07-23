@@ -221,11 +221,7 @@ if (isBrowser) {
             this.load.image('enemy_dragon', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon14.png');
             this.load.image('enemy_demon', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon15.png');
             
-            // Load advanced defense textures
-            this.load.image('wizard_idle', '/defense/wizard idle.png');
-            this.load.image('wizard_attack', '/defense/wizard attack.png');
-            this.load.image('cannon_idle', '/defense/cannon idle.png');
-            this.load.image('cannon_attack', '/defense/cannon attack.png');
+            // Old wizard/cannon textures removed - using character defense system now
             
             // Load shadows
             this.load.image('shadow1', '/characters/2 Objects/1 Shadow/1.png');
@@ -270,11 +266,13 @@ if (isBrowser) {
                   console.log(`Created fallback texture for ${fileObj.key}`);
                 }
                 
-                // Create placeholders for missing wizard/cannon assets
-                if (fileObj.key === 'wizard_idle' || fileObj.key === 'wizard_attack' || 
-                    fileObj.key === 'cannon_idle' || fileObj.key === 'cannon_attack') {
+                // Create placeholders for missing defense character assets
+                if (fileObj.key === 'chog_idle' || fileObj.key === 'chog_attack' ||
+                    fileObj.key === 'molandak_idle' || fileObj.key === 'molandak_attack' ||
+                    fileObj.key === 'moyaki_idle' || fileObj.key === 'moyaki_attack' ||
+                    fileObj.key === 'keon_idle' || fileObj.key === 'keon_attack') {
                   console.log(`Creating placeholder for missing asset: ${fileObj.key}`);
-                  
+
                   // We'll create the fallbacks in the complete handler
                 }
               } else if (fileObj.type === 'audio') {
@@ -335,7 +333,9 @@ if (isBrowser) {
                 molandakGraphics.fillStyle(0x0088FF, 1);
                 molandakGraphics.fillCircle(20, 20, 18);
                 molandakGraphics.fillStyle(0x66CCFF, 1);
-                molandakGraphics.fillStar(20, 20, 6, 8, 12); // Ice crystal
+                // Create ice crystal shape manually (no fillStar method)
+                molandakGraphics.fillTriangle(20, 10, 15, 20, 25, 20); // Top triangle
+                molandakGraphics.fillTriangle(20, 30, 15, 20, 25, 20); // Bottom triangle
                 molandakGraphics.generateTexture('molandak_idle', 40, 40);
                 console.log('Created fallback texture for molandak_idle');
               }
@@ -384,53 +384,7 @@ if (isBrowser) {
                 console.log('Created fallback texture for keon_attack');
               }
               
-              if (!this.textures.exists('wizard_attack')) {
-                // Just use the same texture for attack
-                if (this.textures.exists('wizard_idle')) {
-                  // Create a new key that references the same texture frame
-                  const idleTexture = this.textures.get('wizard_idle');
-                  this.textures.addImage('wizard_attack', idleTexture.getSourceImage());
-                } else {
-                  // Create if needed
-                  const wizardGraphics = this.make.graphics();
-                  wizardGraphics.fillStyle(0xFF00FF, 1);
-                  wizardGraphics.fillCircle(20, 20, 20);
-                  wizardGraphics.fillStyle(0x9900CC, 1);
-                  wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
-                  wizardGraphics.generateTexture('wizard_attack', 40, 40);
-                }
-                console.log('Created fallback texture for wizard_attack');
-              }
-              
-              // Create fallback for cannon assets
-              if (!this.textures.exists('cannon_idle')) {
-                const cannonGraphics = this.make.graphics();
-                // Create a red cannon shape
-                cannonGraphics.fillStyle(0x666666, 1); // Base
-                cannonGraphics.fillRect(10, 20, 20, 15);
-                cannonGraphics.fillStyle(0xFF0000, 1); // Barrel
-                cannonGraphics.fillRect(18, 10, 15, 10);
-                cannonGraphics.generateTexture('cannon_idle', 40, 40);
-                console.log('Created fallback texture for cannon_idle');
-              }
-              
-              if (!this.textures.exists('cannon_attack')) {
-                // Just use the same texture for attack
-                if (this.textures.exists('cannon_idle')) {
-                  // Create a new key that references the same texture frame
-                  const idleTexture = this.textures.get('cannon_idle');
-                  this.textures.addImage('cannon_attack', idleTexture.getSourceImage());
-                } else {
-                  // Create if needed
-                  const cannonGraphics = this.make.graphics();
-                  cannonGraphics.fillStyle(0x666666, 1);
-                  cannonGraphics.fillRect(10, 20, 20, 15);
-                  cannonGraphics.fillStyle(0xFF0000, 1);
-                  cannonGraphics.fillRect(18, 10, 15, 10);
-                  cannonGraphics.generateTexture('cannon_attack', 40, 40);
-                }
-                console.log('Created fallback texture for cannon_attack');
-              }
+
             });
           } catch (error) {
             console.error("Error in GameScene preload:", error);
@@ -2721,7 +2675,10 @@ if (isBrowser) {
             }
 
 
-            // --- Character defenses are now handled above ---
+            // --- Advanced defenses ---
+            let wizardButton, cannonButton;
+            let wizardImage, cannonImage;
+            let wizardCostText, cannonCostText;
 
             // Wizard Button
             wizardButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
@@ -3594,10 +3551,10 @@ if (isBrowser) {
         showDefensePlacementIndicator(pointer, type) {
           try {
             // Get defense cost to check affordability
-            const cost = type === 'chog' ? 30 :
-                         type === 'molandak' ? 65 :
-                         type === 'moyaki' ? 75 :
-                         type === 'keon' ? 200 : 0;
+            const cost = type === 'scarecrow' ? 45 : 
+                         type === 'dog' ? 65 : 
+                         type === 'wizard' ? 125 : 
+                         type === 'cannon' ? 200 : 0;
             
             // Only allow placement on right side of map
             const canAfford = this.gameState.farmCoins >= cost;
@@ -3641,18 +3598,18 @@ if (isBrowser) {
               textColor = "#FFFF00";
             } else {
               // Set text based on defense type
-              if (type === 'chog') {
-                text = "CHOG Defender (30 coins)";
-                textColor = "#00AA00";
-              } else if (type === 'molandak') {
-                text = "MOLANDAK Guardian (65 coins)";
-                textColor = "#0088FF";
-              } else if (type === 'moyaki') {
-                text = "MOYAKI Warrior (75 coins)";
+              if (type === 'scarecrow') {
+                text = "ABS Ice Mage (45 coins)";
+                textColor = "#00AAFF";
+              } else if (type === 'dog') {
+                text = "MON Fire Mage (65 coins)";
                 textColor = "#FF4400";
-              } else if (type === 'keon') {
-                text = "KEON Champion (200 coins)";
-                textColor = "#FFD700";
+              } else if (type === 'wizard') {
+                text = "Wizard (125 coins)";
+                textColor = "#FF00FF";
+              } else if (type === 'cannon') {
+                text = "Cannon (200 coins)";
+                textColor = "#FF0000";
               }
             }
             
@@ -3772,22 +3729,22 @@ if (isBrowser) {
                 let spriteKey = null; // Key for preview sprite
                 
                 // Set range and color based on defense type
-                if (mode === 'chog') {
-                  range = 180;
-                  color = 0x00AA00; // Green for CHOG
-                  spriteKey = 'chog_idle';
-                } else if (mode === 'molandak') {
+                if (mode === 'scarecrow') {
+                  range = 250;
+                  color = 0x0088FF; // Blue for ABS
+                  spriteKey = 'ABS_idle';
+                } else if (mode === 'dog') {
                   range = 200;
-                  color = 0x0088FF; // Blue for MOLANDAK
-                  spriteKey = 'molandak_idle';
-                } else if (mode === 'moyaki') {
-                  range = 190;
-                  color = 0xFF4400; // Orange for MOYAKI
-                  spriteKey = 'moyaki_idle';
-                } else if (mode === 'keon') {
-                  range = 280;
-                  color = 0xFFD700; // Gold for KEON
-                  spriteKey = 'keon_idle';
+                  color = 0xFF4400; // Red for MON
+                  spriteKey = 'MON_idle';
+                } else if (mode === 'wizard') {
+                  range = 300;
+                  color = 0xFF00FF; // Purple for wizard
+                  spriteKey = 'wizard_idle'; // Use wizard sprite key
+                } else if (mode === 'cannon') {
+                  range = 350;
+                  color = 0xFF0000; // Red for cannon
+                  spriteKey = 'cannon_idle'; // Use cannon sprite key
                 }
                 
                 // Create circle if it doesn't exist
@@ -3844,21 +3801,21 @@ if (isBrowser) {
                 infoText = "PLANT MODE: Plant crops (5 coins)";
                 textColor = 0x00FF00;
                 break;
-              case 'chog':
-                infoText = "CHOG DEFENDER: Click to place (30 coins)";
-                textColor = 0x00AA00;
-                break;
-              case 'molandak':
-                infoText = "MOLANDAK GUARDIAN: Click to place (65 coins)";
+              case 'scarecrow':
+                infoText = "ABS ICE MAGE: Click to place (45 coins)";
                 textColor = 0x0088FF;
                 break;
-              case 'moyaki':
-                infoText = "MOYAKI WARRIOR: Click to place (75 coins)";
-                textColor = 0xFF4400;
+              case 'dog':
+                infoText = "MON FIRE MAGE: Click to place (65 coins)";
+                textColor = 0xFF8800;
                 break;
-              case 'keon':
-                infoText = "KEON CHAMPION: Click to place (200 coins)";
-                textColor = 0xFFD700;
+              case 'wizard':
+                infoText = "WIZARD: Click to place (125 coins)";
+                textColor = 0xFF00FF;
+                break;
+              case 'cannon':
+                infoText = "CANNON: Click to place (200 coins)";
+                textColor = 0xFF0000;
                 break;
             }
             
@@ -3873,7 +3830,7 @@ if (isBrowser) {
 
         // Helper method to check if a mode is a defense mode
         isDefenseMode(mode) {
-          return ['chog', 'molandak', 'moyaki', 'keon'].includes(mode);
+          return ['scarecrow', 'dog', 'wizard', 'cannon'].includes(mode);
         }
 
         // Get color for tool buttons
@@ -3881,20 +3838,20 @@ if (isBrowser) {
           const colors = {
             attack: 0x333333, // Darker base for inactive
             plant: 0x333333,
-            chog: 0x333333,
-            molandak: 0x333333,
-            moyaki: 0x333333,
-            keon: 0x333333,
+            scarecrow: 0x333333,
+            dog: 0x333333,
+            wizard: 0x333333, // Add wizard base color
+            cannon: 0x333333, // Add cannon base color
             upgrade: 0x555500 // Keep upgrade color distinct
           };
-
+          
           const activeColors = {
             attack: 0xFF4400, // Use defined active colors
             plant: 0x00AA00,
-            chog: 0x00AA00,
-            molandak: 0x0088FF,
-            moyaki: 0xFF4400,
-            keon: 0xFFD700,
+            scarecrow: 0x0088FF,
+            dog: 0xFF8800,
+            wizard: 0xFF00FF, // Active wizard color
+            cannon: 0xCC0000, // Active cannon color
             upgrade: 0xFFFF00 // Active upgrade color
           };
           
