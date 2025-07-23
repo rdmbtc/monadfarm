@@ -36,10 +36,14 @@ export default class SoundManager {
       this.scene.load.audio('bgm_gameplay', ['/assets/sounds/game/bgm_gameplay.mp3']);
       
       // UI sounds
-      this.scene.load.audio('click', ['/assets/sounds/game/ui_click.mp3']); 
-      this.scene.load.audio('coins', ['/assets/sounds/game/coins.mp3']); 
+      this.scene.load.audio('click', ['/assets/sounds/game/ui_click.mp3']);
+      this.scene.load.audio('ui_click', ['/assets/sounds/game/ui_click.mp3']); // Alias for click
+      this.scene.load.audio('ui_click_confirm', ['/assets/sounds/game/ui_click.mp3']); // Alias for click
+      this.scene.load.audio('coins', ['/assets/sounds/game/coins.mp3']);
+      this.scene.load.audio('coin_gain', ['/assets/sounds/game/coins.mp3']); // Alias for coins
+      this.scene.load.audio('coin_spend', ['/assets/sounds/game/coins.mp3']); // Alias for coins
       this.scene.load.audio('coin_collect_batch', ['/assets/sounds/game/coin_collect_batch.mp3']);
-      this.scene.load.audio('error', ['/assets/sounds/game/error.mp3']); 
+      this.scene.load.audio('error', ['/assets/sounds/game/error.mp3']);
       
       // Game sounds
       // Provide OGG as preferred format, MP3 as fallback for 'plant'
@@ -50,16 +54,17 @@ export default class SoundManager {
       this.scene.load.audio('harvest', ['/assets/sounds/game/harvest.mp3']); 
       this.scene.load.audio('enemy_hit', ['/assets/sounds/game/enemy_hit.mp3']); 
       this.scene.load.audio('enemy_defeat', ['/assets/sounds/game/enemy_defeat.mp3']); 
-      this.scene.load.audio('enemy_escaped', ['/assets/sounds/game/enemy_escaped.mp3']); 
+      this.scene.load.audio('enemy_escaped', ['/assets/sounds/game/enemy_escaped.mp3']);
+      this.scene.load.audio('enemy_escaped_alarm', ['/assets/sounds/game/enemy_escaped.mp3']); // Alias for enemy_escaped
       this.scene.load.audio('wave_start', ['/assets/sounds/game/wave_start.mp3']); 
       this.scene.load.audio('wave_complete', ['/assets/sounds/game/wave_complete.mp3']); 
       
       // Defense sounds
       this.scene.load.audio('defense_placed', ['/assets/sounds/game/defense_placed.mp3']); 
-      this.scene.load.audio('scarecrow_attack', ['/assets/sounds/game/ice_attack.mp3']); 
-      this.scene.load.audio('dog_attack', ['/assets/sounds/game/fire_attack.mp3']); 
-      this.scene.load.audio('wizard_attack', ['/assets/sounds/game/wizard_attack.mp3']); 
-      this.scene.load.audio('cannon_attack', ['/assets/sounds/game/cannon_attack.mp3']); 
+      this.scene.load.audio('chog_attack', ['/assets/sounds/game/ice_attack.mp3']); 
+      this.scene.load.audio('molandak_attack', ['/assets/sounds/game/fire_attack.mp3']); 
+      this.scene.load.audio('keon_attack', ['/assets/sounds/game/wizard_attack.mp3']); 
+      this.scene.load.audio('moyaki_attack', ['/assets/sounds/game/cannon_attack.mp3']); 
       
       // Special attack sounds
       this.scene.load.audio('ice_attack', ['/assets/sounds/game/ice_attack.mp3']); 
@@ -68,14 +73,18 @@ export default class SoundManager {
       this.scene.load.audio('freeze_sound', ['/assets/sounds/game/freeze.mp3']); 
       
       // Win/lose sounds
-      this.scene.load.audio('victory', ['/assets/sounds/game/you_win.mp3']); 
+      this.scene.load.audio('victory', ['/assets/sounds/game/you_win.mp3']);
       this.scene.load.audio('game_over', ['/assets/sounds/game/game_over.mp3']);
+      this.scene.load.audio('game_over_sting', ['/assets/sounds/game/game_over.mp3']); // Alias for game_over
       // --- End restoring all sounds ---
       
       // Add error handler for missing sounds
       this.scene.load.on('loaderror', (fileObj) => {
         if (fileObj.type === 'audio') {
-          console.warn(`Sound asset failed to load: ${fileObj.key}`);
+          console.warn(`Sound asset failed to load: ${fileObj.key} from ${fileObj.url}`);
+          // Mark this sound as failed so we can handle it gracefully
+          this.failedSounds = this.failedSounds || [];
+          this.failedSounds.push(fileObj.key);
         }
       });
       
@@ -92,6 +101,7 @@ export default class SoundManager {
         this.scene.time.delayedCall(100, () => {
           console.log('SoundManager: Delay complete, running setupSounds...');
           this.setupSounds();
+          this.debugSoundStatus();
         });
         // --- End delay ---
       });
@@ -110,15 +120,15 @@ export default class SoundManager {
     // Define categories and their associated sound keys
     const categories = {
       music: ['bgm_gameplay'],
-      ui: ['click', 'error'],
-      coin: ['coins', 'coin_collect_batch'],
+      ui: ['click', 'ui_click', 'ui_click_confirm', 'error'],
+      coin: ['coins', 'coin_gain', 'coin_spend', 'coin_collect_batch'],
       action: ['plant', 'harvest', 'defense_placed'],
-      enemy: ['enemy_hit', 'enemy_defeat', 'enemy_escaped'],
+      enemy: ['enemy_hit', 'enemy_defeat', 'enemy_escaped', 'enemy_escaped_alarm'],
       attack: [
-        'scarecrow_attack', 'dog_attack', 'wizard_attack', 'cannon_attack',
+        'chog_attack', 'molandak_attack', 'keon_attack', 'moyaki_attack',
         'ice_attack', 'fire_attack', 'explosion_sound', 'freeze_sound'
       ],
-      event: ['wave_start', 'wave_complete', 'victory', 'game_over']
+      event: ['wave_start', 'wave_complete', 'victory', 'game_over', 'game_over_sting']
     };
 
     // Create sound instances and categorize them
@@ -154,6 +164,29 @@ export default class SoundManager {
 
     console.log('SoundManager: Setup complete.');// Categories:', this.soundCategories);
   }
+
+  /**
+   * Debug method to check sound loading status
+   */
+  debugSoundStatus() {
+    console.log('SoundManager: Debug Status Report');
+    console.log('  Sounds loaded:', this.soundsLoaded);
+    console.log('  Total sounds created:', Object.keys(this.sounds).length);
+    console.log('  Failed sounds:', this.failedSounds || []);
+
+    // Check which sounds are missing
+    const expectedSounds = [
+      'click', 'ui_click', 'ui_click_confirm', 'coins', 'coin_gain', 'coin_spend',
+      'enemy_escaped', 'enemy_escaped_alarm', 'game_over', 'game_over_sting'
+    ];
+
+    const missingSounds = expectedSounds.filter(key => !this.sounds[key]);
+    if (missingSounds.length > 0) {
+      console.warn('SoundManager: Missing sounds:', missingSounds);
+    }
+
+    console.log('SoundManager: Available sounds:', Object.keys(this.sounds));
+  }
   
   /**
    * Play a sound effect
@@ -163,8 +196,8 @@ export default class SoundManager {
   play(key, options = {}) {
      if (this.isMuted) {
         // Allow essential UI feedback even when muted, but play quietly
-        if (key === 'click' || key === 'error') {
-             const sound = this.sounds[key];
+        if (key === 'click' || key === 'ui_click' || key === 'error') {
+             const sound = this.sounds[key] || this.sounds['click']; // Fallback to click
              if (sound) {
                  sound.play({...options, volume: 0.1 * (this.volumes.ui ?? 0.5) }); // Play at 10% of UI volume
              }
@@ -175,7 +208,29 @@ export default class SoundManager {
     }
 
     try {
-      const sound = this.sounds[key];
+      let sound = this.sounds[key];
+
+      // Fallback mechanism for missing sounds
+      if (!sound) {
+        // Try common fallbacks
+        const fallbacks = {
+          'ui_click': 'click',
+          'ui_click_confirm': 'click',
+          'coin_gain': 'coins',
+          'coin_spend': 'coins',
+          'enemy_escaped_alarm': 'enemy_escaped',
+          'game_over_sting': 'game_over'
+        };
+
+        const fallbackKey = fallbacks[key];
+        if (fallbackKey) {
+          sound = this.sounds[fallbackKey];
+          if (sound) {
+            console.log(`SoundManager: Using fallback '${fallbackKey}' for '${key}'`);
+          }
+        }
+      }
+
       if (sound) {
         sound.play(options); // Play normally if not muted
       } else {

@@ -450,7 +450,7 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
           <h2 className="text-xl font-bold mb-4">Farm Area</h2>
           <div className="bg-black/30 p-4 rounded-lg">
             <p className="mb-2">🌾 Plant crops here to earn coins</p>
-            <p className="mb-2">💰 Each crop costs 5 Farm Coins</p>
+            <p className="mb-2">💰 Each crop costs 3 Farm Coins</p>
             <p className="mb-2">⏱️ Crops grow over time</p>
             <p className="mb-2">🔄 Harvest crops for coins</p>
           </div>
@@ -459,8 +459,8 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
           <div className="bg-black/30 p-4 rounded-lg">
             <p className="mb-2">👆 Click enemies to attack</p>
             <p className="mb-2">P - Plant crops mode</p>
-            <p className="mb-2">1 - CHOG Defender (30 coins)</p>
-            <p className="mb-2">2 - MOLANDAK Guardian (65 coins)</p>
+            <p className="mb-2">1 - CHOG Defender (25 coins)</p>
+            <p className="mb-2">2 - MOLANDAK Guardian (50 coins)</p>
           </div>
           
           {isClient.current && (
@@ -510,10 +510,10 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
               <h3 className="text-xl mb-3 font-bold text-blue-100">Defense Area: <span className="text-yellow-300">Monad Defenders</span></h3>
               <p className="mb-2">Place Monad defenders on the right side to defend against waves of enemies:</p>
               <ul className="list-disc pl-5 mb-4">
-                <li className="mb-1"><span style={{color: '#00AA00'}}><strong>CHOG Defender</strong> (30 coins)</span>: Basic nature magic, good for starting defense</li>
-                <li className="mb-1"><span style={{color: '#0088FF'}}><strong>MOLANDAK Guardian</strong> (65 coins)</span>: Ice magic that freezes and slows enemies</li>
-                <li className="mb-1"><span style={{color: '#FF4400'}}><strong>MOYAKI Warrior</strong> (75 coins)</span>: Fire magic with fast attacks and burn effects</li>
-                <li className="mb-1"><span style={{color: '#FFD700'}}><strong>KEON Champion</strong> (200 coins)</span>: Premium divine magic with massive damage and range</li>
+                <li className="mb-1"><span style={{color: '#00AA00'}}><strong>CHOG Defender</strong> (25 coins)</span>: Basic nature magic, good for starting defense</li>
+                <li className="mb-1"><span style={{color: '#0088FF'}}><strong>MOLANDAK Guardian</strong> (50 coins)</span>: Ice magic that freezes and slows enemies</li>
+                <li className="mb-1"><span style={{color: '#FF4400'}}><strong>MOYAKI Warrior</strong> (80 coins)</span>: Fire magic with fast attacks and burn effects</li>
+                <li className="mb-1"><span style={{color: '#FFD700'}}><strong>KEON Champion</strong> (150 coins)</span>: Premium divine magic with massive damage and range</li>
               </ul>
               <p className="text-sm mt-2">Enemies come from the right side - protect your crops from being destroyed!</p>
             </div>

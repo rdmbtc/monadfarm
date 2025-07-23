@@ -33,7 +33,7 @@ export default class Enemy {
       // Base properties
       this.baseSpeed = 1.8;
       this.baseHealth = 7; // Increased from 5
-      this.baseValue = 6;
+      this.baseValue = 8; // Increased bird reward
       
       // Scale with wave
       this.speed = this.baseSpeed + (currentWave * 0.12); // Slightly faster scaling
@@ -48,7 +48,7 @@ export default class Enemy {
       // Deer: Tougher, slower, higher value, appears later
       this.baseSpeed = 1.0; 
       this.baseHealth = 18; // Increased from 15
-      this.baseValue = 12;
+      this.baseValue = 15; // Increased deer reward
       
       // Scale with wave
       this.speed = this.baseSpeed + (currentWave * 0.07); // Slightly faster scaling
@@ -67,7 +67,7 @@ export default class Enemy {
       // Base properties
       this.baseSpeed = 1.5;
       this.baseHealth = 8; // Increased from 6
-      this.baseValue = 5;
+      this.baseValue = 7; // Increased rabbit reward
       
       // Scale with wave
       this.speed = this.baseSpeed + (currentWave * 0.09); // Slightly faster scaling

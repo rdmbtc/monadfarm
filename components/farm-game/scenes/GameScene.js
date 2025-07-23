@@ -1075,7 +1075,7 @@ if (isBrowser) {
               wave: 1,
               score: 0,
               lives: 3,
-              farmCoins: 75, // Increased from 50
+              farmCoins: 120, // Increased for better early game balance
               clickDamage: 0.5, // Increased from 0.3
               canPlant: true,
               autoWave: true, // Default to auto wave
@@ -1218,14 +1218,14 @@ if (isBrowser) {
               // CROP PLANTING MODE with improved grid snapping
               else if (this.toolMode === 'plant') {
                 if (this.isPointInFarmArea(pointer.x, pointer.y)) {
-                  if (this.gameState.farmCoins >= 5) {
+                  if (this.gameState.farmCoins >= 3) {
                     // Better grid alignment for crops
                     const gridSize = this.gridCellSize || 32;
                     const snappedX = Math.floor(pointer.x / gridSize) * gridSize + (gridSize / 2);
                     const snappedY = Math.floor(pointer.y / gridSize) * gridSize + (gridSize / 2);
                     this.plantCrop(snappedX, snappedY);
                   } else {
-                    this.showFloatingText(pointer.x, pointer.y, "Need 5 coins!", 0xFF0000);
+                    this.showFloatingText(pointer.x, pointer.y, "Need 3 coins!", 0xFF0000);
                   }
                 } else {
                   this.showFloatingText(pointer.x, pointer.y, "Plant on LEFT side only!", 0xFF0000);
@@ -1517,14 +1517,14 @@ if (isBrowser) {
             }
             
             // Check if we have enough coins
-            if (this.gameState.farmCoins < 5) {
+            if (this.gameState.farmCoins < 3) {
               console.log("Not enough coins to plant crop");
-              this.showFloatingText(x, y, "Need 5 coins!", 0xFF0000);
+              this.showFloatingText(x, y, "Need 3 coins!", 0xFF0000);
               return;
             }
-            
+
             // Deduct coins
-            this.updateFarmCoins(-5);
+            this.updateFarmCoins(-3);
             
             // Get the Crop class from registry
             const CropClass = this.registry.get('CropClass');
@@ -1544,11 +1544,11 @@ if (isBrowser) {
                 this.showFloatingText(gridX, gridY, "+", 0x00FF00);
               } catch (cropError) {
                 console.error("Error creating crop instance:", cropError);
-                this.updateFarmCoins(5); // Refund coins if crop creation fails
+                this.updateFarmCoins(3); // Refund coins if crop creation fails
               }
             } else {
               console.error("CropClass not found in registry");
-              this.updateFarmCoins(5); // Refund coins if CropClass is missing
+              this.updateFarmCoins(3); // Refund coins if CropClass is missing
               
               // Try to load the Crop class directly as a fallback
               import('../entities/Crop').then(module => {
@@ -1574,7 +1574,7 @@ if (isBrowser) {
           } catch (error) {
             console.error("Error planting crop:", error);
             // Refund coins on error
-            this.updateFarmCoins(5);
+            this.updateFarmCoins(3);
           }
         }
         
@@ -1736,7 +1736,7 @@ if (isBrowser) {
               wave: 1,
               score: 0,
               lives: 3,
-              farmCoins: 75, // Increased from 50
+              farmCoins: 120, // Increased for better early game balance
               clickDamage: 0.5, // Increased from 0.3
               canPlant: true,
               autoWave: true, // Default to auto wave

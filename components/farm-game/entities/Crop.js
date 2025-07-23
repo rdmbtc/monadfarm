@@ -18,7 +18,7 @@ export default class Crop extends Phaser.GameObjects.Container {
     this.isActive = true;
     this.isGrowing = false;
     this.damageSound = null;
-    this.value = 2; // Coins per harvest
+    this.value = 4; // Coins per harvest - increased for better economy
     this.growthMultiplier = 1.0; // Multiplier from upgrades
     this.yieldMultiplier = 1.0;  // Multiplier from upgrades
     
@@ -222,12 +222,12 @@ export default class Crop extends Phaser.GameObjects.Container {
     }
 
     console.log(`🌾 HARVESTING ${this.cropType} crop at ${this.x}, ${this.y}, generating coins`);
-    
+
     // Play harvest sound
     if (this.scene.soundManager) {
       this.scene.soundManager.play('harvest');
     }
-    
+
     // Reset growth
     this.growthProgress = 0;
     this.isHarvestable = false;
@@ -235,18 +235,21 @@ export default class Crop extends Phaser.GameObjects.Container {
 
     // Restart growth cycle
     this.startGrowth();
-    
+
     // Calculate yield
     const yieldAmount = this.calculateYield();
-    
+
     // Generate coins
     if (typeof this.scene.updateFarmCoins === 'function') {
       console.log(`💰 Giving ${yieldAmount} coins to player!`);
       this.scene.updateFarmCoins(yieldAmount);
 
       // Show floating coins with animation
-      this.scene.showFloatingText(this.x, this.y, `+${yieldAmount}`, 0xFFFF00);
-      
+      this.scene.showFloatingText(this.x, this.y, `+${yieldAmount} coins`, 0xFFFF00);
+
+      // Show harvest notification message
+      this.showHarvestNotification(yieldAmount);
+
       // Add visual effect when harvesting
       this.scene.tweens.add({
         targets: this,
@@ -256,13 +259,75 @@ export default class Crop extends Phaser.GameObjects.Container {
         ease: 'Power1'
       });
     }
-    
+
     return yieldAmount;
+  }
+
+  showHarvestNotification(yieldAmount) {
+    // Create a prominent notification message
+    const notificationText = this.scene.add.text(400, 100, `🌾 Crop Harvested! +${yieldAmount} Coins 💰`, {
+      fontFamily: 'Arial Black',
+      fontSize: '24px',
+      color: '#FFFF00',
+      stroke: '#000000',
+      strokeThickness: 4,
+      shadow: {
+        offsetX: 2,
+        offsetY: 2,
+        color: '#000000',
+        blur: 5,
+        fill: true
+      }
+    }).setOrigin(0.5).setDepth(3000);
+
+    // Animate the notification
+    this.scene.tweens.add({
+      targets: notificationText,
+      scale: { from: 0.5, to: 1.2 },
+      alpha: { from: 1, to: 0 },
+      y: notificationText.y - 50,
+      duration: 2000,
+      ease: 'Power2',
+      onComplete: () => {
+        notificationText.destroy();
+      }
+    });
+
+    // Add a coin particle effect
+    this.createCoinParticles();
+  }
+
+  createCoinParticles() {
+    // Create multiple coin particles around the crop
+    for (let i = 0; i < 5; i++) {
+      const angle = (Math.PI * 2 * i) / 5;
+      const distance = 30;
+      const particleX = this.x + Math.cos(angle) * distance;
+      const particleY = this.y + Math.sin(angle) * distance;
+
+      const coinParticle = this.scene.add.text(particleX, particleY, '💰', {
+        fontSize: '20px'
+      }).setDepth(2500);
+
+      // Animate particles flying towards the coin counter
+      this.scene.tweens.add({
+        targets: coinParticle,
+        x: 100, // Approximate position of coin counter
+        y: 30,
+        scale: { from: 1, to: 0.3 },
+        alpha: { from: 1, to: 0 },
+        duration: 1000 + (i * 100), // Stagger the animations
+        ease: 'Power2',
+        onComplete: () => {
+          coinParticle.destroy();
+        }
+      });
+    }
   }
   
   calculateYield() {
     // Base yield with some randomness, modified by yield multiplier
-    const baseYield = this.value + Math.random() * 2;
+    const baseYield = this.value + Math.random() * 3; // Increased random bonus
     const finalYield = Math.floor(baseYield * this.yieldMultiplier);
     console.log(`Calculating yield: base=${this.value}, random bonus=${(baseYield - this.value).toFixed(2)}, multiplier=${this.yieldMultiplier}, final=${finalYield}`);
     return finalYield;

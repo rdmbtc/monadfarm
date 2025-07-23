@@ -36,7 +36,7 @@ export default class Defense {
     
     // Set properties based on defense type
     if (type === 'chog') {
-      this.cost = 30; // Basic/starter defense - cheapest
+      this.cost = 25; // Basic/starter defense - more affordable
       this.range = 180; // Basic range
       this.cooldown = 1600; // Fast cooldown for basic unit
       this.damage = 0.4; // Basic damage
@@ -49,7 +49,7 @@ export default class Defense {
       this.manaRegenRate = 4.0; // Good mana regen
       this.createChogMage();
     } else if (type === 'molandak') {
-      this.cost = 65; // Mid-tier defense
+      this.cost = 50; // Mid-tier defense - better progression
       this.range = 200; // Good range
       this.cooldown = 1800; // Moderate cooldown
       this.damage = 0.8; // Good damage
@@ -62,7 +62,7 @@ export default class Defense {
       this.manaRegenRate = 4.5; // Good mana regen
       this.createMolandakMage();
     } else if (type === 'moyaki') {
-      this.cost = 75; // Mid-tier defense (slightly more expensive than Molandak)
+      this.cost = 80; // Mid-tier defense - balanced progression
       this.range = 190; // Slightly shorter range but faster
       this.cooldown = 1500; // Faster cooldown
       this.damage = 0.9; // Higher damage
@@ -75,7 +75,7 @@ export default class Defense {
       this.manaRegenRate = 5.0; // Good mana regen
       this.createMoyakiMage();
     } else if (type === 'keon') {
-      this.cost = 200; // Premium/expensive defense - most costly
+      this.cost = 150; // Premium defense - more accessible
       this.range = 280; // Excellent range
       this.cooldown = 2000; // Balanced cooldown for power
       this.damage = 2.5; // High damage
@@ -1767,9 +1767,9 @@ export default class Defense {
     
     // Award coins based on Monad character type
     if (this.scene && this.scene.gameState) {
-      const coinReward = this.type === 'chog' ? 2 :
-                        this.type === 'molandak' ? 3 :
-                        this.type === 'moyaki' ? 4 : 6; // KEON gives most coins
+      const coinReward = this.type === 'chog' ? 3 :
+                        this.type === 'molandak' ? 4 :
+                        this.type === 'moyaki' ? 5 : 8; // KEON gives most coins
       if (typeof this.scene.updateFarmCoins === 'function') {
         this.scene.updateFarmCoins(coinReward);
       }
