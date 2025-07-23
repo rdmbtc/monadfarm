@@ -92,11 +92,10 @@ export default class SoundManager {
       this.scene.load.on('complete', () => {
         this.soundsLoaded = true;
         console.log('SoundManager: Load complete event fired.'); // Changed log message
-        // --- ADDED: Log cache contents immediately after load complete ---
-        // console.log('SoundManager: Cache state immediately after load complete:');
-        // console.log('  Audio Cache:', this.scene.cache.audio.entries.entries);
-        // console.log('  Sound Manager:', this.scene.sound.sounds);
-        // --- END ADDED ---
+
+        // Log what was actually loaded
+        console.log('SoundManager: Audio cache entries:', Object.keys(this.scene.cache.audio.entries.entries));
+
         // --- Add a small delay before setting up sounds ---
         this.scene.time.delayedCall(100, () => {
           console.log('SoundManager: Delay complete, running setupSounds...');
@@ -137,11 +136,17 @@ export default class SoundManager {
 
       keys.forEach(key => {
         try {
+          // Check if the sound was actually loaded
+          if (!this.scene.cache.audio.exists(key)) {
+            console.warn(`SoundManager: Sound '${key}' not found in cache, skipping...`);
+            return;
+          }
+
           const volume = this.volumes[category] ?? 0.5; // Use ?? for default
           const isMusic = category === 'music';
-          
-          const soundInstance = this.scene.sound.add(key, { 
-            volume: volume, 
+
+          const soundInstance = this.scene.sound.add(key, {
+            volume: volume,
             loop: isMusic // Only loop music
           });
 
@@ -152,12 +157,12 @@ export default class SoundManager {
             if (isMusic) {
               this.music = soundInstance; // Assign music instance
             }
-            // console.log(`SoundManager: Added '${key}' to category '${category}' with volume ${volume.toFixed(2)}`);
+            console.log(`SoundManager: ✅ Added '${key}' to category '${category}' with volume ${volume.toFixed(2)}`);
           } else {
-            console.warn(`SoundManager: scene.sound.add('${key}') failed.`);
+            console.warn(`SoundManager: ❌ scene.sound.add('${key}') failed.`);
           }
         } catch (error) {
-          console.warn(`SoundManager: Could not create sound instance for ${key}:`, error);
+          console.warn(`SoundManager: ❌ Could not create sound instance for ${key}:`, error);
         }
       });
     });

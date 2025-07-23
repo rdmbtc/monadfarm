@@ -419,20 +419,33 @@ if (isBrowser) {
         create() {
           try {
             // --- Force unlock Web Audio context ---
+            console.log("Audio context state:", this.sound?.context?.state);
             if (this.sound && this.sound.unlock) {
               this.sound.unlock();
               console.log("Attempted to unlock Web Audio context.");
             } else {
               console.warn("this.sound.unlock not available at start of create.");
             }
+
+            // Additional audio context debugging
+            if (this.sound && this.sound.context) {
+              console.log("Audio context after unlock:", this.sound.context.state);
+              console.log("Audio context sample rate:", this.sound.context.sampleRate);
+            }
             // --- End unlock attempt ---
             
             // Initialize SoundManager FIRST (Instance already created in preload, but confirm it exists)
-            if (!this.soundManager) { 
+            if (!this.soundManager) {
               console.warn("SoundManager not initialized in preload, creating now.");
-              this.soundManager = new SoundManager(this); 
+              this.soundManager = new SoundManager(this);
               // Note: Preload should have happened already, but can add safety preload call if needed
             }
+
+            // Set up audio context unlock on first user interaction
+            this.setupAudioUnlock();
+
+            // Add a test sound button for debugging
+            this.createSoundTestButton();
             
             // Initialize Volume Controls AFTER SoundManager
             this.volumeControls = new VolumeControls(this, this.soundManager);
@@ -1577,7 +1590,73 @@ if (isBrowser) {
             this.updateFarmCoins(3);
           }
         }
-        
+
+        // Set up audio context unlock on user interaction
+        setupAudioUnlock() {
+          if (this.audioUnlocked) return; // Already unlocked
+
+          console.log("Setting up audio unlock handler...");
+
+          const unlockAudio = () => {
+            if (this.sound && this.sound.context && this.sound.context.state === 'suspended') {
+              console.log("Attempting to resume audio context...");
+              this.sound.context.resume().then(() => {
+                console.log("Audio context resumed successfully!");
+                this.audioUnlocked = true;
+
+                // Test play a sound to verify it works
+                if (this.soundManager) {
+                  console.log("Testing sound playback...");
+                  this.soundManager.play('click', { volume: 0.1 });
+                }
+              }).catch(err => {
+                console.error("Failed to resume audio context:", err);
+              });
+            } else {
+              console.log("Audio context already active or not available");
+              this.audioUnlocked = true;
+            }
+
+            // Remove the event listener after first interaction
+            this.input.off('pointerdown', unlockAudio);
+          };
+
+          // Listen for any user interaction
+          this.input.on('pointerdown', unlockAudio);
+
+          // Also try to unlock when the game starts
+          this.events.once('wake', unlockAudio);
+        }
+
+        // Create a test sound button for debugging
+        createSoundTestButton() {
+          const testButton = this.add.rectangle(700, 50, 80, 30, 0x4444FF)
+            .setInteractive({ useHandCursor: true })
+            .setDepth(3000);
+
+          const testText = this.add.text(700, 50, 'Test Sound', {
+            fontSize: '12px',
+            color: '#FFFFFF'
+          }).setOrigin(0.5).setDepth(3001);
+
+          testButton.on('pointerdown', () => {
+            console.log("=== SOUND TEST ===");
+            console.log("Audio context state:", this.sound?.context?.state);
+            console.log("SoundManager exists:", !!this.soundManager);
+            console.log("Available sounds:", this.soundManager ? Object.keys(this.soundManager.sounds) : 'No SoundManager');
+
+            if (this.soundManager) {
+              console.log("Testing click sound...");
+              this.soundManager.play('click', { volume: 0.5 });
+
+              setTimeout(() => {
+                console.log("Testing coins sound...");
+                this.soundManager.play('coins', { volume: 0.5 });
+              }, 500);
+            }
+          });
+        }
+
         // Show floating text that fades up and out
         showFloatingText(x, y, message, color = 0xFFFFFF) {
           try {
