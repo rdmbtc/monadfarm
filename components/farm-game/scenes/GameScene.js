@@ -380,17 +380,6 @@ if (isBrowser) {
         
         create() {
           try {
-            // Verify Monad character textures are loaded
-            console.log("🎮 Verifying Monad character textures...");
-            const monadTextures = ['chog_idle', 'molandak_idle', 'moyaki_idle', 'keon_idle'];
-            monadTextures.forEach(textureKey => {
-              if (this.textures.exists(textureKey)) {
-                console.log(`✅ ${textureKey} texture loaded successfully`);
-              } else {
-                console.warn(`❌ ${textureKey} texture NOT found - will use fallback`);
-              }
-            });
-
             // --- Force unlock Web Audio context ---
             if (this.sound && this.sound.unlock) {
               this.sound.unlock();
@@ -2672,66 +2661,69 @@ if (isBrowser) {
             }
 
 
-            // Add MOYAKI button (fire warrior)
-            const moyakiButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
-            moyakiButton.setInteractive({ useHandCursor: true });
-            moyakiButton.input.hitArea.setTo(-40, -30, 80, 60);
-            moyakiButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'moyaki';
+            // --- Advanced defenses ---
+            let wizardButton, cannonButton;
+            let wizardImage, cannonImage;
+            let wizardCostText, cannonCostText;
+
+            // Wizard Button
+            wizardButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
+            wizardButton.setInteractive({ useHandCursor: true });
+            wizardButton.input.hitArea.setTo(-40, -30, 80, 60);
+            wizardButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'wizard';
               this.pendingDefensePlacement = true;
-              this.setToolMode('moyaki');
-              this.showFloatingText(400, 300, "MOYAKI Warrior selected - Click map to place", 0xFF4400);
+              this.setToolMode('wizard');
+              this.showFloatingText(400, 300, "Wizard selected - Click map to place", 0xFF00FF);
             });
-            addBounceEffect(moyakiButton); // Add bounce effect
-            this.toolbarButtons.moyaki = moyakiButton; // Store reference
+            addBounceEffect(wizardButton); // Add bounce effect
+            this.toolbarButtons.wizard = wizardButton; // Store reference
 
-            // Use MOYAKI image
-            const moyakiImageKey = 'moyaki_idle';
-            let moyakiImage;
-            if (this.textures.exists(moyakiImageKey)) {
-              moyakiImage = this.add.image(320, 550, moyakiImageKey).setDepth(2001);
-              moyakiImage.setDisplaySize(iconSize, iconSize);
-              moyakiImage.setInteractive({ useHandCursor: true });
-              moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
+            if (this.textures.exists('wizard_idle')) {
+              wizardImage = this.add.image(320, 550, 'wizard_idle').setDepth(2001);
+              wizardImage.setDisplaySize(iconSize, iconSize);
+              wizardImage.setInteractive({ useHandCursor: true });
+              wizardImage.on('pointerdown', () => { wizardButton.emit('pointerdown'); });
             } else {
-              moyakiImage = this.add.text(320, 550, '🔥', {
-                fontFamily: 'Arial', fontSize: '32px'
-              }).setOrigin(0.5).setDepth(2001);
-              moyakiImage.setInteractive({ useHandCursor: true });
-              moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
+              wizardImage = this.add.text(320, 550, '🧙', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
+              wizardImage.setInteractive({ useHandCursor: true });
+              wizardImage.on('pointerdown', () => { wizardButton.emit('pointerdown'); });
             }
+            wizardCostText = this.add.text(320, 570, '125', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            this.toolbarButtons.wizardImage = wizardImage; // Store reference
+            this.toolbarButtons.wizardCostText = wizardCostText; // Store reference
 
-            // Add KEON button (premium champion)
-            const keonButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x996600).setDepth(2000);
-            keonButton.setInteractive({ useHandCursor: true });
-            keonButton.input.hitArea.setTo(-40, -30, 80, 60);
-            keonButton.on('pointerdown', () => {
-              this.pendingDefenseType = 'keon';
+            // Cannon Button
+            cannonButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x990000).setDepth(2000);
+            cannonButton.setInteractive({ useHandCursor: true });
+            cannonButton.input.hitArea.setTo(-40, -30, 80, 60);
+            cannonButton.on('pointerdown', () => {
+              this.pendingDefenseType = 'cannon';
               this.pendingDefensePlacement = true;
-              this.setToolMode('keon');
-              this.showFloatingText(400, 300, "KEON Champion selected - Click map to place", 0xFFD700);
+              this.setToolMode('cannon');
+              this.showFloatingText(400, 300, "Cannon selected - Click map to place", 0xFF0000);
             });
-            addBounceEffect(keonButton); // Add bounce effect
-            this.toolbarButtons.keon = keonButton; // Store reference
+            addBounceEffect(cannonButton); // Add bounce effect
+            this.toolbarButtons.cannon = cannonButton; // Store reference
 
 
-            // Use KEON image
-            const keonImageKey = 'keon_idle';
-            let keonImage;
-            if (this.textures.exists(keonImageKey)) {
-              keonImage = this.add.image(390, 550, keonImageKey).setDepth(2001);
-              keonImage.setDisplaySize(iconSize + 4, iconSize + 4); // Slightly larger for premium
-              keonImage.setInteractive({ useHandCursor: true });
-              keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
+            if (this.textures.exists('cannon_idle')) {
+              cannonImage = this.add.image(390, 550, 'cannon_idle').setDepth(2001);
+              cannonImage.setDisplaySize(iconSize, iconSize);
+              cannonImage.setInteractive({ useHandCursor: true });
+               cannonImage.on('pointerdown', () => { cannonButton.emit('pointerdown'); });
             } else {
-              keonImage = this.add.text(390, 550, '👑', {
-                fontFamily: 'Arial', fontSize: '32px'
-              }).setOrigin(0.5).setDepth(2001);
-              keonImage.setInteractive({ useHandCursor: true });
-              keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
+              cannonImage = this.add.text(390, 550, '💣', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
+              cannonImage.setInteractive({ useHandCursor: true });
+               cannonImage.on('pointerdown', () => { cannonButton.emit('pointerdown'); });
             }
+            cannonCostText = this.add.text(390, 570, '200', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+             this.toolbarButtons.cannonImage = cannonImage; // Store reference
+             this.toolbarButtons.cannonCostText = cannonCostText; // Store reference
 
-            // All Monad defenses are visible by default (no unlock system for now)
+            // Hide advanced defenses by default
+            wizardButton.visible = false; wizardImage.visible = false; wizardCostText.visible = false;
+            cannonButton.visible = false; cannonImage.visible = false; cannonCostText.visible = false;
 
 
             // Add upgrade button
@@ -2752,10 +2744,8 @@ if (isBrowser) {
             // Add costs/labels underneath
             this.add.text(40, 570, 'Attack', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
             this.add.text(110, 570, '5', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-            this.add.text(180, 570, '30', { fontFamily: 'Arial', fontSize: costFontSize, color: '#00FF00' }).setOrigin(0.5).setDepth(2001); // CHOG
-            this.add.text(250, 570, '65', { fontFamily: 'Arial', fontSize: costFontSize, color: '#00AAFF' }).setOrigin(0.5).setDepth(2001); // MOLANDAK
-            this.add.text(320, 570, '75', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001); // MOYAKI
-            this.add.text(390, 570, '200', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFD700' }).setOrigin(0.5).setDepth(2001); // KEON
+            this.add.text(180, 570, '45', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            this.add.text(250, 570, '65', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
             this.add.text(460, 570, 'Upgrade', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
 
 
@@ -3985,79 +3975,145 @@ if (isBrowser) {
 
         verifyTextureLoading() {
           try {
+            // Verify Monad character textures are loaded
+            console.log("🎮 Verifying Monad character textures...");
+            const monadTextures = ['chog_idle', 'molandak_idle', 'moyaki_idle', 'keon_idle'];
+            let texturesFound = 0;
+            monadTextures.forEach(textureKey => {
+              if (this.textures.exists(textureKey)) {
+                console.log(`✅ ${textureKey} texture loaded successfully`);
+                texturesFound++;
+              } else {
+                console.warn(`❌ ${textureKey} texture NOT found - will use fallback`);
+              }
+            });
+
+            console.log(`📊 Texture Summary: ${texturesFound}/${monadTextures.length} Monad textures loaded from files`);
+            if (texturesFound === 0) {
+              console.log("🎨 All textures will use fallback graphics");
+            }
+
             // Log all available textures for debugging
             if (this.textures) {
               const textureKeys = Object.keys(this.textures.list);
-              console.log(`Available textures (${textureKeys.length}):`, textureKeys.join(', '));
+              console.log(`📋 Total available textures: ${textureKeys.length}`);
+              // Only log Monad-related textures to reduce noise
+              const monadRelated = textureKeys.filter(key =>
+                key.includes('chog') || key.includes('molandak') || key.includes('moyaki') || key.includes('keon')
+              );
+              if (monadRelated.length > 0) {
+                console.log(`🎯 Monad-related textures found:`, monadRelated.join(', '));
+              }
             }
           } catch (error) {
             console.error("Error verifying textures:", error);
           }
         }
         
-        // Create fallback textures for advanced defenses
+        // Create fallback textures for Monad defense characters
         createAdvancedDefenseTextures() {
           try {
-            console.log("Checking for advanced defense textures");
-            
-            // Only create fallback textures if the actual textures aren't loaded
-            // Wizard textures
-            if (!this.textures.exists('wizard_idle')) {
-              console.log("Creating fallback wizard_idle texture");
-              const wizardGraphics = this.make.graphics();
-              wizardGraphics.fillStyle(0xFF00FF, 1);
-              wizardGraphics.fillCircle(20, 20, 20);
-              wizardGraphics.fillStyle(0x9900CC, 1);
-              wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
-              wizardGraphics.generateTexture('wizard_idle', 40, 40);
+            console.log("🎨 Creating fallback textures for Monad characters...");
+
+            // Create CHOG textures (green basic defender)
+            if (!this.textures.exists('chog_idle')) {
+              console.log("Creating fallback chog_idle texture");
+              const chogGraphics = this.make.graphics();
+              chogGraphics.fillStyle(0x00AA00, 1);
+              chogGraphics.fillCircle(24, 24, 18);
+              chogGraphics.fillStyle(0x006600, 1);
+              chogGraphics.fillRect(19, 29, 10, 8); // Simple body
+              chogGraphics.generateTexture('chog_idle', 48, 48);
             }
-            
-            if (!this.textures.exists('wizard_attack')) {
-              console.log("Creating fallback wizard_attack texture");
-              if (this.textures.exists('wizard_idle')) {
-                // Replace addKey with the correct way to reuse a texture
-                const idleTexture = this.textures.get('wizard_idle');
-                this.textures.addImage('wizard_attack', idleTexture.getSourceImage());
-              } else {
-                const wizardGraphics = this.make.graphics();
-                wizardGraphics.fillStyle(0xFF00FF, 1);
-                wizardGraphics.fillCircle(20, 20, 18);
-                wizardGraphics.fillStyle(0x9900CC, 1);
-                wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
-                wizardGraphics.generateTexture('wizard_attack', 40, 40);
+
+            if (!this.textures.exists('chog_attack')) {
+              if (this.textures.exists('chog_idle')) {
+                const idleTexture = this.textures.get('chog_idle');
+                this.textures.addImage('chog_attack', idleTexture.getSourceImage());
               }
             }
-            
-            // Create cannon textures
-            if (!this.textures.exists('cannon_idle')) {
-              console.log("Creating fallback cannon_idle texture");
-              const cannonGraphics = this.make.graphics();
-              cannonGraphics.fillStyle(0x666666, 1);
-              cannonGraphics.fillRect(10, 20, 20, 15);
-              cannonGraphics.fillStyle(0xFF0000, 1);
-              cannonGraphics.fillRect(18, 10, 15, 10);
-              cannonGraphics.generateTexture('cannon_idle', 40, 40);
+
+            // Create MOLANDAK textures (blue ice guardian)
+            if (!this.textures.exists('molandak_idle')) {
+              console.log("Creating fallback molandak_idle texture");
+              const molandakGraphics = this.make.graphics();
+              molandakGraphics.fillStyle(0x0088FF, 1);
+              molandakGraphics.fillCircle(24, 24, 19);
+              molandakGraphics.fillStyle(0x004488, 1);
+              molandakGraphics.fillRect(18, 30, 12, 10); // Larger body
+              // Add ice crystals
+              molandakGraphics.fillStyle(0x88DDFF, 1);
+              molandakGraphics.fillTriangle(14, 19, 19, 14, 24, 19);
+              molandakGraphics.fillTriangle(29, 19, 34, 14, 39, 19);
+              molandakGraphics.generateTexture('molandak_idle', 48, 48);
             }
-            
-            if (!this.textures.exists('cannon_attack')) {
-              console.log("Creating fallback cannon_attack texture");
-              if (this.textures.exists('cannon_idle')) {
-                // Replace addKey with the correct way to reuse a texture
-                const idleTexture = this.textures.get('cannon_idle');
-                this.textures.addImage('cannon_attack', idleTexture.getSourceImage());
-              } else {
-                const cannonGraphics = this.make.graphics();
-                cannonGraphics.fillStyle(0x666666, 1);
-                cannonGraphics.fillRect(10, 20, 20, 15);
-                cannonGraphics.fillStyle(0xFF0000, 1);
-                cannonGraphics.fillRect(18, 10, 15, 10);
-                cannonGraphics.generateTexture('cannon_attack', 40, 40);
+
+            if (!this.textures.exists('molandak_attack')) {
+              if (this.textures.exists('molandak_idle')) {
+                const idleTexture = this.textures.get('molandak_idle');
+                this.textures.addImage('molandak_attack', idleTexture.getSourceImage());
               }
             }
-            
-            console.log("Defense textures verified successfully");
+
+            // Create MOYAKI textures (red fire warrior)
+            if (!this.textures.exists('moyaki_idle')) {
+              console.log("Creating fallback moyaki_idle texture");
+              const moyakiGraphics = this.make.graphics();
+              moyakiGraphics.fillStyle(0xFF4400, 1);
+              moyakiGraphics.fillCircle(24, 24, 19);
+              moyakiGraphics.fillStyle(0xCC2200, 1);
+              moyakiGraphics.fillRect(18, 30, 12, 10); // Larger body
+              // Add fire effects
+              moyakiGraphics.fillStyle(0xFF8800, 1);
+              moyakiGraphics.fillTriangle(16, 16, 20, 12, 24, 16);
+              moyakiGraphics.fillTriangle(28, 16, 32, 12, 36, 16);
+              moyakiGraphics.generateTexture('moyaki_idle', 48, 48);
+            }
+
+            if (!this.textures.exists('moyaki_attack')) {
+              if (this.textures.exists('moyaki_idle')) {
+                const idleTexture = this.textures.get('moyaki_idle');
+                this.textures.addImage('moyaki_attack', idleTexture.getSourceImage());
+              }
+            }
+
+            // Create KEON textures (golden premium champion)
+            if (!this.textures.exists('keon_idle')) {
+              console.log("Creating fallback keon_idle texture");
+              const keonGraphics = this.make.graphics();
+              keonGraphics.fillStyle(0xFFD700, 1);
+              keonGraphics.fillCircle(26, 26, 20); // Larger for premium
+              keonGraphics.fillStyle(0xCC9900, 1);
+              keonGraphics.fillRect(19, 31, 14, 12); // Larger body
+              // Add crown/premium effects
+              keonGraphics.fillStyle(0xFFFF88, 1);
+              keonGraphics.fillTriangle(21, 12, 26, 7, 31, 12); // Crown
+              keonGraphics.fillCircle(18, 22, 3); // Left gem
+              keonGraphics.fillCircle(34, 22, 3); // Right gem
+              keonGraphics.generateTexture('keon_idle', 52, 52); // Slightly larger
+            }
+
+            if (!this.textures.exists('keon_attack')) {
+              if (this.textures.exists('keon_idle')) {
+                const idleTexture = this.textures.get('keon_idle');
+                this.textures.addImage('keon_attack', idleTexture.getSourceImage());
+              }
+            }
+
+            console.log("✅ Monad character fallback textures created successfully");
+
+            // Verify all Monad textures are now available (either loaded or fallback)
+            const monadTextures = ['chog_idle', 'molandak_idle', 'moyaki_idle', 'keon_idle'];
+            let availableTextures = 0;
+            monadTextures.forEach(textureKey => {
+              if (this.textures.exists(textureKey)) {
+                availableTextures++;
+              }
+            });
+            console.log(`🎯 Final verification: ${availableTextures}/${monadTextures.length} Monad textures available for use`);
+
           } catch (error) {
-            console.error("Error creating fallback textures:", error);
+            console.error("❌ Error creating fallback Monad textures:", error);
           }
         }
 

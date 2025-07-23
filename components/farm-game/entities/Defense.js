@@ -1649,7 +1649,9 @@ export default class Defense {
       });
       
       // Create a color flash effect based on defense type
-      const tint = this.type === 'scarecrow' ? 0x00FFFF : 0xFF4400;
+      const tint = this.type === 'chog' ? 0x00AA00 :
+                   this.type === 'molandak' ? 0x0088FF :
+                   this.type === 'moyaki' ? 0xFF4400 : 0xFFD700;
       this.scene.tweens.add({
         targets: this.sprite,
         tint: tint,
@@ -1671,8 +1673,11 @@ export default class Defense {
     
     // Create line if it doesn't exist
     if (!this.targetLine) {
-      this.targetLine = this.scene.add.line(0, 0, this.x, this.y, 
-        enemy.x, enemy.y, this.type === 'scarecrow' ? 0x00FFFF : 0xFF4400, 0.3);
+      const lineColor = this.type === 'chog' ? 0x00AA00 :
+                       this.type === 'molandak' ? 0x0088FF :
+                       this.type === 'moyaki' ? 0xFF4400 : 0xFFD700;
+      this.targetLine = this.scene.add.line(0, 0, this.x, this.y,
+        enemy.x, enemy.y, lineColor, 0.3);
       this.targetLine.setLineWidth(1);
     } else {
       // Update existing line
@@ -1717,9 +1722,11 @@ export default class Defense {
       this.showSpecialAttackReady();
     }
     
-    // Award coins based on mage type
+    // Award coins based on Monad character type
     if (this.scene && this.scene.gameState) {
-      const coinReward = this.type === 'scarecrow' ? 3 : 5;
+      const coinReward = this.type === 'chog' ? 2 :
+                        this.type === 'molandak' ? 3 :
+                        this.type === 'moyaki' ? 4 : 6; // KEON gives most coins
       if (typeof this.scene.updateFarmCoins === 'function') {
         this.scene.updateFarmCoins(coinReward);
       }
@@ -1751,7 +1758,9 @@ export default class Defense {
   showSpecialAttackReady() {
     // Create or update the special attack ready indicator
     if (!this.specialAttackReadyIndicator && this.scene) {
-      const color = this.type === 'scarecrow' ? 0x00FFFF : 0xFF6600;
+      const color = this.type === 'chog' ? 0x00AA00 :
+                   this.type === 'molandak' ? 0x0088FF :
+                   this.type === 'moyaki' ? 0xFF4400 : 0xFFD700;
       this.specialAttackReadyIndicator = this.scene.add.circle(this.x, this.y - 40, 10, color, 0.7);
       this.specialAttackReadyIndicator.setStrokeStyle(2, 0xFFFFFF);
       this.specialAttackReadyIndicator.setDepth(300);
@@ -1771,7 +1780,9 @@ export default class Defense {
         this.specialAttackText = this.scene.add.text(this.x, this.y - 60, "SPECIAL", {
           fontFamily: 'Arial',
           fontSize: '12px',
-          color: this.type === 'scarecrow' ? '#00FFFF' : '#FF6600',
+          color: this.type === 'chog' ? '#00AA00' :
+                 this.type === 'molandak' ? '#0088FF' :
+                 this.type === 'moyaki' ? '#FF4400' : '#FFD700',
           stroke: '#000000',
           strokeThickness: 2
         }).setOrigin(0.5);
@@ -1790,7 +1801,9 @@ export default class Defense {
     
     if (this.specialAttackIndicator) {
       this.specialAttackIndicator.clear();
-      const color = this.type === 'scarecrow' ? 0x00FFFF : 0xFF6600;
+      const color = this.type === 'chog' ? 0x00AA00 :
+                   this.type === 'molandak' ? 0x0088FF :
+                   this.type === 'moyaki' ? 0xFF4400 : 0xFFD700;
       this.specialAttackIndicator.fillStyle(color, 0.5);
       
       // Draw an arc around the mage showing cooldown
@@ -1842,7 +1855,9 @@ export default class Defense {
       });
       
       // Add a glow effect
-      const glowColor = this.type === 'scarecrow' ? 0x00FFFF : 0xFF6600;
+      const glowColor = this.type === 'chog' ? 0x00AA00 :
+                       this.type === 'molandak' ? 0x0088FF :
+                       this.type === 'moyaki' ? 0xFF4400 : 0xFFD700;
       const glow = this.scene.add.circle(this.x, this.y, 40, glowColor, 0.4);
       glow.setDepth(99);
       
