@@ -35,56 +35,58 @@ export default class Defense {
     const currentWave = this.scene.gameState?.wave || 1;
     
     // Set properties based on defense type
-    if (type === 'scarecrow') {
-      this.cost = 35;
-      this.range = 200; // Reduced range
-      this.cooldown = 1800; // Increased cooldown
-      this.damage = 0.45; // Reduced damage
+    if (type === 'chog') {
+      this.cost = 30; // Basic/starter defense - cheapest
+      this.range = 180; // Basic range
+      this.cooldown = 1600; // Fast cooldown for basic unit
+      this.damage = 0.4; // Basic damage
       this.targetTypes = ['bird'];
-      this.aoeRadius = 70; // Reduced AOE radius
-      this.aoeDamageMultiplier = 0.4; // Reduced AOE damage
-      this.maxMana = 50;
+      this.aoeRadius = 60; // Small AOE radius
+      this.aoeDamageMultiplier = 0.3; // Basic AOE damage
+      this.maxMana = 40;
       this.currentMana = this.maxMana;
-      this.manaCostPerShot = 10; // Increased mana cost
-      this.manaRegenRate = 3.5; // Reduced mana regen
-      this.createABSMage();
-    } else if (type === 'dog') {
-      this.cost = 50;
-      this.range = 170; // Reduced range
-      this.cooldown = 1700; // Increased cooldown
-      this.damage = 0.75; // Reduced damage
-      this.targetTypes = ['rabbit'];
-      this.aoeRadius = 55; // Reduced AOE radius
-      this.aoeDamageMultiplier = 0.5; // Reduced AOE damage
+      this.manaCostPerShot = 8; // Low mana cost
+      this.manaRegenRate = 4.0; // Good mana regen
+      this.createChogMage();
+    } else if (type === 'molandak') {
+      this.cost = 65; // Mid-tier defense
+      this.range = 200; // Good range
+      this.cooldown = 1800; // Moderate cooldown
+      this.damage = 0.8; // Good damage
+      this.targetTypes = ['rabbit', 'bird'];
+      this.aoeRadius = 70; // Moderate AOE radius
+      this.aoeDamageMultiplier = 0.5; // Good AOE damage
       this.maxMana = 60;
       this.currentMana = this.maxMana;
-      this.manaCostPerShot = 12; // Increased mana cost
-      this.manaRegenRate = 4.5; // Reduced mana regen
-      this.createNOOTMage();
-    } else if (type === 'wizard') {
-      this.cost = 110;
-      this.range = 245; // Reduced range
-      this.cooldown = 2300; // Increased cooldown
-      this.damage = 1.2; // Reduced damage
+      this.manaCostPerShot = 12; // Moderate mana cost
+      this.manaRegenRate = 4.5; // Good mana regen
+      this.createMolandakMage();
+    } else if (type === 'moyaki') {
+      this.cost = 75; // Mid-tier defense (slightly more expensive than Molandak)
+      this.range = 190; // Slightly shorter range but faster
+      this.cooldown = 1500; // Faster cooldown
+      this.damage = 0.9; // Higher damage
+      this.targetTypes = ['rabbit', 'fox', 'bird'];
+      this.aoeRadius = 65; // Moderate AOE radius
+      this.aoeDamageMultiplier = 0.6; // Good AOE damage
+      this.maxMana = 65;
+      this.currentMana = this.maxMana;
+      this.manaCostPerShot = 14; // Moderate mana cost
+      this.manaRegenRate = 5.0; // Good mana regen
+      this.createMoyakiMage();
+    } else if (type === 'keon') {
+      this.cost = 200; // Premium/expensive defense - most costly
+      this.range = 280; // Excellent range
+      this.cooldown = 2000; // Balanced cooldown for power
+      this.damage = 2.5; // High damage
       this.targetTypes = ['bird', 'rabbit', 'fox', 'slime', 'ghost', 'skeleton', 'bat', 'spider', 'wolf', 'snake', 'goblin'];
-      this.maxMana = 80;
+      this.aoeRadius = 100; // Large AOE radius
+      this.aoeDamageMultiplier = 0.8; // High AOE damage
+      this.maxMana = 120;
       this.currentMana = this.maxMana;
-      this.manaCostPerShot = 20; // Increased mana cost
-      this.manaRegenRate = 5.5; // Reduced mana regen
-      this.createWizard();
-    } else if (type === 'cannon') {
-      this.cost = 165;
-      this.range = 290; // Reduced range
-      this.cooldown = 4000; // Increased cooldown
-      this.damage = 2.1; // Reduced damage
-      this.targetTypes = ['rabbit', 'fox', 'slime', 'skeleton', 'spider', 'wolf', 'snake', 'goblin'];
-      this.aoeRadius = 90; // Reduced AOE radius
-      this.aoeDamageMultiplier = 0.35; // Reduced AOE damage
-      this.maxMana = 100;
-      this.currentMana = this.maxMana;
-      this.manaCostPerShot = 35; // Increased mana cost
-      this.manaRegenRate = 7.0; // Reduced mana regen
-      this.createCannon();
+      this.manaCostPerShot = 25; // High mana cost for power
+      this.manaRegenRate = 8.0; // Fast mana regen to compensate
+      this.createKeonMage();
     }
     
     // Store the last time this defense attacked
@@ -100,77 +102,184 @@ export default class Defense {
     // Create "No mana" text indicator
     this.createNoManaText();
     
-    const defenseName = type === 'scarecrow' ? 'ABS ice mage' : type === 'dog' ? 'NOOT fire mage' : type === 'wizard' ? 'Wizard' : type === 'cannon' ? 'Cannon' : type.charAt(0).toUpperCase() + type.slice(1);
+    const defenseName = type === 'chog' ? 'CHOG Defender' : type === 'molandak' ? 'MOLANDAK Guardian' : type === 'moyaki' ? 'MOYAKI Warrior' : type === 'keon' ? 'KEON Champion' : type.charAt(0).toUpperCase() + type.slice(1);
     console.log(`Created ${defenseName} at ${x}, ${y} with range ${this.range}`);
     
     // Apply any existing upgrades
     this.applyUpgrades();
   }
   
-  createABSMage() {
-    // Create visual representation of ABS penguin
-    this.sprite = this.scene.add.image(this.x, this.y, 'ABS_idle');
-    this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
-    
-    // Add a range indicator (usually invisible, shown on hover)
-    this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
-    this.rangeIndicator.setStrokeStyle(2, 0x0088FF); // Blue outline for range
-    
-    // Make it interactive
-    this.sprite.setInteractive();
-    this.sprite.on('pointerover', () => this.showRange());
-    this.sprite.on('pointerout', () => this.hideRange());
-  }
-  
-  createNOOTMage() {
-    // Create visual representation of NOOT penguin
-    this.sprite = this.scene.add.image(this.x, this.y, 'NOOT_idle');
-    this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
-    
-    // Add a range indicator (usually invisible, shown on hover)
-    this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
-    this.rangeIndicator.setStrokeStyle(2, 0xFF0000); // Red outline for range
-    
-    // Make it interactive
-    this.sprite.setInteractive();
-    this.sprite.on('pointerover', () => this.showRange());
-    this.sprite.on('pointerout', () => this.hideRange());
-  }
-  
-  createWizard() {
-    // Create visual representation of Wizard
-    this.sprite = this.scene.add.image(this.x, this.y, 'wizard_idle');
+  createChogMage() {
+    // Create visual representation of CHOG character
+    this.sprite = this.scene.add.image(this.x, this.y, 'chog_idle');
     this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
     this.sprite.setDepth(101); // Ensure visible above ground tiles
-    
+
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
-    this.rangeIndicator.setStrokeStyle(2, 0xFF00FF); // Purple outline for range
+    this.rangeIndicator.setStrokeStyle(2, 0x00AA00); // Green outline for basic unit
     this.rangeIndicator.visible = false;
     this.rangeIndicator.setDepth(100);
-    
+
     // Make it interactive
     this.sprite.setInteractive();
     this.sprite.on('pointerover', () => this.showRange());
     this.sprite.on('pointerout', () => this.hideRange());
+
+    // Add basic idle animation effect
+    this.createBasicIdleEffect();
   }
-  
-  createCannon() {
-    // Create visual representation of Cannon
-    this.sprite = this.scene.add.image(this.x, this.y, 'cannon_idle');
+
+  createMolandakMage() {
+    // Create visual representation of MOLANDAK character
+    this.sprite = this.scene.add.image(this.x, this.y, 'molandak_idle');
     this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
     this.sprite.setDepth(101); // Ensure visible above ground tiles
-    
+
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
-    this.rangeIndicator.setStrokeStyle(2, 0xCC0000); // Dark red outline for range
+    this.rangeIndicator.setStrokeStyle(2, 0x0088FF); // Blue outline for mid-tier
     this.rangeIndicator.visible = false;
     this.rangeIndicator.setDepth(100);
-    
+
     // Make it interactive
     this.sprite.setInteractive();
     this.sprite.on('pointerover', () => this.showRange());
     this.sprite.on('pointerout', () => this.hideRange());
+
+    // Add mid-tier idle animation effect
+    this.createMidTierIdleEffect();
+  }
+
+  createMoyakiMage() {
+    // Create visual representation of MOYAKI character
+    this.sprite = this.scene.add.image(this.x, this.y, 'moyaki_idle');
+    this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+    this.sprite.setDepth(101); // Ensure visible above ground tiles
+
+    // Add a range indicator (usually invisible, shown on hover)
+    this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
+    this.rangeIndicator.setStrokeStyle(2, 0xFF4400); // Orange outline for mid-tier
+    this.rangeIndicator.visible = false;
+    this.rangeIndicator.setDepth(100);
+
+    // Make it interactive
+    this.sprite.setInteractive();
+    this.sprite.on('pointerover', () => this.showRange());
+    this.sprite.on('pointerout', () => this.hideRange());
+
+    // Add mid-tier idle animation effect
+    this.createMidTierIdleEffect();
+  }
+
+  createKeonMage() {
+    // Create visual representation of KEON character (premium)
+    this.sprite = this.scene.add.image(this.x, this.y, 'keon_idle');
+    this.sprite.setDisplaySize(52, 52); // Slightly larger for premium unit
+    this.sprite.setDepth(101); // Ensure visible above ground tiles
+
+    // Add a range indicator (usually invisible, shown on hover)
+    this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
+    this.rangeIndicator.setStrokeStyle(3, 0xFFD700); // Gold outline for premium unit
+    this.rangeIndicator.visible = false;
+    this.rangeIndicator.setDepth(100);
+
+    // Make it interactive
+    this.sprite.setInteractive();
+    this.sprite.on('pointerover', () => this.showRange());
+    this.sprite.on('pointerout', () => this.hideRange());
+
+    // Add premium idle animation effect
+    this.createPremiumIdleEffect();
+  }
+  
+  // Visual effect methods for different tiers
+  createBasicIdleEffect() {
+    // Simple pulsing effect for basic CHOG unit
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  createMidTierIdleEffect() {
+    // Gentle floating effect for mid-tier units
+    this.scene.tweens.add({
+      targets: this.sprite,
+      y: this.y - 3,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Add subtle rotation
+    this.scene.tweens.add({
+      targets: this.sprite,
+      rotation: 0.1,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  createPremiumIdleEffect() {
+    // Premium KEON gets multiple effects
+
+    // Floating effect
+    this.scene.tweens.add({
+      targets: this.sprite,
+      y: this.y - 5,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Glowing effect
+    this.scene.tweens.add({
+      targets: this.sprite,
+      alpha: 0.8,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Create golden aura particles around KEON
+    this.createKeonAura();
+  }
+
+  createKeonAura() {
+    // Create golden particle effect around KEON
+    const particles = this.scene.add.particles(this.x, this.y, 'pixel', {
+      scale: { start: 0.3, end: 0 },
+      speed: { min: 10, max: 30 },
+      lifespan: 1000,
+      quantity: 2,
+      tint: 0xFFD700, // Gold color
+      blendMode: 'ADD'
+    });
+
+    // Store reference for cleanup
+    this.auraParticles = particles;
+
+    // Make particles follow the sprite
+    this.scene.time.addEvent({
+      delay: 100,
+      callback: () => {
+        if (this.auraParticles && this.sprite) {
+          this.auraParticles.setPosition(this.sprite.x, this.sprite.y);
+        }
+      },
+      loop: true
+    });
   }
   
   showRange() {
@@ -569,46 +678,28 @@ export default class Defense {
     this.applyDamageToEnemy(enemy, damageAmount);
     
     // Apply area of effect damage to nearby enemies
-    if (this.type === 'scarecrow') {
-      // Ice mage AOE attack
+    if (this.type === 'chog') {
+      // Basic nature magic AOE attack
+      this.performAreaAttack(enemyX, enemyY, this.aoeRadius, this.damage * this.aoeDamageMultiplier, 'nature');
+    } else if (this.type === 'molandak') {
+      // Ice magic AOE attack
       this.performAreaAttack(enemyX, enemyY, this.aoeRadius, this.damage * this.aoeDamageMultiplier, 'ice');
-    } else if (this.type === 'dog') {
-      // Fire mage AOE attack
+    } else if (this.type === 'moyaki') {
+      // Fire magic AOE attack
       this.performAreaAttack(enemyX, enemyY, this.aoeRadius, this.damage * this.aoeDamageMultiplier, 'fire');
-    } else if (this.type === 'wizard') {
+    } else if (this.type === 'keon') {
       if (this.sprite) {
-        this.sprite.setTexture('wizard_attack');
+        this.sprite.setTexture('keon_attack');
         this.scene.tweens.add({
           targets: this.sprite,
-          scaleX: 1.1, scaleY: 1.1, duration: 150, yoyo: true,
-          onComplete: () => { if (this.sprite && this.sprite.active) this.sprite.setTexture('wizard_idle'); }
+          scaleX: 1.2, scaleY: 1.2, duration: 150, yoyo: true,
+          onComplete: () => { if (this.sprite && this.sprite.active) this.sprite.setTexture('keon_idle'); }
         });
       }
-      // Launch a projectile (e.g., magic bolt)
-      this.launchProjectile(enemy, 'magic'); 
-      this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFF00FF);
-    } else if (this.type === 'cannon') {
-      if (this.sprite) {
-        this.sprite.setTexture('cannon_attack');
-        // Add recoil animation
-        const originalX = this.x;
-        this.scene.tweens.add({
-          targets: this.sprite,
-          x: this.x - 5, // Move back slightly
-          duration: 100,
-          yoyo: true,
-          onComplete: () => { 
-            if (this.sprite && this.sprite.active) {
-               this.sprite.setTexture('cannon_idle');
-               this.sprite.x = originalX; // Ensure it returns to original position
-            } 
-          }
-        });
-      }
-      // Launch a projectile (e.g., cannonball)
-      this.launchProjectile(enemy, 'cannonball');
-      this.performAreaAttack(enemyX, enemyY, this.aoeRadius, damageAmount * this.aoeDamageMultiplier, 'explosion');
-      this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xCC0000);
+      // Launch multiple projectiles for premium unit
+      this.launchProjectile(enemy, 'divine');
+      this.performAreaAttack(enemyX, enemyY, this.aoeRadius, damageAmount * this.aoeDamageMultiplier, 'divine');
+      this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFFD700);
     }
     
     // Reset and display cooldown
@@ -618,62 +709,118 @@ export default class Defense {
     this.lastAttackTime = this.scene ? this.scene.time.now : 0;
     
     // Show attack animation
-    if (this.type === 'scarecrow') {
-      // ABS penguin mage attack animation
+    if (this.type === 'chog') {
+      // CHOG basic attack animation
       if (this.sprite) {
-        this.sprite.setTexture('ABS_attack');
-        
+        this.sprite.setTexture('chog_attack');
+
         // Cast animation effect
         if (this.scene && this.scene.tweens) {
           this.scene.tweens.add({
             targets: this.sprite,
-            scaleX: 1.2,
-            scaleY: 1.2,
-            duration: 200,
+            scaleX: 1.05,
+            scaleY: 1.05,
+            duration: 150,
             yoyo: true,
             onComplete: () => {
               // Switch back to idle sprite
               if (this.sprite && this.sprite.active) {
-                this.sprite.setTexture('ABS_idle');
+                this.sprite.setTexture('chog_idle');
               }
             }
           });
         }
       }
-      
-      // Launch fireball
+
+      // Launch nature projectile
+      this.launchFireball(enemy, 'green');
+
+      // Show spell effect
+      this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0x00AA00);
+    } else if (this.type === 'molandak') {
+      // MOLANDAK ice attack animation
+      if (this.sprite) {
+        this.sprite.setTexture('molandak_attack');
+
+        // Cast animation effect
+        if (this.scene && this.scene.tweens) {
+          this.scene.tweens.add({
+            targets: this.sprite,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 200,
+            yoyo: true,
+            onComplete: () => {
+              // Switch back to idle sprite
+              if (this.sprite && this.sprite.active) {
+                this.sprite.setTexture('molandak_idle');
+              }
+            }
+          });
+        }
+      }
+
+      // Launch ice projectile
       this.launchFireball(enemy, 'blue');
-      
+
       // Show spell effect
       this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0x0088FF);
-    } else if (this.type === 'dog') {
-      // NOOT penguin mage attack animation
+    } else if (this.type === 'moyaki') {
+      // MOYAKI fire attack animation
       if (this.sprite) {
-        this.sprite.setTexture('NOOT_attack');
-        
+        this.sprite.setTexture('moyaki_attack');
+
         // Cast animation effect
         if (this.scene && this.scene.tweens) {
           this.scene.tweens.add({
             targets: this.sprite,
-            scaleX: 1.2,
-            scaleY: 1.2,
-            duration: 200,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 180,
             yoyo: true,
             onComplete: () => {
               // Switch back to idle sprite
               if (this.sprite && this.sprite.active) {
-                this.sprite.setTexture('NOOT_idle');
+                this.sprite.setTexture('moyaki_idle');
               }
             }
           });
         }
       }
-      
-      // Launch fireball
+
+      // Launch fire projectile
       this.launchFireball(enemy, 'red');
-      
+
       // Show spell effect
       this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFF4400);
+    } else if (this.type === 'keon') {
+      // KEON premium attack animation
+      if (this.sprite) {
+        this.sprite.setTexture('keon_attack');
+
+        // Enhanced cast animation effect for premium unit
+        if (this.scene && this.scene.tweens) {
+          this.scene.tweens.add({
+            targets: this.sprite,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 250,
+            yoyo: true,
+            onComplete: () => {
+              // Switch back to idle sprite
+              if (this.sprite && this.sprite.active) {
+                this.sprite.setTexture('keon_idle');
+              }
+            }
+          });
+        }
+      }
+
+      // Launch divine projectile
+      this.launchFireball(enemy, 'gold');
+
+      // Show spell effect
+      this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFFD700);
     }
     
     // Add simple attack effect
@@ -1205,7 +1352,9 @@ export default class Defense {
     }
     // --- END FIX ---
 
-    const effectColor = this.type === 'scarecrow' ? 0x00AAFF : 0xFF4400;
+    const effectColor = this.type === 'chog' ? 0x00AA00 :
+                       this.type === 'molandak' ? 0x0088FF :
+                       this.type === 'moyaki' ? 0xFF4400 : 0xFFD700;
     const enemyX = enemy.x || 0;
     const enemyY = enemy.y || 0;
 
@@ -1377,43 +1526,44 @@ export default class Defense {
   
   // Helper method to get the display name for this defense
   getDisplayName() {
-    if (this.type === 'scarecrow') {
-      return 'ABS Ice Mage';
-    } else if (this.type === 'dog') {
-      return 'NOOT Fire Mage';
-    } else if (this.type === 'wizard') {
-      return 'Wizard';
-    } else if (this.type === 'cannon') {
-      return 'Cannon';
+    if (this.type === 'chog') {
+      return 'CHOG Defender';
+    } else if (this.type === 'molandak') {
+      return 'MOLANDAK Guardian';
+    } else if (this.type === 'moyaki') {
+      return 'MOYAKI Warrior';
+    } else if (this.type === 'keon') {
+      return 'KEON Champion';
     } else {
       return this.type.charAt(0).toUpperCase() + this.type.slice(1);
     }
   }
-  
+
   // Helper method to get the color for this defense
   getColor() {
-    if (this.type === 'scarecrow') {
-      return '#0088FF'; // Blue for ABS
-    } else if (this.type === 'dog') {
-      return '#FF4400'; // Red for NOOT
-    } else if (this.type === 'wizard') {
-      return '#FF00FF'; // Purple for Wizard
-    } else if (this.type === 'cannon') {
-      return '#CC0000'; // Dark Red for Cannon
+    if (this.type === 'chog') {
+      return '#00AA00'; // Green for CHOG
+    } else if (this.type === 'molandak') {
+      return '#0088FF'; // Blue for MOLANDAK
+    } else if (this.type === 'moyaki') {
+      return '#FF4400'; // Red for MOYAKI
+    } else if (this.type === 'keon') {
+      return '#FFD700'; // Gold for KEON
     } else {
       return '#FFFFFF'; // Default white
     }
   }
-  
+
   // Helper method to get the element type
   getElement() {
-    if (this.type === 'scarecrow') {
+    if (this.type === 'chog') {
+      return 'nature';
+    } else if (this.type === 'molandak') {
       return 'ice';
-    } else if (this.type === 'dog') {
+    } else if (this.type === 'moyaki') {
       return 'fire';
-    } else if (this.type === 'wizard') {
-      return 'magic';
-    } else if (this.type === 'cannon') {
+    } else if (this.type === 'keon') {
+      return 'divine';
     } else {
       return 'normal';
     }
@@ -1425,11 +1575,17 @@ export default class Defense {
     
     try {
       // Apply type-specific power upgrades
-      if (this.type === 'scarecrow') {
-        const powerMultiplier = this.scene.upgradeSystem.getUpgradeValue('scarecrowPower');
+      if (this.type === 'chog') {
+        const powerMultiplier = this.scene.upgradeSystem.getUpgradeValue('chogPower');
         this.updatePower(powerMultiplier);
-      } else if (this.type === 'dog') {
-        const powerMultiplier = this.scene.upgradeSystem.getUpgradeValue('dogPower');
+      } else if (this.type === 'molandak') {
+        const powerMultiplier = this.scene.upgradeSystem.getUpgradeValue('molandakPower');
+        this.updatePower(powerMultiplier);
+      } else if (this.type === 'moyaki') {
+        const powerMultiplier = this.scene.upgradeSystem.getUpgradeValue('moyakiPower');
+        this.updatePower(powerMultiplier);
+      } else if (this.type === 'keon') {
+        const powerMultiplier = this.scene.upgradeSystem.getUpgradeValue('keonPower');
         this.updatePower(powerMultiplier);
       }
     } catch (err) {
@@ -1444,14 +1600,14 @@ export default class Defense {
     // Store original damage for reference - UPDATED to reflect new base damage
     // Determine original damage based on type AFTER the nerfs applied above
     let originalDamage;
-    if (this.type === 'scarecrow') {
-      originalDamage = 0.45; // Updated base damage
-    } else if (this.type === 'dog') {
-      originalDamage = 0.75; // Updated base damage
-    } else if (this.type === 'wizard') {
-      originalDamage = 1.2; // Updated base damage
-    } else if (this.type === 'cannon') {
-      originalDamage = 2.1; // Updated base damage
+    if (this.type === 'chog') {
+      originalDamage = 0.4; // Basic damage
+    } else if (this.type === 'molandak') {
+      originalDamage = 0.8; // Mid-tier damage
+    } else if (this.type === 'moyaki') {
+      originalDamage = 0.9; // Mid-tier damage (higher)
+    } else if (this.type === 'keon') {
+      originalDamage = 2.5; // Premium damage
     } else {
       // Default or fallback damage if type is unknown
       originalDamage = 1.0;
@@ -1686,47 +1842,72 @@ export default class Defense {
       });
     }
     
-    // For ice mage - freeze all enemies in range
-    if (this.type === 'scarecrow') {
-      // Launch multiple ice projectiles
+    // Special attacks for each Monad character
+    if (this.type === 'chog') {
+      // Nature burst - basic AOE
       enemiesInRange.forEach(enemy => {
-        this.launchProjectile(enemy, 'blue', true);
-        
-        // Apply enhanced damage and slow effect
+        this.launchProjectile(enemy, 'green', true);
+
         const damageAmount = this.damage * this.specialAttackDamageMultiplier;
         this.applyDamageToEnemy(enemy, damageAmount);
-        
-        // Apply slow effect if possible
+
+        this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0x00AA00);
+      });
+
+      this.performAreaAttack(this.x, this.y, specialRange, this.damage * this.specialAttackDamageMultiplier * 0.4, 'nature');
+    }
+    else if (this.type === 'molandak') {
+      // Ice storm - freeze enemies
+      enemiesInRange.forEach(enemy => {
+        this.launchProjectile(enemy, 'blue', true);
+
+        const damageAmount = this.damage * this.specialAttackDamageMultiplier;
+        this.applyDamageToEnemy(enemy, damageAmount);
+
         if (typeof enemy.applyStatusEffect === 'function') {
           enemy.applyStatusEffect('freeze', 5); // Freeze for 5 seconds
         }
-        
-        this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0x00FFFF);
+
+        this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0x0088FF);
       });
-      
-      // Create ice explosion in the center
+
       this.performAreaAttack(this.x, this.y, specialRange, this.damage * this.specialAttackDamageMultiplier * 0.5, 'ice');
-    } 
-    // For fire mage - massive fire explosion
-    else if (this.type === 'dog') {
-      // Launch multiple fire projectiles
+    }
+    else if (this.type === 'moyaki') {
+      // Fire blast - burn enemies
       enemiesInRange.forEach(enemy => {
         this.launchProjectile(enemy, 'red', true);
-        
-        // Apply enhanced damage and burn effect
+
         const damageAmount = this.damage * this.specialAttackDamageMultiplier;
         this.applyDamageToEnemy(enemy, damageAmount);
-        
-        // Apply burn effect if possible
+
         if (typeof enemy.applyStatusEffect === 'function') {
           enemy.applyStatusEffect('burn', 5); // Burn for 5 seconds
         }
-        
-        this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFF6600);
+
+        this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFF4400);
       });
-      
-      // Create fire explosion in the center
-      this.performAreaAttack(this.x, this.y, specialRange, this.damage * this.specialAttackDamageMultiplier * 0.7, 'fire');
+
+      this.performAreaAttack(this.x, this.y, specialRange, this.damage * this.specialAttackDamageMultiplier * 0.6, 'fire');
+    }
+    else if (this.type === 'keon') {
+      // Divine judgment - massive damage and multiple effects
+      enemiesInRange.forEach(enemy => {
+        this.launchProjectile(enemy, 'gold', true);
+
+        const damageAmount = this.damage * this.specialAttackDamageMultiplier * 1.5; // Extra damage for premium
+        this.applyDamageToEnemy(enemy, damageAmount);
+
+        // Apply multiple effects for premium unit
+        if (typeof enemy.applyStatusEffect === 'function') {
+          enemy.applyStatusEffect('freeze', 3);
+          enemy.applyStatusEffect('burn', 3);
+        }
+
+        this.showDamageText(enemy, `${damageAmount.toFixed(1)}`, 0xFFD700);
+      });
+
+      this.performAreaAttack(this.x, this.y, specialRange * 1.2, this.damage * this.specialAttackDamageMultiplier * 0.8, 'divine');
     }
     
     // Remove the special attack indicator
