@@ -112,10 +112,21 @@ export default class Defense {
   createChogMage() {
     // Create visual representation of CHOG character
     console.log(`🛡️ Creating CHOG sprite at (${this.x}, ${this.y}) using texture 'chog_idle'`);
-    this.sprite = this.scene.add.image(this.x, this.y, 'chog_idle');
-    this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
-    this.sprite.setDepth(101); // Ensure visible above ground tiles
-    console.log(`✅ CHOG sprite created successfully, visible: ${this.sprite.visible}`);
+
+    // Verify texture exists before creating sprite
+    if (this.scene.textures.exists('chog_idle')) {
+      console.log(`✅ chog_idle texture confirmed to exist in scene`);
+      this.sprite = this.scene.add.image(this.x, this.y, 'chog_idle');
+      this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+      this.sprite.setDepth(101); // Ensure visible above ground tiles
+      console.log(`✅ CHOG sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
+    } else {
+      console.error(`❌ chog_idle texture NOT found in scene! Available textures:`, Object.keys(this.scene.textures.list));
+      // Create fallback sprite
+      this.sprite = this.scene.add.circle(this.x, this.y, 24, 0x00AA00);
+      this.sprite.setDepth(101);
+      console.log(`🎨 Created fallback CHOG sprite (green circle)`);
+    }
 
     // Verify sprite was created properly
     if (!this.sprite) {
@@ -140,10 +151,21 @@ export default class Defense {
   createMolandakMage() {
     // Create visual representation of MOLANDAK character
     console.log(`❄️ Creating MOLANDAK sprite at (${this.x}, ${this.y}) using texture 'molandak_idle'`);
-    this.sprite = this.scene.add.image(this.x, this.y, 'molandak_idle');
-    this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
-    this.sprite.setDepth(101); // Ensure visible above ground tiles
-    console.log(`✅ MOLANDAK sprite created successfully, visible: ${this.sprite.visible}`);
+
+    // Verify texture exists before creating sprite
+    if (this.scene.textures.exists('molandak_idle')) {
+      console.log(`✅ molandak_idle texture confirmed to exist in scene`);
+      this.sprite = this.scene.add.image(this.x, this.y, 'molandak_idle');
+      this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+      this.sprite.setDepth(101); // Ensure visible above ground tiles
+      console.log(`✅ MOLANDAK sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
+    } else {
+      console.error(`❌ molandak_idle texture NOT found in scene! Available textures:`, Object.keys(this.scene.textures.list));
+      // Create fallback sprite
+      this.sprite = this.scene.add.circle(this.x, this.y, 24, 0x0088FF);
+      this.sprite.setDepth(101);
+      console.log(`🎨 Created fallback MOLANDAK sprite (blue circle)`);
+    }
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
@@ -163,10 +185,21 @@ export default class Defense {
   createMoyakiMage() {
     // Create visual representation of MOYAKI character
     console.log(`🔥 Creating MOYAKI sprite at (${this.x}, ${this.y}) using texture 'moyaki_idle'`);
-    this.sprite = this.scene.add.image(this.x, this.y, 'moyaki_idle');
-    this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
-    this.sprite.setDepth(101); // Ensure visible above ground tiles
-    console.log(`✅ MOYAKI sprite created successfully, visible: ${this.sprite.visible}`);
+
+    // Verify texture exists before creating sprite
+    if (this.scene.textures.exists('moyaki_idle')) {
+      console.log(`✅ moyaki_idle texture confirmed to exist in scene`);
+      this.sprite = this.scene.add.image(this.x, this.y, 'moyaki_idle');
+      this.sprite.setDisplaySize(48, 48); // Scale to appropriate size
+      this.sprite.setDepth(101); // Ensure visible above ground tiles
+      console.log(`✅ MOYAKI sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
+    } else {
+      console.error(`❌ moyaki_idle texture NOT found in scene! Available textures:`, Object.keys(this.scene.textures.list));
+      // Create fallback sprite
+      this.sprite = this.scene.add.circle(this.x, this.y, 24, 0xFF4400);
+      this.sprite.setDepth(101);
+      console.log(`🎨 Created fallback MOYAKI sprite (orange circle)`);
+    }
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
@@ -186,10 +219,21 @@ export default class Defense {
   createKeonMage() {
     // Create visual representation of KEON character (premium)
     console.log(`👑 Creating KEON sprite at (${this.x}, ${this.y}) using texture 'keon_idle'`);
-    this.sprite = this.scene.add.image(this.x, this.y, 'keon_idle');
-    this.sprite.setDisplaySize(52, 52); // Slightly larger for premium unit
-    this.sprite.setDepth(101); // Ensure visible above ground tiles
-    console.log(`✅ KEON sprite created successfully, visible: ${this.sprite.visible}`);
+
+    // Verify texture exists before creating sprite
+    if (this.scene.textures.exists('keon_idle')) {
+      console.log(`✅ keon_idle texture confirmed to exist in scene`);
+      this.sprite = this.scene.add.image(this.x, this.y, 'keon_idle');
+      this.sprite.setDisplaySize(52, 52); // Slightly larger for premium unit
+      this.sprite.setDepth(101); // Ensure visible above ground tiles
+      console.log(`✅ KEON sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
+    } else {
+      console.error(`❌ keon_idle texture NOT found in scene! Available textures:`, Object.keys(this.scene.textures.list));
+      // Create fallback sprite
+      this.sprite = this.scene.add.circle(this.x, this.y, 26, 0xFFD700);
+      this.sprite.setDepth(101);
+      console.log(`🎨 Created fallback KEON sprite (gold circle)`);
+    }
 
     // Add a range indicator (usually invisible, shown on hover)
     this.rangeIndicator = this.scene.add.circle(this.x, this.y, this.range, 0xFFFFFF, 0.1);
