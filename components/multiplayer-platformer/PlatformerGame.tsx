@@ -164,9 +164,9 @@ export default function PlatformerGame({
           <div className="flex items-center justify-center gap-6 flex-wrap">
             <span>🎮 WASD/Arrow Keys: Move</span>
             <span>⏰ Space: Jump</span>
-            <span>⭐ Collect stars for points</span>
+            <span>⭐ Collect ALL stars to advance</span>
             <span>👹 Stomp enemies for combos</span>
-            <span>🏁 Reach the end to advance</span>
+            <span>🏆 Complete levels by collecting every star</span>
           </div>
         </div>
       </div>
