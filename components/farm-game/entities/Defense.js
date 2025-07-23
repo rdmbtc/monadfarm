@@ -117,7 +117,7 @@ export default class Defense {
     if (this.scene.textures.exists('chog_idle')) {
       console.log(`✅ chog_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'chog_idle');
-      this.sprite.setDisplaySize(20, 20); // Much smaller size for better gameplay
+      this.sprite.setDisplaySize(38, 38); // Standard size
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ CHOG sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -156,7 +156,7 @@ export default class Defense {
     if (this.scene.textures.exists('molandak_idle')) {
       console.log(`✅ molandak_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'molandak_idle');
-      this.sprite.setDisplaySize(20, 20); // Much smaller size for better gameplay
+      this.sprite.setDisplaySize(38, 38); // Standard size
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ MOLANDAK sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -190,7 +190,7 @@ export default class Defense {
     if (this.scene.textures.exists('moyaki_idle')) {
       console.log(`✅ moyaki_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'moyaki_idle');
-      this.sprite.setDisplaySize(20, 20); // Much smaller size for better gameplay
+      this.sprite.setDisplaySize(38, 38); // Standard size
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ MOYAKI sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
@@ -224,13 +224,13 @@ export default class Defense {
     if (this.scene.textures.exists('keon_idle')) {
       console.log(`✅ keon_idle texture confirmed to exist in scene`);
       this.sprite = this.scene.add.image(this.x, this.y, 'keon_idle');
-      this.sprite.setDisplaySize(22, 22); // Much smaller size for better gameplay
+      this.sprite.setDisplaySize(38, 38); // Standard size
       this.sprite.setDepth(101); // Ensure visible above ground tiles
       console.log(`✅ KEON sprite created successfully with actual texture, visible: ${this.sprite.visible}`);
     } else {
       console.error(`❌ keon_idle texture NOT found in scene! Available textures:`, Object.keys(this.scene.textures.list));
       // Create fallback sprite
-      this.sprite = this.scene.add.circle(this.x, this.y, 11, 0xFFD700);
+      this.sprite = this.scene.add.circle(this.x, this.y, 19, 0xFFD700);
       this.sprite.setDepth(101);
       console.log(`🎨 Created fallback KEON sprite (gold circle)`);
     }
