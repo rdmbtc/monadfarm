@@ -507,11 +507,13 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
         <div className="text-white p-4 w-1/5">
           <div className="Right Side Text">
             <div className="mt-5 pt-2">
-              <h3 className="text-xl mb-3 font-bold text-blue-100">Defense Area: <span className="text-yellow-300">Penguin Mages</span></h3>
-              <p className="mb-2">Place penguin mages on the right side to defend against waves of enemies:</p>
+              <h3 className="text-xl mb-3 font-bold text-blue-100">Defense Area: <span className="text-yellow-300">Monad Defenders</span></h3>
+              <p className="mb-2">Place Monad defenders on the right side to defend against waves of enemies:</p>
               <ul className="list-disc pl-5 mb-4">
-                <li className="mb-1"><span style={{color: '#0088FF'}}><strong>ABS Ice Mage</strong> (35 coins)</span>: Freezes flying enemies, slowing them down</li>
-                <li className="mb-1"><span style={{color: '#FF4400'}}><strong>NOOT Fire Mage</strong> (50 coins)</span>: Burns ground enemies, dealing heavy damage</li>
+                <li className="mb-1"><span style={{color: '#00AA00'}}><strong>CHOG Defender</strong> (30 coins)</span>: Basic nature magic, good for starting defense</li>
+                <li className="mb-1"><span style={{color: '#0088FF'}}><strong>MOLANDAK Guardian</strong> (65 coins)</span>: Ice magic that freezes and slows enemies</li>
+                <li className="mb-1"><span style={{color: '#FF4400'}}><strong>MOYAKI Warrior</strong> (75 coins)</span>: Fire magic with fast attacks and burn effects</li>
+                <li className="mb-1"><span style={{color: '#FFD700'}}><strong>KEON Champion</strong> (200 coins)</span>: Premium divine magic with massive damage and range</li>
               </ul>
               <p className="text-sm mt-2">Enemies come from the right side - protect your crops from being destroyed!</p>
             </div>
