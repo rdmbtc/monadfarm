@@ -197,16 +197,13 @@ if (isBrowser) {
             this.load.image('decor7', '/characters/2 Objects/3 Decor/7.png');
             this.load.image('decor8', '/characters/2 Objects/3 Decor/8.png');
             
-            // Load penguin mage assets
-            this.load.image('ABS_idle', '/defense/abster idle.png');
-            this.load.image('ABS_attack', '/defense/abster attacks.png');
-            this.load.image('MON_idle', '/defense/noot idle.png');
-            this.load.image('MON_attack', '/defense/noot attack.png');
+            // Old penguin mage assets removed - now using Monad characters
             
             // Load enemy images with proper path and error handling
             this.load.image('enemy_bird', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon1.png');
             this.load.image('enemy_rabbit', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon2.png');
             this.load.image('enemy_boss', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon3.png');
+            this.load.image('enemy_deer', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon13.png'); // Added missing deer
             this.load.image('enemy_fox', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon9.png');
             
             // Load additional enemy skins
@@ -221,11 +218,23 @@ if (isBrowser) {
             this.load.image('enemy_dragon', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon14.png');
             this.load.image('enemy_demon', 'characters/craftpix-net-459799-free-low-level-monsters-pixel-icons-32x32/PNG/Transperent/Icon15.png');
             
-            // Load advanced defense textures
-            this.load.image('wizard_idle', '/defense/wizard idle.png');
-            this.load.image('wizard_attack', '/defense/wizard attack.png');
-            this.load.image('cannon_idle', '/defense/cannon idle.png');
-            this.load.image('cannon_attack', '/defense/cannon attack.png');
+            // Load Monad character defense textures with error handling
+            console.log("🎮 Loading Monad character textures...");
+
+            // Add error handlers for each texture
+            this.load.on('filecomplete-image-chog_idle', () => console.log("✅ chog_idle loaded successfully"));
+            this.load.on('filecomplete-image-molandak_idle', () => console.log("✅ molandak_idle loaded successfully"));
+            this.load.on('filecomplete-image-moyaki_idle', () => console.log("✅ moyaki_idle loaded successfully"));
+            this.load.on('filecomplete-image-keon_idle', () => console.log("✅ keon_idle loaded successfully"));
+
+            this.load.image('chog_idle', '/characters/monad/chog-removebg-preview.png');
+            this.load.image('chog_attack', '/characters/monad/chog-removebg-preview.png');
+            this.load.image('molandak_idle', '/characters/monad/molandak-removebg-preview.png');
+            this.load.image('molandak_attack', '/characters/monad/molandak-removebg-preview.png');
+            this.load.image('moyaki_idle', '/characters/monad/moyaki-removebg-preview.png');
+            this.load.image('moyaki_attack', '/characters/monad/moyaki-removebg-preview.png');
+            this.load.image('keon_idle', '/characters/monad/keon-removebg-preview.png');
+            this.load.image('keon_attack', '/characters/monad/keon-removebg-preview.png');
             
             // Load shadows
             this.load.image('shadow1', '/characters/2 Objects/1 Shadow/1.png');
@@ -270,12 +279,13 @@ if (isBrowser) {
                   console.log(`Created fallback texture for ${fileObj.key}`);
                 }
                 
-                // Create placeholders for missing wizard/cannon assets
-                if (fileObj.key === 'wizard_idle' || fileObj.key === 'wizard_attack' || 
-                    fileObj.key === 'cannon_idle' || fileObj.key === 'cannon_attack') {
-                  console.log(`Creating placeholder for missing asset: ${fileObj.key}`);
-                  
-                  // We'll create the fallbacks in the complete handler
+                // Create placeholders for missing Monad character assets
+                if (fileObj.key === 'chog_idle' || fileObj.key === 'chog_attack' ||
+                    fileObj.key === 'molandak_idle' || fileObj.key === 'molandak_attack' ||
+                    fileObj.key === 'moyaki_idle' || fileObj.key === 'moyaki_attack' ||
+                    fileObj.key === 'keon_idle' || fileObj.key === 'keon_attack') {
+                  console.log(`❌ Failed to load Monad character asset: ${fileObj.key}`);
+                  console.log(`🎨 Will create fallback texture in complete handler`);
                 }
               } else if (fileObj.type === 'audio') {
                 // Log audio load errors separately
@@ -3975,145 +3985,79 @@ if (isBrowser) {
 
         verifyTextureLoading() {
           try {
-            // Verify Monad character textures are loaded
-            console.log("🎮 Verifying Monad character textures...");
-            const monadTextures = ['chog_idle', 'molandak_idle', 'moyaki_idle', 'keon_idle'];
-            let texturesFound = 0;
-            monadTextures.forEach(textureKey => {
-              if (this.textures.exists(textureKey)) {
-                console.log(`✅ ${textureKey} texture loaded successfully`);
-                texturesFound++;
-              } else {
-                console.warn(`❌ ${textureKey} texture NOT found - will use fallback`);
-              }
-            });
-
-            console.log(`📊 Texture Summary: ${texturesFound}/${monadTextures.length} Monad textures loaded from files`);
-            if (texturesFound === 0) {
-              console.log("🎨 All textures will use fallback graphics");
-            }
-
             // Log all available textures for debugging
             if (this.textures) {
               const textureKeys = Object.keys(this.textures.list);
-              console.log(`📋 Total available textures: ${textureKeys.length}`);
-              // Only log Monad-related textures to reduce noise
-              const monadRelated = textureKeys.filter(key =>
-                key.includes('chog') || key.includes('molandak') || key.includes('moyaki') || key.includes('keon')
-              );
-              if (monadRelated.length > 0) {
-                console.log(`🎯 Monad-related textures found:`, monadRelated.join(', '));
-              }
+              console.log(`Available textures (${textureKeys.length}):`, textureKeys.join(', '));
             }
           } catch (error) {
             console.error("Error verifying textures:", error);
           }
         }
         
-        // Create fallback textures for Monad defense characters
+        // Create fallback textures for advanced defenses
         createAdvancedDefenseTextures() {
           try {
-            console.log("🎨 Creating fallback textures for Monad characters...");
-
-            // Create CHOG textures (green basic defender)
-            if (!this.textures.exists('chog_idle')) {
-              console.log("Creating fallback chog_idle texture");
-              const chogGraphics = this.make.graphics();
-              chogGraphics.fillStyle(0x00AA00, 1);
-              chogGraphics.fillCircle(24, 24, 18);
-              chogGraphics.fillStyle(0x006600, 1);
-              chogGraphics.fillRect(19, 29, 10, 8); // Simple body
-              chogGraphics.generateTexture('chog_idle', 48, 48);
+            console.log("Checking for advanced defense textures");
+            
+            // Only create fallback textures if the actual textures aren't loaded
+            // Wizard textures
+            if (!this.textures.exists('wizard_idle')) {
+              console.log("Creating fallback wizard_idle texture");
+              const wizardGraphics = this.make.graphics();
+              wizardGraphics.fillStyle(0xFF00FF, 1);
+              wizardGraphics.fillCircle(20, 20, 20);
+              wizardGraphics.fillStyle(0x9900CC, 1);
+              wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
+              wizardGraphics.generateTexture('wizard_idle', 40, 40);
             }
-
-            if (!this.textures.exists('chog_attack')) {
-              if (this.textures.exists('chog_idle')) {
-                const idleTexture = this.textures.get('chog_idle');
-                this.textures.addImage('chog_attack', idleTexture.getSourceImage());
+            
+            if (!this.textures.exists('wizard_attack')) {
+              console.log("Creating fallback wizard_attack texture");
+              if (this.textures.exists('wizard_idle')) {
+                // Replace addKey with the correct way to reuse a texture
+                const idleTexture = this.textures.get('wizard_idle');
+                this.textures.addImage('wizard_attack', idleTexture.getSourceImage());
+              } else {
+                const wizardGraphics = this.make.graphics();
+                wizardGraphics.fillStyle(0xFF00FF, 1);
+                wizardGraphics.fillCircle(20, 20, 18);
+                wizardGraphics.fillStyle(0x9900CC, 1);
+                wizardGraphics.fillTriangle(10, 20, 30, 20, 20, 0);
+                wizardGraphics.generateTexture('wizard_attack', 40, 40);
               }
             }
-
-            // Create MOLANDAK textures (blue ice guardian)
-            if (!this.textures.exists('molandak_idle')) {
-              console.log("Creating fallback molandak_idle texture");
-              const molandakGraphics = this.make.graphics();
-              molandakGraphics.fillStyle(0x0088FF, 1);
-              molandakGraphics.fillCircle(24, 24, 19);
-              molandakGraphics.fillStyle(0x004488, 1);
-              molandakGraphics.fillRect(18, 30, 12, 10); // Larger body
-              // Add ice crystals
-              molandakGraphics.fillStyle(0x88DDFF, 1);
-              molandakGraphics.fillTriangle(14, 19, 19, 14, 24, 19);
-              molandakGraphics.fillTriangle(29, 19, 34, 14, 39, 19);
-              molandakGraphics.generateTexture('molandak_idle', 48, 48);
+            
+            // Create cannon textures
+            if (!this.textures.exists('cannon_idle')) {
+              console.log("Creating fallback cannon_idle texture");
+              const cannonGraphics = this.make.graphics();
+              cannonGraphics.fillStyle(0x666666, 1);
+              cannonGraphics.fillRect(10, 20, 20, 15);
+              cannonGraphics.fillStyle(0xFF0000, 1);
+              cannonGraphics.fillRect(18, 10, 15, 10);
+              cannonGraphics.generateTexture('cannon_idle', 40, 40);
             }
-
-            if (!this.textures.exists('molandak_attack')) {
-              if (this.textures.exists('molandak_idle')) {
-                const idleTexture = this.textures.get('molandak_idle');
-                this.textures.addImage('molandak_attack', idleTexture.getSourceImage());
+            
+            if (!this.textures.exists('cannon_attack')) {
+              console.log("Creating fallback cannon_attack texture");
+              if (this.textures.exists('cannon_idle')) {
+                // Replace addKey with the correct way to reuse a texture
+                const idleTexture = this.textures.get('cannon_idle');
+                this.textures.addImage('cannon_attack', idleTexture.getSourceImage());
+              } else {
+                const cannonGraphics = this.make.graphics();
+                cannonGraphics.fillStyle(0x666666, 1);
+                cannonGraphics.fillRect(10, 20, 20, 15);
+                cannonGraphics.fillStyle(0xFF0000, 1);
+                cannonGraphics.fillRect(18, 10, 15, 10);
+                cannonGraphics.generateTexture('cannon_attack', 40, 40);
               }
             }
-
-            // Create MOYAKI textures (red fire warrior)
-            if (!this.textures.exists('moyaki_idle')) {
-              console.log("Creating fallback moyaki_idle texture");
-              const moyakiGraphics = this.make.graphics();
-              moyakiGraphics.fillStyle(0xFF4400, 1);
-              moyakiGraphics.fillCircle(24, 24, 19);
-              moyakiGraphics.fillStyle(0xCC2200, 1);
-              moyakiGraphics.fillRect(18, 30, 12, 10); // Larger body
-              // Add fire effects
-              moyakiGraphics.fillStyle(0xFF8800, 1);
-              moyakiGraphics.fillTriangle(16, 16, 20, 12, 24, 16);
-              moyakiGraphics.fillTriangle(28, 16, 32, 12, 36, 16);
-              moyakiGraphics.generateTexture('moyaki_idle', 48, 48);
-            }
-
-            if (!this.textures.exists('moyaki_attack')) {
-              if (this.textures.exists('moyaki_idle')) {
-                const idleTexture = this.textures.get('moyaki_idle');
-                this.textures.addImage('moyaki_attack', idleTexture.getSourceImage());
-              }
-            }
-
-            // Create KEON textures (golden premium champion)
-            if (!this.textures.exists('keon_idle')) {
-              console.log("Creating fallback keon_idle texture");
-              const keonGraphics = this.make.graphics();
-              keonGraphics.fillStyle(0xFFD700, 1);
-              keonGraphics.fillCircle(26, 26, 20); // Larger for premium
-              keonGraphics.fillStyle(0xCC9900, 1);
-              keonGraphics.fillRect(19, 31, 14, 12); // Larger body
-              // Add crown/premium effects
-              keonGraphics.fillStyle(0xFFFF88, 1);
-              keonGraphics.fillTriangle(21, 12, 26, 7, 31, 12); // Crown
-              keonGraphics.fillCircle(18, 22, 3); // Left gem
-              keonGraphics.fillCircle(34, 22, 3); // Right gem
-              keonGraphics.generateTexture('keon_idle', 52, 52); // Slightly larger
-            }
-
-            if (!this.textures.exists('keon_attack')) {
-              if (this.textures.exists('keon_idle')) {
-                const idleTexture = this.textures.get('keon_idle');
-                this.textures.addImage('keon_attack', idleTexture.getSourceImage());
-              }
-            }
-
-            console.log("✅ Monad character fallback textures created successfully");
-
-            // Verify all Monad textures are now available (either loaded or fallback)
-            const monadTextures = ['chog_idle', 'molandak_idle', 'moyaki_idle', 'keon_idle'];
-            let availableTextures = 0;
-            monadTextures.forEach(textureKey => {
-              if (this.textures.exists(textureKey)) {
-                availableTextures++;
-              }
-            });
-            console.log(`🎯 Final verification: ${availableTextures}/${monadTextures.length} Monad textures available for use`);
-
+            
+            console.log("Defense textures verified successfully");
           } catch (error) {
-            console.error("❌ Error creating fallback Monad textures:", error);
+            console.error("Error creating fallback textures:", error);
           }
         }
 
