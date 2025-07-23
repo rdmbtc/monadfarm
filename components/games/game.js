@@ -796,11 +796,27 @@ export default function platformerSketch(p) {
           if (!star.isCollected && ellipseRectCollision(star, player)) {
               star.isCollected = true;
               score += 10;
+              triggerCallback('onScoreUpdate', score); // Trigger score update callback
               playSound(coinSound);
+
+              // Calculate star collection progress for debugging
+              const collectedStars = stars.filter(s => s && s.isCollected).length;
+              const totalStars = stars.length;
+              console.log(`⭐ Star collected! Progress: ${collectedStars}/${totalStars} stars`);
+              console.log(`⭐ Star details:`, stars.map((s, i) => `Star ${i}: ${s ? (s.isCollected ? 'COLLECTED' : 'available') : 'null'}`));
+
               // --- Enhanced Star Collection Feedback ---
               emitParticles(star.x, star.y, 35, p.color(255, 235, 50, 240), { speed: 4.5, life: 50, size: 12, gravity: 0.05 }); // Brighter, more particles, slight lift
-              emitFloatingScore("+10", star.x, star.y - 20); // Emit score pop-up
+              emitFloatingScore(`+10 (${collectedStars}/${totalStars})`, star.x, star.y - 20); // Show progress in score pop-up
               triggerShake(1.5, 8); // Gentle shake on star collect
+
+              // Special feedback when all stars are collected
+              if (collectedStars === totalStars) {
+                  console.log(`🌟 ALL ${totalStars} STARS COLLECTED! Level should advance now!`);
+                  emitFloatingScore("ALL STARS COLLECTED!", star.x, star.y - 50);
+                  emitParticles(star.x, star.y, 50, p.color(0, 255, 0, 240), { speed: 6, life: 80, size: 15, gravity: -0.1 }); // Green celebration particles
+                  triggerShake(3, 15); // Stronger shake for completion
+              }
 
               // --- Multiplayer Star Collection Callback ---
               if (multiplayerCallbacks.onStarCollected) {
@@ -1455,6 +1471,7 @@ export default function platformerSketch(p) {
           moveDirection: platformData.isMoving ? (platformData.initialMoveDirection || 1) : undefined 
       }));
       stars = level.stars.map(s => ({ ...s, isCollected: false, color: p.color(255, 223, 0) }));
+      console.log(`🌟 Level ${currentLevelIndex + 1} initialized with ${stars.length} stars:`, stars.map((s, i) => `Star ${i}: (${s.x.toFixed(0)}, ${s.y.toFixed(0)})`));
       hazards = level.hazards ? level.hazards.map(h => ({ ...h })) : []; // Load hazards
       powerups = level.powerups ? level.powerups.map(pow => ({ ...pow, isCollected: false })) : []; // Load powerups
       // levelGoal = level.goal ? { ...level.goal, isReached: false } : null; // Load the goal object if it exists - REMOVED
@@ -1806,11 +1823,7 @@ export default function platformerSketch(p) {
           p.strokeWeight(3);
           p.textSize(50);
           // Display completed generated level number
-          p.text(`Level ${currentLevelIndex + 1} Complete!`, p.width / 2, p.height / 2 - 50);
-          p.textSize(24);
-          p.fill(255, 215, 0); // Gold color for stars
-          p.text(`⭐ All ${stars ? stars.length : 0} stars collected!`, p.width / 2, p.height / 2 - 10);
-          p.fill(255); // Reset to white
+          p.text(`Level ${currentLevelIndex + 1} Complete!`, p.width / 2, p.height / 2 - 30);
           p.textSize(30);
           p.text("Score: " + score, p.width / 2, p.height / 2 + 30);
           p.textSize(20);
