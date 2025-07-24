@@ -1,20 +1,29 @@
 import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox"; // Includes ethers, waffle, etc.
+import "@nomicfoundation/hardhat-ethers";
 import "dotenv/config"; // To load environment variables
 
 // Ensure you have a .env file with these variables
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "YOUR_PRIVATE_KEY_HERE"; // Replace with fallback or error handling
-const ABSTRACT_TESTNET_RPC_URL = process.env.ABSTRACT_TESTNET_RPC_URL || "https://rpc.testnet.abs.xyz";
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001"; // Dummy key for compilation
+const MONAD_TESTNET_RPC_URL = process.env.MONAD_TESTNET_RPC_URL || "https://testnet-rpc.monad.xyz";
 // Optional: Etherscan API key for verification
 // const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.18",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.24",
+      },
+      {
+        version: "0.8.20",
+      }
+    ]
+  },
   networks: {
     hardhat: {}, // Default local network
     monadTestnet: {
-      url: "https://testnet-rpc.monad.xyz",
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      url: MONAD_TESTNET_RPC_URL,
+      accounts: [PRIVATE_KEY],
       chainId: 10143, // Monad Testnet Chain ID
     },
     // Add other networks like mainnet if needed

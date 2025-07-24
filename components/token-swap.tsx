@@ -9,7 +9,7 @@ import { ArrowDownUp, RefreshCw, ArrowRightLeft, AlertCircle, Coins, ArrowDown, 
 // Import specific functions from ethers v6
 import { ethers, Contract, formatUnits, parseUnits, BrowserProvider, JsonRpcProvider, getAddress, id, zeroPadValue } from "ethers"
 import toast from "react-hot-toast"
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -17,8 +17,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-// Import Privy packages (keeping for potential future use)
-import { usePrivy, useWallets } from "@privy-io/react-auth"
+
+// Note: This component is deprecated in favor of monad-token-swap.tsx
+// Keeping for backward compatibility but recommend using the new component
 
 // Create compatibility layer for ethers v5/v6
 const etherUtils = {
@@ -53,50 +54,34 @@ const getProvider = (ethereum: any) => {
   }
 };
 
-// Update with actual deployed token address - with correct checksum
-// This is our official NOOT token contract - DO NOT change to a different address
-const NOOT_TOKEN_ADDRESS = "0x3d8b869eB751B63b7077A0A93D6b87a54e6C8f56";
-// This is our official NOOT token FarmSwap address - UPDATED
-const FARM_SWAP_ADDRESS = "0xc2d997A8d858275260BA97bb182C67CbC8B3CBB0";
-// This is our new NOOT swap address specifically for NOOT/Farm Coin swaps
-// const NOOT_SWAP_ADDRESS = "0xF811e93AAc587F89B32c6d59421268c433B970a6";
+// Monad Testnet contract addresses
+// Farm Coins are the internal currency - no specific token address needed
+const FARM_COINS_SYMBOL = "FARM";
+// This is our new MonadFarmSwap contract address - will be updated after deployment
+const FARM_SWAP_ADDRESS = "0xCF7A306338f67D609932aB3f309A2C8FEa76ea85"; // To be updated after deployment
 
 
 
-// Add all token addresses
+// New Monad Testnet token addresses
 const TOKEN_ADDRESSES = {
-  NOOT: "0x3d8b869eB751B63b7077A0A93D6b87a54e6C8f56",
-  ABSTER: "0xC3f63f74501D225E0CAA6EceA2c8ee73092B3062",
-  ABBY: "0x529aF9EbFD8612077bA6b0B72F2898EF7be337D1",
-  CHESTER: "0x2460a0068A154C7F2673417dA09f6AE81Ce70e56",
-  DOJO3: "0x46BE8d4a214D6ddecE0b3251d76d42E186927781",
-  FEATHERS: "0xb4e815813875366e2b4e65eA857278Ae5bEceDc3",
-  MOP: "0x45955765a7898f707a523CB1B7a6e3A95DDD5CD7",
-  NUTZ: "0x77D29085727405340946919A88B0Ac6c9Ffb80BD",
-  PAINGU: "0x8033d82e1e0f949C0986F9102a01C405831b784A",
-  PENGUIN: "0x8814046950cDA7aee1B249C1689d070C0db6E58D",
-  PUDGY: "0xEcbC4AB2ed8fce5C04dfB1104947Ca4891597336",
-  RETSBA: "0x26707CE367C4758F73EF09fA9D8d730869a38e10",
-  WOJACT: "0x13D6CbB5f602Df7784bbb9612c5314CDC1ba9d3c",
-  YUP: "0xF5048aD4FB452f4E39472d085E29994f6088d96B"
+  aprMON: "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
+  YAKI: "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
+  CHOG: "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
+  DAK: "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
+  gMON: "0xaEef2f6B429Cb59C9B2D7bB2141ADa993E8571c3",
+  shMON: "0x3a98250F98Dd388C211206983453837C8365BDc1",
+  MON: "0x0000000000000000000000000000000000000000" // Native MON token (ETH-like)
 };
 
 // Token information with symbols and names
 const TOKEN_INFO = {
-  NOOT: { symbol: "NOOT", name: "Noot Noot" },
-  ABSTER: { symbol: "$ABSTER", name: "ABSTER" },
-  ABBY: { symbol: "ABBY", name: "Abby Token" },
-  CHESTER: { symbol: "CHESTER", name: "Chester Token" },
-  DOJO3: { symbol: "DOJO3", name: "Dojo3 Token" },
-  FEATHERS: { symbol: "FEATHERS", name: "Feathers Token" },
-  MOP: { symbol: "MOP", name: "MOP Token" },
-  NUTZ: { symbol: "NUTZ", name: "NUTZ Token" },
-  PAINGU: { symbol: "PAINGU", name: "Paingu Token" },
-  PENGUIN: { symbol: "PENGUIN", name: "Penguin Token" },
-  PUDGY: { symbol: "PUDGY", name: "Pudgy Penguins Token" },
-  RETSBA: { symbol: "RETSBA", name: "RETSBA Token" },
-  WOJACT: { symbol: "WOJACT", name: "Wojact Token" },
-  YUP: { symbol: "YUP", name: "YUP Token" }
+  aprMON: { symbol: "aprMON", name: "April Monad" },
+  YAKI: { symbol: "YAKI", name: "Moyaki" },
+  CHOG: { symbol: "CHOG", name: "Chog" },
+  DAK: { symbol: "DAK", name: "Molandak" },
+  gMON: { symbol: "gMON", name: "gMON" },
+  shMON: { symbol: "shMON", name: "ShMonad" },
+  MON: { symbol: "MON", name: "Monad" }
 };
 
 // Block explorer URL
@@ -116,18 +101,17 @@ const TOKEN_ABI = [
 
 // Updated Swap ABI to match the deployed contract
 const SWAP_ABI = [
-    "function swapNOOTForToken(address toTokenAddress, uint256 amount) external",
-    "function swapTokenForNOOT(address fromTokenAddress, uint256 amount) external",
-    "function swapTokens(address fromTokenAddress, address toTokenAddress, uint256 amount) external",
-    "function addToken(address tokenAddress) external",
+    "function swapTokenForFarmCoins(address tokenAddress, uint256 amount) external",
+    "function swapNativeForFarmCoins() external payable",
+    "function addToken(address tokenAddress, string memory symbol, string memory name) external",
     "function removeToken(address tokenAddress) external",
     "function fundToken(address tokenAddress, uint256 amount) external",
-    "function getTokenInfo(address tokenAddress) external view returns (bool isSupported, uint256 balance, uint256 actualBalance)",
+    "function getTokenInfo(address tokenAddress) external view returns (bool isSupported, uint256 balance, uint256 actualBalance, string memory symbol, string memory name)",
     "function getAllSupportedTokens() external view returns (address[])",
-    "function claimTestTokens(address tokenAddress, uint256 amount) external",
+    "function getFarmCoinsBalance(address user) external view returns (uint256)",
     "function emergencyWithdraw(address tokenAddress, uint256 amount, address recipient) external",
-    "function addMultipleTokens(address[] memory tokenAddresses) external",
-    "function addAllFarmTokens() external"
+    "function addMultipleTokens(address[] memory tokenAddresses, string[] memory symbols, string[] memory names) external",
+    "function totalFarmCoins() external view returns (uint256)"
 ];
 
 // Add a helper function to properly format addresses for ethers v6
@@ -156,7 +140,7 @@ const FAUCET_ABI = [
   "function getTokenBalance() external view returns (uint256)"
 ]; // Simplified ABI, add more functions if needed
 
-// Utility function to format addresses (removed AGW-specific functionality)
+// Utility function to format addresses (removed  -specific functionality)
 const formatAddress = (address: string): string => {
   // Ensure the address starts with 0x
   const normalizedAddress = address.startsWith('0x')
@@ -169,13 +153,13 @@ const formatAddress = (address: string): string => {
 export const TokenSwap = () => {
   const { farmCoins, addFarmCoins, setFarmCoins } = useContext(GameContext)
   const [swapAmount, setSwapAmount] = useState<number>(100)
-  const [farmToNootAmount, setFarmToNootAmount] = useState<number>(100)
-  const [nootBalance, setNootBalance] = useState<number>(0)
-  const [actualNootBalance, setActualNootBalance] = useState<string>("0")
+  const [farmToMonAmount, setFarmToMonAmount] = useState<number>(100)
+  const [MonBalance, setMonBalance] = useState<number>(0)
+  const [actualMonBalance, setActualMonBalance] = useState<string>("0")
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [isFarmToNootLoading, setIsFarmToNootLoading] = useState<boolean>(false)
+  const [isFarmToMonLoading, setIsFarmToMonLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>("")
-  const [farmToNootError, setFarmToNootError] = useState<string>("")
+  const [farmToMonError, setFarmToMonError] = useState<string>("")
   const [showTxDetails, setShowTxDetails] = useState<boolean>(false)
   const [currentTx, setCurrentTx] = useState<{hash: string, status: string}>({ hash: "", status: "pending" })
   
@@ -191,14 +175,14 @@ export const TokenSwap = () => {
   const [showTokenSelector, setShowTokenSelector] = useState<boolean>(false)
   const [supportedTokens, setSupportedTokens] = useState<string[]>([])
   const [isMultiSwapLoading, setIsMultiSwapLoading] = useState<boolean>(false)
-  const [swapDirection, setSwapDirection] = useState<'noot-to-token' | 'token-to-noot'>('noot-to-token')
+  const [swapDirection, setSwapDirection] = useState<'Mon-to-token' | 'token-to-Mon'>('Mon-to-token')
   const [expectedOutputAmount, setExpectedOutputAmount] = useState<number>(0)
   
-  const [contractNootBalance, setContractNootBalance] = useState("0");
+  const [contractMonBalance, setContractMonBalance] = useState("0");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isGettingTestTokens, setIsGettingTestTokens] = useState(false);
   
-  // Wallet connection state (removed AGW dependencies)
+  // Wallet connection state (removed   dependencies)
   
   // Initialize wallet providers
   const [metamaskProvider, setMetamaskProvider] = useState<any>(null);
@@ -206,7 +190,7 @@ export const TokenSwap = () => {
   // Dev tools state variables (added here to avoid duplicates)
   const [showDevTools, setShowDevTools] = useState<boolean>(false);
   const [fundAmount, setFundAmount] = useState<number>(100);
-  const [selectedFundToken, setSelectedFundToken] = useState<string>("NOOT");
+  const [selectedFundToken, setSelectedFundToken] = useState<string>("Mon");
   const [isFunding, setIsFunding] = useState<boolean>(false);
   const [contractTokenBalances, setContractTokenBalances] = useState<{[key: string]: string}>({});
   const [isLoadingContractBalances, setIsLoadingContractBalances] = useState<boolean>(false);
@@ -227,7 +211,7 @@ export const TokenSwap = () => {
             setActiveWallet(WALLET_OPTIONS.METAMASK);
             setWalletAddress(accounts[0]);
             setMetamaskProvider(window.ethereum);
-            fetchNootBalance(accounts[0]);
+            fetchMonBalance(accounts[0]);
           }
         } catch (error) {
           console.error("Error checking MetaMask connection:", error);
@@ -254,7 +238,7 @@ export const TokenSwap = () => {
     if (accounts.length > 0) {
       setIsWalletConnected(true);
       setWalletAddress(accounts[0]);
-      fetchNootBalance(accounts[0]);
+      fetchMonBalance(accounts[0]);
     } else {
       // If MetaMask is active wallet and disconnected
       if (activeWallet === WALLET_OPTIONS.METAMASK) {
@@ -293,7 +277,7 @@ export const TokenSwap = () => {
         return {
           provider: ethProviderMM,
           signer: await ethProviderMM.getSigner(),
-          isAGW: false
+          is : false
         };
 
       default:
@@ -304,7 +288,7 @@ export const TokenSwap = () => {
         return {
           provider: ethProvider,
           signer: await ethProvider.getSigner(),
-          isAGW: false
+          is : false
         };
     }
   };
@@ -350,8 +334,8 @@ export const TokenSwap = () => {
         // Switch to Monad Testnet
         await switchToMonadTestnet(window.ethereum);
         
-        // Fetch NOOT balance
-        fetchNootBalance(accounts[0]);
+        // Fetch Mon balance
+        fetchMonBalance(accounts[0]);
         toast.success("Connected to MetaMask");
       } else {
         throw new Error("No accounts found after connecting MetaMask");
@@ -376,7 +360,7 @@ export const TokenSwap = () => {
       setIsWalletConnected(false);
       setActiveWallet(null);
       setWalletAddress(null);
-      setActualNootBalance("0");
+      setActualMonBalance("0");
 
       toast.success("Wallet disconnected");
     } catch (error) {
@@ -449,15 +433,15 @@ export const TokenSwap = () => {
     }
   };
   
-  // Update fetchNootBalance to support multiple providers
-  const fetchNootBalance = async (address: string) => {
+  // Update fetchMonBalance to support multiple providers
+  const fetchMonBalance = async (address: string) => {
     try {
-      console.log("Fetching NOOT balance for address:", address);
+      console.log("Fetching Mon balance for address:", address);
       
       const provider = getCurrentProvider();
       if (!provider) {
         console.log("No provider found");
-        setActualNootBalance("0");
+        setActualMonBalance("0");
         return;
       }
 
@@ -468,12 +452,12 @@ export const TokenSwap = () => {
         console.log("Got provider for balance check, wallet type:", activeWallet);
       } catch (error) {
         console.error("Error getting ethers provider for balance check:", error);
-        setActualNootBalance("0");
+        setActualMonBalance("0");
         return;
       }
       
       const ethersProvider = ethersProviderInfo.provider;
-      const isAGW = ethersProviderInfo.isAGW;
+      const is  = ethersProviderInfo.is ;
       
       // Check network/chain ID
       let chainId;
@@ -482,9 +466,9 @@ export const TokenSwap = () => {
       chainId = await provider.request({ method: 'eth_chainId' });
       console.log("Current chain ID when fetching balance:", chainId);
 
-      // For debugging - use checksummed addresses
-      const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
-      console.log("NOOT token address (checksummed):", checksummedNOOTAddress);
+      // For debugging - use checksummed addresses for aprMON (primary token)
+      const checksummedPrimaryTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      console.log("Primary token address (checksummed):", checksummedPrimaryTokenAddress);
 
       // Ensure wallet address is properly checksummed
       const checksummedWalletAddress = getChecksumAddress(address);
@@ -493,35 +477,35 @@ export const TokenSwap = () => {
       // If we're not on Monad Testnet, show placeholder balance
       if (chainId !== MONAD_TESTNET_CHAIN_ID) {
         console.log("Not on Monad Testnet, showing placeholder balance");
-        setActualNootBalance("0");
+        setActualMonBalance("0");
         return;
       }
       
       try {
-        // Create the contract instance with our consistent provider
-        const nootContract = new Contract(checksummedNOOTAddress, TOKEN_ABI, ethersProvider);
-        
+        // Create the contract instance with our consistent provider for aprMON
+        const primaryTokenContract = new Contract(checksummedPrimaryTokenAddress, TOKEN_ABI, ethersProvider);
+
         // Try to get token name first as a test
-        const tokenName = await nootContract.name().catch((e: any) => {
+        const tokenName = await primaryTokenContract.name().catch((e: any) => {
           console.log("Error getting token name:", e);
           return "Unknown";
         });
         console.log("Token name:", tokenName);
-        
+
         // Now try to get balance
-        const balance = await nootContract.balanceOf(checksummedWalletAddress).catch((e: any) => {
+        const balance = await primaryTokenContract.balanceOf(checksummedWalletAddress).catch((e: any) => {
           console.error("Error getting balance:", e);
           return 0; // Return 0 on error
         });
         console.log("Raw balance result:", balance.toString());
-        
+
         // Use our etherUtils compatibility layer
         const formattedBalance = etherUtils.formatUnits(balance, 18);
         console.log("Formatted balance:", formattedBalance);
-        setActualNootBalance(formattedBalance);
+        setActualMonBalance(formattedBalance);
 
-        // Also check contract's NOOT balance for UI display
-        const contractBalance = await nootContract.balanceOf(getChecksumAddress(FARM_SWAP_ADDRESS)).catch((e: any) => {
+        // Also check contract's token balance for UI display
+        const contractBalance = await primaryTokenContract.balanceOf(getChecksumAddress(FARM_SWAP_ADDRESS)).catch((e: any) => {
           console.error("Error getting contract balance:", e);
           return 0; // Return 0 on error
         });
@@ -531,7 +515,7 @@ export const TokenSwap = () => {
         console.log("Contract balance:", formattedContractBalance);
         
         // Update both balances
-        setContractNootBalance(formattedContractBalance);
+        setContractMonBalance(formattedContractBalance);
         
         // Also fetch all token balances
         fetchAllTokenBalances();
@@ -540,9 +524,9 @@ export const TokenSwap = () => {
         // Don't update the state on error - keeps previous valid balance
       }
     } catch (error) {
-      console.error("Error fetching NOOT balance:", error);
+      console.error("Error fetching Mon balance:", error);
       // Set fallback values on complete error
-      setActualNootBalance("0");  
+      setActualMonBalance("0");  
     }
   };
   
@@ -567,7 +551,7 @@ export const TokenSwap = () => {
       }
       
       const ethersProvider = ethersProviderInfo.provider;
-      const isAGW = ethersProviderInfo.isAGW;
+      const is  = ethersProviderInfo.is ;
       
       // Check chain ID
       let chainId;
@@ -583,15 +567,15 @@ export const TokenSwap = () => {
       
       // Create contract instance 
       const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-      const nootContract = new Contract(NOOT_TOKEN_ADDRESS, tokenAbi, ethersProvider);
+      const MonContract = new Contract(TOKEN_ADDRESSES.aprMON, tokenAbi, ethersProvider);
       
-      // Get the balance from the NOOT swap address
-      // FIX: Check the balance of FARM_SWAP_ADDRESS, not NOOT_SWAP_ADDRESS
-      const balanceWei = await nootContract.balanceOf(FARM_SWAP_ADDRESS);
+      // Get the balance from the Mon swap address
+      // FIX: Check the balance of FARM_SWAP_ADDRESS, not Mon_SWAP_ADDRESS
+      const balanceWei = await MonContract.balanceOf(FARM_SWAP_ADDRESS);
       const balanceFormatted = etherUtils.formatUnits(balanceWei, 18);
       
-      setContractNootBalance(balanceFormatted);
-      console.log(`NOOT Swap contract NOOT balance: ${balanceFormatted}`);
+      setContractMonBalance(balanceFormatted);
+      console.log(`Mon Swap contract Mon balance: ${balanceFormatted}`);
     } catch (error) {
       console.error("Failed to check contract balance:", error);
     }
@@ -611,20 +595,20 @@ export const TokenSwap = () => {
       
       // Try multiple times with short delays for reliability
       let retryCount = 0;
-      let nootSuccess = false;
+      let MonSuccess = false;
       let contractSuccess = false;
       
-      while ((retryCount < 3) && (!nootSuccess || !contractSuccess)) {
+      while ((retryCount < 3) && (!MonSuccess || !contractSuccess)) {
         console.log(`Balance refresh attempt ${retryCount + 1}/3`);
         
-        if (!nootSuccess) {
+        if (!MonSuccess) {
           try {
-            // Update NOOT balance
-            await fetchNootBalance(walletAddress);
-            nootSuccess = true;
-            console.log("NOOT balance refresh successful");
+            // Update Mon balance
+            await fetchMonBalance(walletAddress);
+            MonSuccess = true;
+            console.log("Mon balance refresh successful");
           } catch (error) {
-            console.error(`NOOT balance refresh attempt ${retryCount + 1} failed:`, error);
+            console.error(`Mon balance refresh attempt ${retryCount + 1} failed:`, error);
             // Will retry unless max retries reached
           }
         }
@@ -641,18 +625,18 @@ export const TokenSwap = () => {
           }
         }
         
-        if (!nootSuccess || !contractSuccess) {
+        if (!MonSuccess || !contractSuccess) {
           await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between retries
           retryCount++;
         }
       }
       
       // Log final status
-      if (nootSuccess && contractSuccess) {
+      if (MonSuccess && contractSuccess) {
         console.log("All balances refreshed successfully");
       } else {
         console.warn("Some balance refreshes failed after 3 attempts", {
-          nootSuccess,
+          MonSuccess,
           contractSuccess
         });
       }
@@ -757,49 +741,49 @@ export const TokenSwap = () => {
       const signer = ethersProviderInfo.signer;
       
       // Check if we're using the correct addresses
-      const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
       // Create contract instances 
       const tokenAbi = ["function balanceOf(address) view returns (uint256)", "function name() view returns (string)"];
-      const nootContract = new Contract(checksummedNOOTAddress, tokenAbi, ethersProvider);
+      const MonContract = new Contract(checksummedMonAddress, tokenAbi, ethersProvider);
       const swapContract = new Contract(checksummedFarmSwapAddress, SWAP_ABI, signer);
       
-      // Verify NOOT token contract is valid
-      const tokenName = await nootContract.name().catch(e => "Error: Cannot read token name");
+      // Verify Mon token contract is valid
+      const tokenName = await MonContract.name().catch(e => "Error: Cannot read token name");
       
       // Check what token the FarmSwap contract thinks it's using
-      const contractTokenAddress = await swapContract.nootToken().catch(e => "Error: Cannot read token address from FarmSwap");
+      const contractTokenAddress = await swapContract.MonToken().catch(e => "Error: Cannot read token address from FarmSwap");
       
-      // Check FarmSwap contract's NOOT balance
-      const contractNootBalanceWei = await nootContract.balanceOf(checksummedFarmSwapAddress).catch(e => "Error: Cannot read contract balance");
+      // Check FarmSwap contract's Mon balance
+      const contractMonBalanceWei = await MonContract.balanceOf(checksummedFarmSwapAddress).catch(e => "Error: Cannot read contract balance");
       
       // Format balances for display
       let formattedContractBalance: string;
       try {
-        formattedContractBalance = formatUnits(contractNootBalanceWei, 18);
+        formattedContractBalance = formatUnits(contractMonBalanceWei, 18);
       } catch (err) {
-        formattedContractBalance = etherUtils.formatUnits(contractNootBalanceWei, 18);
+        formattedContractBalance = etherUtils.formatUnits(contractMonBalanceWei, 18);
       }
       
       toast.dismiss("debug-toast");
       
       // Display results
       const debugInfo = {
-        nootTokenAddress: checksummedNOOTAddress,
+        MonTokenAddress: checksummedMonAddress,
         farmSwapAddress: checksummedFarmSwapAddress,
         tokenName: tokenName,
         // FIX: Only call getChecksumAddress if it's a valid address string
         contractTokenAddress: (typeof contractTokenAddress === 'string' && contractTokenAddress.startsWith('0x')) 
            ? getChecksumAddress(contractTokenAddress) 
            : contractTokenAddress, // Keep the error string as is
-        contractNootBalance: formattedContractBalance
+        contractMonBalance: formattedContractBalance
       };
       
       console.log("Contract configuration:", debugInfo);
       
       // Check if addresses match
-      const addressesMatch = typeof contractTokenAddress === 'string' && contractTokenAddress.startsWith('0x') && checksummedNOOTAddress.toLowerCase() === contractTokenAddress.toLowerCase();
+      const addressesMatch = typeof contractTokenAddress === 'string' && contractTokenAddress.startsWith('0x') && checksummedMonAddress.toLowerCase() === contractTokenAddress.toLowerCase();
       
       if (addressesMatch) {
         console.log("✅ Token addresses match between UI and FarmSwap contract");
@@ -843,9 +827,9 @@ export const TokenSwap = () => {
     <Dialog open={showWalletOptions} onOpenChange={setShowWalletOptions}>
       <DialogContent className="bg-[#111] border border-[#333] text-white">
         <DialogHeader>
-          <DialogTitle className="text-white noot-title">Connect Wallet</DialogTitle>
-          <DialogDescription className="text-white/60 noot-text">
-            Choose a wallet to connect to Nooters Farm.
+          <DialogTitle className="text-white Mon-title">Connect Wallet</DialogTitle>
+          <DialogDescription className="text-white/60 Mon-text">
+            Choose a wallet to connect to Moners Farm.
           </DialogDescription>
         </DialogHeader>
         
@@ -906,7 +890,7 @@ export const TokenSwap = () => {
       let ethersProviderInfo;
       try {
         ethersProviderInfo = await getEthersProvider();
-        console.log("Got provider for wallet type:", activeWallet, "isAGW:", ethersProviderInfo.isAGW);
+        console.log("Got provider for wallet type:", activeWallet);
       } catch (error) {
         console.error("Error getting ethers provider:", error);
         toast.error("Could not connect to your wallet. Please try again.");
@@ -915,7 +899,7 @@ export const TokenSwap = () => {
       }
       
       // Extract provider information
-      const isAGW = ethersProviderInfo.isAGW;
+      const is  = ethersProviderInfo.is ;
       const ethersProvider = ethersProviderInfo.provider;
       const signer = ethersProviderInfo.signer;
 
@@ -1001,7 +985,7 @@ export const TokenSwap = () => {
 
         if (receipt && receipt.status === 1) {
           // Transaction successful
-          await fetchNootBalance(walletAddr);
+          await fetchMonBalance(walletAddr);
           toast.success("Successfully received test tokens!");
 
           // Force refresh after a delay
@@ -1085,7 +1069,7 @@ export const TokenSwap = () => {
                 .catch(err => console.error("Error checking balance:", err));
             }, 2000);
             
-            // Try using a direct NOOT to Farm Coins swap as fallback
+            // Try using a direct Mon to Farm Coins swap as fallback
             setTimeout(() => {
               toast("Trying alternative approach to get coins...", 
                 {icon: "⚙️", duration: 3000});
@@ -1107,12 +1091,12 @@ export const TokenSwap = () => {
       if (!faucetSuccess) {
         console.log("Faucet request failed or was rejected. Adding Farm Coins as fallback.");
         setTimeout(() => {
-          // Add Farm Coins directly since NOOT token request failed
+          // Add Farm Coins directly since Mon token request failed
           updateFarmCoins(farmCoins + 500);
           toast.success(
             React.createElement("div", { className: "space-y-1 text-sm" }, [
               React.createElement("p", { className: "font-semibold", key: "title" }, "Added 500 Farm Coins as fallback!"),
-              React.createElement("p", { className: "text-xs", key: "message" }, "You can continue playing with Farm Coins even without NOOT tokens.")
+              React.createElement("p", { className: "text-xs", key: "message" }, "You can continue playing with Farm Coins even without Mon tokens.")
             ]),
             {duration: 5000}
           );
@@ -1123,11 +1107,11 @@ export const TokenSwap = () => {
     }
   };
 
-  // Add NOOT token to wallet - using a reliable manual approach instead of problematic wallet_watchAsset
+  // Add Mon token to wallet - using a reliable manual approach instead of problematic wallet_watchAsset
   const addTokenToWallet = async () => {
     try {
       // Get checksummed address
-      const checksummedAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const checksummedAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       console.log("Adding token to wallet:", checksummedAddress);
       
       const provider = getCurrentProvider();
@@ -1149,9 +1133,9 @@ export const TokenSwap = () => {
               type: 'ERC20',
               options: {
                 address: checksummedAddress,
-                symbol: 'NOOT',
+                symbol: 'Mon',
                 decimals: 18,
-                image: 'https://nooters.farm/logo.png',
+                image: 'https://Moners.farm/logo.png',
               },
             }
           ]
@@ -1159,7 +1143,7 @@ export const TokenSwap = () => {
         
         if (wasAdded) {
           console.log('Token was added successfully!');
-          toast.success("NOOT token added to your wallet!");
+          toast.success("Mon token added to your wallet!");
         } else {
           console.log('User rejected adding the token, using fallback method');
           fallbackToManualMethod(checksummedAddress);
@@ -1175,7 +1159,7 @@ export const TokenSwap = () => {
       toast.error("Error adding token to wallet", {
         duration: 5000,
       });
-      fallbackToManualMethod(NOOT_TOKEN_ADDRESS);
+      fallbackToManualMethod(TOKEN_ADDRESSES.aprMON);
     }
   };
   
@@ -1193,11 +1177,11 @@ export const TokenSwap = () => {
       setTimeout(() => {
         toast.success(
           React.createElement("div", { className: "text-xs space-y-1" },
-            React.createElement("p", { className: "font-bold" }, "Add $NOOT to your wallet:"),
+            React.createElement("p", { className: "font-bold" }, "Add $Mon to your wallet:"),
             React.createElement("p", null, "1. Open your wallet"),
             React.createElement("p", null, "2. Select \"Import token\" or \"Add token\""),
             React.createElement("p", null, "3. Paste the address"),
-            React.createElement("p", null, "4. Enter \"NOOT\" for symbol and \"18\" for decimals")
+            React.createElement("p", null, "4. Enter \"Mon\" for symbol and \"18\" for decimals")
           ),
           { duration: 7000 }
         );
@@ -1209,7 +1193,7 @@ export const TokenSwap = () => {
         React.createElement("div", { className: "text-xs space-y-1 mt-2" },
           React.createElement("p", { className: "font-semibold" }, "Add token manually with these details:"),
           React.createElement("p", null, "Address: ", React.createElement("span", { className: "font-mono bg-black/40 px-1" }, tokenAddress)),
-          React.createElement("p", null, "Symbol: NOOT | Decimals: 18")
+          React.createElement("p", null, "Symbol: Mon | Decimals: 18")
         ),
         { duration: 10000 }
       );
@@ -1253,7 +1237,7 @@ export const TokenSwap = () => {
                 address: tokenAddress,
                 symbol: tokenInfo.symbol,
                 decimals: 18,
-                image: `https://nooters.farm/tokens/${tokenKey.toLowerCase()}.png`, // Fallback image path
+                image: `https://Moners.farm/tokens/${tokenKey.toLowerCase()}.png`, // Fallback image path
               },
             }
           ]
@@ -1317,8 +1301,8 @@ export const TokenSwap = () => {
     });
   };
 
-  // Swap NOOT for Farm Coins with blockchain transaction
-  const swapNOOTForFarmCoins = async () => {
+  // Swap Mon for Farm Coins with blockchain transaction
+  const swapMonForFarmCoins = async () => {
     const provider = getCurrentProvider();
     if (!provider) {
       toast.error("Please connect a wallet to continue.");
@@ -1340,15 +1324,15 @@ export const TokenSwap = () => {
       }
       
       // For blockchain swaps, we need to check actual balance
-      if (parseFloat(actualNootBalance) < swapAmount) {
-        toast.error(`Not enough NOOT tokens. You have ${actualNootBalance} NOOT`);
+      if (parseFloat(actualMonBalance) < swapAmount) {
+        toast.error(`Not enough Mon tokens. You have ${actualMonBalance} Mon`);
         setIsLoading(false);
         return;
       }
       
-      console.log("Preparing NOOT to Farm Coins swap transaction...");
+      console.log("Preparing Mon to Farm Coins swap transaction...");
       
-      // Calculate Farm Coins to receive (1 NOOT = 10 Farm Coins)
+      // Calculate Farm Coins to receive (1 Mon = 10 Farm Coins)
       const farmCoinsToReceive = swapAmount * 10;
       
       // Store initial farm coins to ensure proper update
@@ -1358,7 +1342,7 @@ export const TokenSwap = () => {
       let ethersProviderInfo;
       try {
         ethersProviderInfo = await getEthersProvider();
-        console.log("Got provider for wallet type:", activeWallet, "isAGW:", ethersProviderInfo.isAGW);
+        console.log("Got provider for wallet type:", activeWallet);
       } catch (error) {
         console.error("Error getting ethers provider:", error);
         toast.error("Could not connect to your wallet. Please try again.");
@@ -1369,7 +1353,7 @@ export const TokenSwap = () => {
       // Extract provider and signer from the provider info
       const ethersProvider = ethersProviderInfo.provider;
       const signer = ethersProviderInfo.signer;
-      const isAGW = ethersProviderInfo.isAGW;
+      const is  = ethersProviderInfo.is ;
       
       // Check network ID to ensure we're on Monad Testnet
       let chainId;
@@ -1407,30 +1391,30 @@ export const TokenSwap = () => {
       }
       
       // Create contract instances
-      const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
       console.log("Creating contracts with signer:", signer ? "Available" : "Not available");
-      const nootContract = new Contract(checksummedNOOTAddress, TOKEN_ABI, signer);
+      const MonContract = new Contract(checksummedMonAddress, TOKEN_ABI, signer);
       const swapContract = new Contract(checksummedFarmSwapAddress, SWAP_ABI, signer);
       
       console.log("Contract instances created");
       
       // Format amount with proper decimals for the blockchain
-      const nootAmount = etherUtils.parseUnits(swapAmount.toString(), 18);
+      const MonAmount = etherUtils.parseUnits(swapAmount.toString(), 18);
       
-      console.log("Amount to swap:", nootAmount.toString());
+      console.log("Amount to swap:", MonAmount.toString());
       
-      // STEP 1: Approve NOOT tokens for spending
+      // STEP 1: Approve Mon tokens for spending
       console.log("Approving token spend...");
       try {
         // Check current allowance first
         const checksummedWalletAddress = getChecksumAddress(walletAddr);
-        const currentAllowance = await nootContract.allowance(checksummedWalletAddress, checksummedFarmSwapAddress);
+        const currentAllowance = await MonContract.allowance(checksummedWalletAddress, checksummedFarmSwapAddress);
         console.log("Current allowance:", currentAllowance.toString());
         
         // Only approve if needed - use a much larger allowance to prevent frequent approvals
-        if (currentAllowance < nootAmount) {
+        if (currentAllowance < MonAmount) {
           console.log("Allowance insufficient, requesting approval...");
           
           // Due to limitations with MetaMask, we need to use a large approval amount for tokens
@@ -1439,7 +1423,7 @@ export const TokenSwap = () => {
           toast.success(
             React.createElement("div", { className: "space-y-1 text-sm" },
               React.createElement("p", { className: "font-semibold" }, "Approval Required"),
-              React.createElement("p", { className: "text-xs" }, "Please approve NOOT tokens in your wallet"),
+              React.createElement("p", { className: "text-xs" }, "Please approve Mon tokens in your wallet"),
               React.createElement("p", { className: "text-xs" }, "This is required only once")
             ),
             {duration: 8000}
@@ -1456,7 +1440,7 @@ export const TokenSwap = () => {
             let approvalTxHash: string;
             
             // Standard wallets use regular ethers.js calls
-            approvalTx = await nootContract.approve(checksummedFarmSwapAddress, largeApprovalAmount);
+            approvalTx = await MonContract.approve(checksummedFarmSwapAddress, largeApprovalAmount);
             approvalTxHash = approvalTx.hash;
             
             console.log("Approval transaction submitted:", approvalTxHash);
@@ -1473,7 +1457,7 @@ export const TokenSwap = () => {
             await approvalTx.wait();
 
             toast.dismiss("approval-toast");
-            toast.success("NOOT spending approved!");
+            toast.success("Mon spending approved!");
           } catch (approvalError: any) {
             toast.dismiss("approval-toast");
             console.error("Approval error:", approvalError);
@@ -1494,18 +1478,18 @@ export const TokenSwap = () => {
           console.log("Sufficient allowance already granted");
         }
         
-        // IMPORTANT: Use the correct swap function from the NooterSwap contract
+        // IMPORTANT: Use the correct swap function from the MonerSwap contract
         try {
           toast.loading("Processing swap via direct transfer...", { id: "swap-toast" });
           
-          // Instead of direct transfer, use the swapNOOTForToken function directly
+          // Instead of direct transfer, use the swapMonForToken function directly
           // First determine which farm token to swap to (default to ABSTER)
           const farmToken = selectedToken || "ABSTER";
           const farmTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[farmToken as keyof typeof TOKEN_ADDRESSES]);
           
-          console.log(`Calling swapNOOTForToken with target token: ${farmToken} (${farmTokenAddress}) and amount: ${nootAmount.toString()}`);
+          console.log(`Calling swapMonForToken with target token: ${farmToken} (${farmTokenAddress}) and amount: ${MonAmount.toString()}`);
           
-          const tx = await swapContract.swapNOOTForToken(farmTokenAddress, nootAmount, {
+          const tx = await swapContract.swapMonForToken(farmTokenAddress, MonAmount, {
             gasLimit: 2000000
           });
           
@@ -1554,8 +1538,8 @@ export const TokenSwap = () => {
             // Update farm coins
             updateFarmCoins(farmCoinsToReceive);
             
-            // Update NOOT balance
-            await fetchNootBalance(walletAddr);
+            // Update Mon balance
+            await fetchMonBalance(walletAddr);
             
             // Reset input
             setSwapAmount(0);
@@ -1585,108 +1569,108 @@ export const TokenSwap = () => {
     }
   };
   
-  // Swap Farm Coins for NOOT with blockchain transaction
-  const swapFarmCoinsForNOOT = async () => {
-    setIsFarmToNootLoading(true);
-    setFarmToNootError("");
+  // Swap Farm Coins for Mon with blockchain transaction
+  const swapFarmCoinsForMon = async () => {
+    setIsFarmToMonLoading(true);
+    setFarmToMonError("");
     
     const provider = getCurrentProvider();
     if (!provider) {
       toast.error("Please connect a wallet to continue.");
-      setIsFarmToNootLoading(false);
+      setIsFarmToMonLoading(false);
       return;
     }
     
     if (!isWalletConnected) {
       toast.error("Please connect your wallet first.");
-      setIsFarmToNootLoading(false);
+      setIsFarmToMonLoading(false);
       return;
     }
     
     try {
       // Validate input
-      if (farmToNootAmount <= 0) {
+      if (farmToMonAmount <= 0) {
         toast.error("Please enter a valid amount of Farm Coins");
-        setIsFarmToNootLoading(false);
+        setIsFarmToMonLoading(false);
         return;
       }
       
-      if (farmToNootAmount > farmCoins) {
+      if (farmToMonAmount > farmCoins) {
         toast.error(`Not enough Farm Coins. You have ${farmCoins} Farm Coins`);
-        setIsFarmToNootLoading(false);
+        setIsFarmToMonLoading(false);
         return;
       }
       
-      // Calculate NOOT to receive (10 Farm Coins = 1 NOOT)
-      let nootToReceive = farmToNootAmount / 10;
+      // Calculate Mon to receive (10 Farm Coins = 1 Mon)
+      let MonToReceive = farmToMonAmount / 10;
       
-      // IMPORTANT: Limit the maximum amount to claim to 10 NOOT to avoid failures
-      // The contract may not have enough NOOT tokens for larger claims
-      if (nootToReceive > 10) {
-        nootToReceive = 10;
+      // IMPORTANT: Limit the maximum amount to claim to 10 Mon to avoid failures
+      // The contract may not have enough Mon tokens for larger claims
+      if (MonToReceive > 10) {
+        MonToReceive = 10;
         toast.loading(
           React.createElement("div", { className: "space-y-1 text-sm" }, [
             React.createElement("p", { className: "font-semibold", key: "title" }, "Amount Reduced:"),
             React.createElement("p", { className: "text-xs", key: "message" }, 
-              `Limited claim to 10 NOOT to avoid contract errors. The contract may not have enough reserves for larger amounts.`)
+              `Limited claim to 10 Mon to avoid contract errors. The contract may not have enough reserves for larger amounts.`)
           ]),
           {id: "limit-toast", duration: 3000}
         );
       }
       
-      console.log(`Swapping ${farmToNootAmount} Farm Coins for ${nootToReceive} NOOT...`);
+      console.log(`Swapping ${farmToMonAmount} Farm Coins for ${MonToReceive} Mon...`);
       
       // Get proper ethers provider and signer based on wallet type
       let ethersProviderInfo;
       try {
         ethersProviderInfo = await getEthersProvider();
-        console.log("Got provider for wallet type:", activeWallet, "isAGW:", ethersProviderInfo.isAGW);
+        console.log("Got provider for wallet type:", activeWallet);
       } catch (error) {
         console.error("Error getting ethers provider:", error);
         toast.error("Could not connect to your wallet. Please try again.");
-        setIsFarmToNootLoading(false);
+        setIsFarmToMonLoading(false);
         return;
       }
       
       // Extract provider and signer from the provider info
       const ethersProvider = ethersProviderInfo.provider;
       const signer = ethersProviderInfo.signer;
-      const isAGW = ethersProviderInfo.isAGW;
+      const is  = ethersProviderInfo.is ;
       
-      // Check network ID to ensure we're on Abstract Testnet
+      // Check network ID to ensure we're on Monad Testnet
       let chainId;
       try {
-        // For AGW, we assume it's always on Abstract Testnet
-        if (isAGW) {
-          chainId = ABSTRACT_TESTNET_CHAIN_ID;
-          console.log("Using AGW, assuming chain ID:", chainId);
+        // For standard wallets, check the chain ID
+        if (false) {
+          chainId = MONAD_TESTNET_CHAIN_ID;
+          console.log("Using standard wallet, assuming chain ID:", chainId);
         } else {
           chainId = await provider.request({ method: 'eth_chainId' });
           console.log("Current chain ID:", chainId);
         }
         
-        // Check if on Abstract Testnet
-        if (chainId !== ABSTRACT_TESTNET_CHAIN_ID) {
-          console.log("Not on Abstract Testnet, attempting to switch network...");
-          const switched = await switchToAbstractTestnet();
+        // Check if on Monad Testnet
+        if (chainId !== MONAD_TESTNET_CHAIN_ID) {
+          console.log("Not on Monad Testnet, attempting to switch network...");
+          const switched = await switchToMonadTestnet();
           if (!switched) {
-            setFarmToNootError("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
-            setIsFarmToNootLoading(false);
+            setFarmToMonError("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
+            setIsFarmToMonLoading(false);
             return;
           }
         }
       } catch (error) {
         console.error("Error checking or switching network:", error);
-        setFarmToNootError("Failed to check or switch to Abstract Testnet.");
-        setIsFarmToNootLoading(false);
+        setFarmToMonError("Failed to check or switch to Monad Testnet.");
+        setIsFarmToMonLoading(false);
         return;
       }
       
       // Get the wallet address
       let walletAddr;
-      if (isAGW) {
-        walletAddr = address;
-        console.log("Using AGW address:", walletAddr);
+      if (false) {
+        walletAddr = "";
+        console.log("Using standard wallet address:", walletAddr);
       } else {
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
         walletAddr = accounts[0];
@@ -1695,18 +1679,18 @@ export const TokenSwap = () => {
       
       if (!walletAddr) {
         toast.error("Could not determine wallet address");
-        setIsFarmToNootLoading(false);
+        setIsFarmToMonLoading(false);
         return;
       }
       
-      // Create contract instances with contract runner that works for both AGW and standard wallets
-      const checksummedNootTokenAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      // Create contract instances with contract runner that works for both   and standard wallets
+      const checksummedMonTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS); // Use FARM_SWAP_ADDRESS here
-      const nootContract = new Contract(checksummedNootTokenAddress, TOKEN_ABI, ethersProvider);
+      const MonContract = new Contract(checksummedMonTokenAddress, TOKEN_ABI, ethersProvider);
       const swapContract = new Contract(checksummedFarmSwapAddress, SWAP_ABI, signer);
       
-      // First check contract's NOOT balance
-      const contractBalance = await nootContract.balanceOf(checksummedFarmSwapAddress);
+      // First check contract's Mon balance
+      const contractBalance = await MonContract.balanceOf(checksummedFarmSwapAddress);
       let formattedBalance;
       
       try {
@@ -1715,13 +1699,13 @@ export const TokenSwap = () => {
         formattedBalance = etherUtils.formatUnits(contractBalance, 18);
       }
       
-      console.log("Contract NOOT balance:", formattedBalance);
+      console.log("Contract Mon balance:", formattedBalance);
       
-      // Check if contract has enough NOOT for the swap
-      if (parseFloat(formattedBalance) < nootToReceive) {
-        setFarmToNootError(`The contract doesn't have enough NOOT tokens. Available: ${formattedBalance}`);
-        toast.error(`Contract has insufficient NOOT tokens (${formattedBalance} available).`);
-        setIsFarmToNootLoading(false);
+      // Check if contract has enough Mon for the swap
+      if (parseFloat(formattedBalance) < MonToReceive) {
+        setFarmToMonError(`The contract doesn't have enough Mon tokens. Available: ${formattedBalance}`);
+        toast.error(`Contract has insufficient Mon tokens (${formattedBalance} available).`);
+        setIsFarmToMonLoading(false);
         return;
       }
       
@@ -1729,94 +1713,33 @@ export const TokenSwap = () => {
       const initialFarmCoins = farmCoins;
       
       // Format amount with proper decimals for the blockchain
-      let nootAmount;
+      let MonAmount;
       try {
-        nootAmount = parseUnits(nootToReceive.toString(), 18);
+        MonAmount = parseUnits(MonToReceive.toString(), 18);
       } catch (err) {
         // Fallback using our utility
-        nootAmount = etherUtils.parseUnits(nootToReceive.toString(), 18);
+        MonAmount = etherUtils.parseUnits(MonToReceive.toString(), 18);
       }
       
-      // Get the NOOT token address to be used in claimTestTokens
-      const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      // Get the Mon token address to be used in claimTestTokens
+      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       
       // TRY DIRECT TRANSFER APPROACH
       try {
         toast.loading("Processing claim via direct method...", { id: "swap-toast" });
         
-        // Execute the claimTestTokens function on the contract - which gives NOOT tokens
-        if (isAGW) {
-          if (!abstractClient) {
-            throw new Error("No abstractClient available");
-          }
-          
-          console.log("Using AGW direct method for Farm to NOOT swap");
-          
-          // Use AGW's writeContract method for transaction with proper type assertion
-          const txHash = await abstractClient.writeContract({
-            address: formatAddressForAGW(checksummedFarmSwapAddress),
-            abi: parseAbi(SWAP_ABI),
-            functionName: "claimTestTokens",
-            args: [formatAddressForAGW(checksummedNOOTAddress), nootAmount],
-            // Increased gas limit to avoid out-of-gas issues
-            gas: BigInt(1500000),
-            // Paymaster configuration with proper type casting
-            paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391" as `0x${string}`,
-            paymasterInput: getGeneralPaymasterInput({
-              innerInput: "0x"
-            })
-          } as any);
-          
-          console.log("AGW transaction sent:", txHash);
-          
-          // Show transaction details
-          setCurrentTx({
-            hash: txHash,
-            status: "success"  // AGW transactions are considered successful immediately
-          });
-          setShowTxDetails(true);
-          
-          // Update UI immediately for AGW
-          setFarmCoins(prevCoins => prevCoins - farmToNootAmount);
-          await fetchNootBalance(walletAddr);
-          
-          toast.dismiss("swap-toast");
-          // Enhanced Dopamine Toast! ✨
-          toast.success(
-            <div className="flex items-center space-x-3 p-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg shadow-lg">
-              <span className="text-2xl animate-pulse">💎</span>
-              <div>
-                <p className="font-bold text-white text-lg animate-pulse">NOOT ACQUIRED!</p>
-                <p className="text-sm text-white/90">Got {nootToReceive.toFixed(2)} NOOT!</p>
-              </div>
-            </div>,
-            {
-              duration: 4000,
-              icon: '🚀',
-              style: {
-                background: 'transparent',
-                border: 'none',
-                boxShadow: 'none',
-                padding: '0',
-              },
-            }
-          );
-          
-          // Reset the input field after successful swap
-          setFarmToNootAmount(0);
-          
-          // Force refresh after a delay for UI consistency
-          setTimeout(() => forceRefreshAllBalances(), 2000);
-        } else {
+        // Execute the claimTestTokens function on the contract - which gives Mon tokens
+        // Use standard wallet approach (legacy wallet system removed)
+        {
           // For standard wallets
           // Add direct method first
           console.log("Attempting direct claim with standard wallet");
           
           const gasLimit = 2000000;
-          // FIXED: Use claimTestTokens with NOOT address as parameter
+          // FIXED: Use claimTestTokens with Mon address as parameter
           const tx = await swapContract.claimTestTokens(
-            checksummedNOOTAddress, // NOOT token address
-            nootAmount, // amount to claim
+            checksummedMonAddress, // Mon token address
+            MonAmount, // amount to claim
             {
               gasLimit: gasLimit
             }
@@ -1845,16 +1768,16 @@ export const TokenSwap = () => {
           
           if (receipt && receipt.status === 1) {
             // Transaction successful
-            setFarmCoins(prevCoins => prevCoins - farmToNootAmount);
-            await fetchNootBalance(walletAddr);
+            setFarmCoins(prevCoins => prevCoins - farmToMonAmount);
+            await fetchMonBalance(walletAddr);
             
             toast.success(
               // Enhanced Dopamine Toast! ✨
               <div className="flex items-center space-x-3 p-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg shadow-lg">
                 <span className="text-2xl animate-pulse">💎</span>
                 <div>
-                  <p className="font-bold text-white text-lg animate-pulse">NOOT ACQUIRED!</p>
-                  <p className="text-sm text-white/90">Got {nootToReceive.toFixed(2)} NOOT!</p>
+                  <p className="font-bold text-white text-lg animate-pulse">Mon ACQUIRED!</p>
+                  <p className="text-sm text-white/90">Got {MonToReceive.toFixed(2)} Mon!</p>
                 </div>
               </div>,
               {
@@ -1870,12 +1793,12 @@ export const TokenSwap = () => {
             );
             
             // Reset the input field after successful swap
-            setFarmToNootAmount(0);
+            setFarmToMonAmount(0);
             
             // Force refresh after a delay
             setTimeout(() => forceRefreshAllBalances(), 2000);
           } else {
-            toast.error("Transaction failed. The contract may not have enough NOOT tokens.");
+            toast.error("Transaction failed. The contract may not have enough Mon tokens.");
           }
         }
       } catch (error: any) {
@@ -1914,12 +1837,12 @@ export const TokenSwap = () => {
           if (errorMessage.toLowerCase().includes("insufficient") || 
               detailedMessage.toLowerCase().includes("insufficient") ||
               errorMessage.toLowerCase().includes("reverted")) {
-            userFriendlyMessage = "The contract doesn't have enough NOOT tokens to fulfill your claim";
+            userFriendlyMessage = "The contract doesn't have enough Mon tokens to fulfill your claim";
           }
           
           if (errorMessage.toLowerCase().includes("already claimed") || 
               detailedMessage.toLowerCase().includes("already claimed")) {
-            userFriendlyMessage = "You have already claimed NOOT tokens recently";
+            userFriendlyMessage = "You have already claimed Mon tokens recently";
           }
           
           // Create error toast with proper React elements
@@ -1949,10 +1872,10 @@ export const TokenSwap = () => {
     } catch (error: any) {
       console.error("Overall swap error:", error);
       toast.error(`An unexpected error occurred: ${error?.message || "Unknown error"}`);
-      setIsFarmToNootLoading(false);
+      setIsFarmToMonLoading(false);
       toast.dismiss("swap-toast");
     } finally {
-      setIsFarmToNootLoading(false);
+      setIsFarmToMonLoading(false);
       toast.dismiss("swap-toast");
     }
   };
@@ -1963,16 +1886,16 @@ export const TokenSwap = () => {
       if (!address) return "0";
 
       // Get a compatible ethers provider for the active wallet
-      const { provider: ethersProvider, isAGW } = await getEthersProvider(); 
+      const { provider: ethersProvider, is  } = await getEthersProvider(); 
       const checksummedWalletAddress = getChecksumAddress(address);
       const tokenAddress = TOKEN_ADDRESSES[tokenKey as keyof typeof TOKEN_ADDRESSES];
       const checksummedTokenAddress = getChecksumAddress(tokenAddress);
 
-      // Ensure we are on the correct network (check only needed for non-AGW)
-      if (!isAGW && window.ethereum) {
+      // Ensure we are on the correct network
+      if (window.ethereum) {
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        if (chainId !== ABSTRACT_TESTNET_CHAIN_ID) {
-          console.log(`fetchTokenBalance: Not on Abstract Testnet for ${tokenKey}. Returning 0.`);
+        if (chainId !== MONAD_TESTNET_CHAIN_ID) {
+          console.log(`fetchTokenBalance: Not on Monad Testnet for ${tokenKey}. Returning 0.`);
           return "0";
         }
       } else if (!ethersProvider) {
@@ -1982,7 +1905,7 @@ export const TokenSwap = () => {
       }
       
       // --- Use Standard Ethers Implementation for ALL wallet types ---
-      console.log(`Fetching ${tokenKey} balance for ${isAGW ? 'AGW' : 'standard'} user: ${checksummedWalletAddress}`);
+      console.log(`Fetching ${tokenKey} balance for ${is  ? ' ' : 'standard'} user: ${checksummedWalletAddress}`);
       let balanceWei: bigint;
       try {
         // Use the ethersProvider returned by getEthersProvider()
@@ -1991,7 +1914,7 @@ export const TokenSwap = () => {
         balanceWei = BigInt(balanceResult?.toString() ?? '0');
         console.log(`Raw balance for ${tokenKey}: ${balanceWei.toString()}`);
       } catch (ethersError) {
-        console.error(`Error fetching ${tokenKey} balance with ethers (${isAGW ? 'AGW provider' : 'Standard provider'}):`, ethersError);
+        console.error(`Error fetching ${tokenKey} balance with ethers (${is  ? '  provider' : 'Standard provider'}):`, ethersError);
         return "0";
       }
      
@@ -2019,9 +1942,9 @@ export const TokenSwap = () => {
 
     // Corrected loop definition - using Object.keys to get the keys directly
     for (const tokenKey of Object.keys(TOKEN_ADDRESSES)) {
-      // Fetch NOOT separately using its dedicated function
-      if (tokenKey === "NOOT") {
-        // Assuming fetchNootBalance updates actualNootBalance state directly
+      // Fetch Mon separately using its dedicated function
+      if (tokenKey === "Mon") {
+        // Assuming fetchMonBalance updates actualMonBalance state directly
         // We can read it, but don't need to set it in `balances` here
         continue;
       }
@@ -2029,7 +1952,7 @@ export const TokenSwap = () => {
       console.log(`fetchAllTokenBalances: Fetching balance for ${tokenKey}...`);
       // Use tokenKey consistently when calling fetchTokenBalance
       const balance = await fetchTokenBalance(walletAddress, tokenKey);
-      if (balance === "0" && tokenKey !== "NOOT") { // Log if non-NOOT balance is 0
+      if (balance === "0" && tokenKey !== "Mon") { // Log if non-Mon balance is 0
         console.warn(`fetchAllTokenBalances: Fetched balance is 0 for ${tokenKey}.`);
         // Optionally add a check here to see if it *should* be 0
       }
@@ -2052,7 +1975,7 @@ export const TokenSwap = () => {
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
       // Get token info from the contract
-      // FIXED: Updated to match the NooterSwap contract's getTokenInfo return values
+      // FIXED: Updated to match the MonerSwap contract's getTokenInfo return values
       const tokenInfo = await swapContract.getTokenInfo(tokenAddress);
       
       const isSupported = tokenInfo[0]; // isSupported is the first return value
@@ -2088,7 +2011,7 @@ export const TokenSwap = () => {
         return;
       }
       
-      // For NooterSwap, the exchange rate is always 1:1
+      // For MonerSwap, the exchange rate is always 1:1
       // Simply use the same amount for expected output
       setExpectedOutputAmount(swapAmount);
       console.log(`Expected output for ${swapAmount} tokens: ${swapAmount} (1:1 exchange rate)`);
@@ -2098,20 +2021,20 @@ export const TokenSwap = () => {
     }
   };
 
-  const swapNootForToken = async () => {
+  const swapMonForToken = async () => {
     if (!isWalletConnected || !walletAddress) {
       toast.error("Please connect your wallet first");
       return;
     }
     
     // Set the swap direction and use directSwapWithTransfers
-    setSwapDirection('noot-to-token');
+    setSwapDirection('Mon-to-token');
     
     // Call the direct transfer function
     await directSwapWithTransfers();
   };
 
-  const swapTokenForNOOT = async () => {
+  const swapTokenForMon = async () => {
     if (!isWalletConnected || !walletAddress) {
       toast.error("Please connect your wallet first");
       return;
@@ -2134,14 +2057,14 @@ export const TokenSwap = () => {
         return;
       }
       
-      console.log(`Preparing ${selectedToken} to NOOT swap transaction...`);
+      console.log(`Preparing ${selectedToken} to Mon swap transaction...`);
       
       // Get provider based on wallet type
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider, is  } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
       // Setup contract instances
-      const nootAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       const selectedTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[selectedToken as keyof typeof TOKEN_ADDRESSES]);
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
@@ -2179,11 +2102,11 @@ export const TokenSwap = () => {
         }
       }
       
-      // Check if contract has NOOT liquidity
-      const nootValidation = await validateTokenForSwap(nootAddress);
-      if (!nootValidation.hasLiquidity) {
-        console.log(`Contract has no NOOT liquidity.`);
-        toast.error(`Contract has no NOOT liquidity available for swapping. Please fund the contract first.`);
+      // Check if contract has Mon liquidity
+      const MonValidation = await validateTokenForSwap(MonAddress);
+      if (!MonValidation.hasLiquidity) {
+        console.log(`Contract has no Mon liquidity.`);
+        toast.error(`Contract has no Mon liquidity available for swapping. Please fund the contract first.`);
         setIsMultiSwapLoading(false);
         return;
       }
@@ -2196,17 +2119,17 @@ export const TokenSwap = () => {
       
       // FIXED: Calculate expected output using 1:1 exchange rate instead of contract function
       const expectedOutput = tokenAmount; // 1:1 exchange rate
-      console.log(`Expected NOOT output: ${formatUnits(expectedOutput, 18)} NOOT`);
+      console.log(`Expected Mon output: ${formatUnits(expectedOutput, 18)} Mon`);
       
       // Step 1: Check allowance and approve if needed
       try {
-        // ADDED: Check if contract has enough NOOT liquidity BEFORE approval
-        const contractNootBalanceStr = contractTokenBalances.NOOT || "0"; // Use the fetched contract balance
-        const contractNootBalance = parseFloat(contractNootBalanceStr);
-        const estimatedNootOutputAmount = expectedOutputAmount > 0 ? expectedOutputAmount : swapAmount; // Use calculated or fallback
+        // ADDED: Check if contract has enough Mon liquidity BEFORE approval
+        const contractMonBalanceStr = contractTokenBalances.Mon || "0"; // Use the fetched contract balance
+        const contractMonBalance = parseFloat(contractMonBalanceStr);
+        const estimatedMonOutputAmount = expectedOutputAmount > 0 ? expectedOutputAmount : swapAmount; // Use calculated or fallback
 
-        if (contractNootBalance < estimatedNootOutputAmount) {
-          toast.error(`Contract has insufficient NOOT liquidity. Available: ${contractNootBalance.toFixed(2)}`);
+        if (contractMonBalance < estimatedMonOutputAmount) {
+          toast.error(`Contract has insufficient Mon liquidity. Available: ${contractMonBalance.toFixed(2)}`);
           setIsMultiSwapLoading(false);
           return;
         }
@@ -2217,7 +2140,7 @@ export const TokenSwap = () => {
           console.log(`Insufficient allowance. Approving ${selectedToken} spending...`);
           toast.loading(`Approving ${selectedToken} spending...`, { id: "approval-toast" });
           
-          // Fix in swapTokenForNOOT function - replace mul with BigInt multiplication
+          // Fix in swapTokenForMon function - replace mul with BigInt multiplication
           const approveTx = await selectedTokenContract.approve(farmSwapAddress, tokenAmount * BigInt(2));
           console.log("Approval transaction submitted:", approveTx.hash);
           
@@ -2241,15 +2164,15 @@ export const TokenSwap = () => {
         // IMPORTANT: Add debug logging before transaction
         console.log("Debug swap params:", {
           fromToken: selectedToken,
-          toToken: "NOOT",
+          toToken: "Mon",
           fromAddress: selectedTokenAddress,
-          toAddress: nootAddress,
+          toAddress: MonAddress,
           amount: tokenAmount.toString(),
           amountFormatted: formatUnits(tokenAmount, 18)
         });
         
-        // Use the swapTokenForNOOT function with higher gas limit
-        const tx = await swapContract.swapTokenForNOOT(
+        // Use the swapTokenForMon function with higher gas limit
+        const tx = await swapContract.swapTokenForMon(
           selectedTokenAddress,
           tokenAmount,
           { 
@@ -2278,7 +2201,7 @@ export const TokenSwap = () => {
         
         if (receipt && receipt.status === 1) {
           // Refresh balances
-          await fetchNootBalance(walletAddress);
+          await fetchMonBalance(walletAddress);
           
           // Display success message with formatted expected output if available
           const formattedOutput = expectedOutput 
@@ -2290,7 +2213,7 @@ export const TokenSwap = () => {
               <span className="text-2xl animate-bounce">✨</span>
               <div>
                 <p className="font-bold text-white text-lg animate-pulse">SWAP COMPLETE!</p>
-                <p className="text-sm text-white/90">Swapped {swapAmount} NOOT for {swapAmount} {selectedToken}</p>
+                <p className="text-sm text-white/90">Swapped {swapAmount} Mon for {swapAmount} {selectedToken}</p>
               </div>
             </div>,
             {
@@ -2358,13 +2281,13 @@ export const TokenSwap = () => {
       console.log("Checking all contract token balances...");
       const { provider: ethersProvider } = await getEthersProvider();
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
-      const nootAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, ethersProvider);
       
-      // Get all tokens including NOOT
+      // Get all tokens including Mon
       const allTokens = [
-        "NOOT",
+        "Mon",
         "ABSTER",
         "ABBY",
         "CHESTER",
@@ -2382,20 +2305,20 @@ export const TokenSwap = () => {
       
       const newBalances: Record<string, string> = {};
       
-      // First check NOOT balance
+      // First check Mon balance
       try {
-        const nootContract = new Contract(nootAddress, TOKEN_ABI, ethersProvider);
-        const contractNootBalance = await nootContract.balanceOf(farmSwapAddress);
-        const formattedNootBalance = formatUnits(contractNootBalance, 18);
-        newBalances["NOOT"] = formattedNootBalance;
-        console.log(`Contract NOOT balance: ${formattedNootBalance}`);
+        const MonContract = new Contract(MonAddress, TOKEN_ABI, ethersProvider);
+        const contractMonBalance = await MonContract.balanceOf(farmSwapAddress);
+        const formattedMonBalance = formatUnits(contractMonBalance, 18);
+        newBalances["Mon"] = formattedMonBalance;
+        console.log(`Contract Mon balance: ${formattedMonBalance}`);
       } catch (error) {
-        console.error("Error checking contract NOOT balance:", error);
-        newBalances["NOOT"] = "0";
+        console.error("Error checking contract Mon balance:", error);
+        newBalances["Mon"] = "0";
       }
       
       // Then check all other tokens
-      for (const tokenKey of allTokens.filter(t => t !== "NOOT")) {
+      for (const tokenKey of allTokens.filter(t => t !== "Mon")) {
         try {
           if (TOKEN_ADDRESSES[tokenKey as keyof typeof TOKEN_ADDRESSES]) {
             const tokenAddress = getChecksumAddress(TOKEN_ADDRESSES[tokenKey as keyof typeof TOKEN_ADDRESSES]);
@@ -2432,8 +2355,8 @@ export const TokenSwap = () => {
     }
   }, [showDevTools, isWalletConnected]);
   
-  // Function to fund the contract with NOOT
-  const fundContractWithNOOT = async () => {
+  // Function to fund the contract with Mon
+  const fundContractWithMon = async () => {
     if (!isWalletConnected || !walletAddress) {
       toast.error("Please connect your wallet first");
       return;
@@ -2449,44 +2372,42 @@ export const TokenSwap = () => {
       }
       
       // Check balance
-      if (parseFloat(actualNootBalance) < fundAmount) {
-        toast.error(`Not enough NOOT tokens. You have ${actualNootBalance} NOOT`);
+      if (parseFloat(actualMonBalance) < fundAmount) {
+        toast.error(`Not enough Mon tokens. You have ${actualMonBalance} Mon`);
         setIsFunding(false);
         return;
       }
       
-      console.log(`Preparing to fund contract with ${fundAmount} NOOT...`);
+      console.log(`Preparing to fund contract with ${fundAmount} Mon...`);
       
       // Get provider based on wallet type
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Switch to Abstract Testnet if needed
-      if (!isAGW) {
-        await switchToAbstractTestnet();
-      }
+      // Switch to Monad Testnet if needed
+      await switchToMonadTestnet();
       
       // Setup contract instances
-      const nootAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
-      const nootContract = new Contract(nootAddress, TOKEN_ABI, signer);
+      const MonContract = new Contract(MonAddress, TOKEN_ABI, signer);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
       // Format amount with proper decimals
-      const nootAmount = etherUtils.parseUnits(fundAmount.toString(), 18);
+      const MonAmount = etherUtils.parseUnits(fundAmount.toString(), 18);
       
       // Step 1: Check allowance and approve if needed
       try {
-        const currentAllowance = await nootContract.allowance(walletAddress, farmSwapAddress);
+        const currentAllowance = await MonContract.allowance(walletAddress, farmSwapAddress);
         
-        if (currentAllowance < nootAmount) {
+        if (currentAllowance < MonAmount) {
           console.log("Insufficient allowance, requesting approval...");
           toast.loading("Approving tokens...", { id: "approval-toast" });
           
           // Use a large approval amount to avoid frequent approvals
           const largeApprovalAmount = parseUnits("100000", 18);
-          const approvalTx = await nootContract.approve(farmSwapAddress, largeApprovalAmount);
+          const approvalTx = await MonContract.approve(farmSwapAddress, largeApprovalAmount);
           
           console.log("Approval transaction submitted:", approvalTx.hash);
           setCurrentTx({
@@ -2503,7 +2424,7 @@ export const TokenSwap = () => {
             throw new Error("Token approval failed");
           }
           
-          toast.success("NOOT tokens approved for funding");
+          toast.success("Mon tokens approved for funding");
         }
       } catch (error: any) {
         toast.dismiss("approval-toast");
@@ -2517,9 +2438,9 @@ export const TokenSwap = () => {
       try {
         toast.loading("Funding contract...", { id: "fund-toast" });
         
-        // Use the fundNOOT function
-        const tx = await swapContract.fundNOOT(
-          nootAmount,
+        // Use the fundMon function
+        const tx = await swapContract.fundMon(
+          MonAmount,
           { gasLimit: 1000000 }
         );
         
@@ -2541,11 +2462,11 @@ export const TokenSwap = () => {
         
         if (receipt && receipt.status === 1) {
           // Refresh balances
-          await fetchNootBalance(walletAddress);
+          await fetchMonBalance(walletAddress);
           await checkContractBalance();
           
           toast.success(
-            `Successfully funded contract with ${fundAmount} NOOT tokens!`,
+            `Successfully funded contract with ${fundAmount} Mon tokens!`,
             { duration: 5000 }
           );
         } else {
@@ -2571,8 +2492,8 @@ export const TokenSwap = () => {
       return;
     }
     
-    if (selectedFundToken === "NOOT") {
-      return fundContractWithNOOT();
+    if (selectedFundToken === "Mon") {
+      return fundContractWithMon();
     }
     
     try {
@@ -2595,13 +2516,11 @@ export const TokenSwap = () => {
       console.log(`Preparing to fund contract with ${fundAmount} ${selectedFundToken}...`);
       
       // Get provider based on wallet type
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Switch to Abstract Testnet if needed
-      if (!isAGW) {
-        await switchToAbstractTestnet();
-      }
+      // Switch to Monad Testnet if needed
+      await switchToMonadTestnet();
       
       // Setup contract instances
       const selectedTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[selectedFundToken as keyof typeof TOKEN_ADDRESSES]);
@@ -2722,12 +2641,12 @@ export const TokenSwap = () => {
       setIsAddingToken(true);
       
       // Get provider based on wallet type
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider, is  } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Switch to Abstract Testnet if needed
-      if (!isAGW) {
-        await switchToAbstractTestnet();
+      // Switch to Monad Testnet if needed
+      if (!is ) {
+        await switchToMonadTestnet();
       }
       
       // Setup contract instance
@@ -2740,7 +2659,7 @@ export const TokenSwap = () => {
       // Add the token to the contract
       toast.loading("Adding token to contract...", { id: "add-token-toast" });
       
-      // FIXED: NooterSwap.sol addToken only accepts tokenAddress (no exchange rate parameter)
+      // FIXED: MonerSwap.sol addToken only accepts tokenAddress (no exchange rate parameter)
       const tx = await swapContract.addToken(
         getChecksumAddress(newTokenAddress),
         { gasLimit: 1000000 }
@@ -2823,19 +2742,19 @@ export const TokenSwap = () => {
       setIsRefreshing(true);
       toast.loading("Updating exchange rates...", { id: "update-rates-toast" });
       
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider, is  } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Switch to Abstract Testnet if needed
-      if (!isAGW) {
-        await switchToAbstractTestnet();
+      // Switch to Monad Testnet if needed
+      if (!is ) {
+        await switchToMonadTestnet();
       }
       
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
-      // Get all tokens except NOOT
-      const tokensToUpdate = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "NOOT");
+      // Get all tokens except Mon
+      const tokensToUpdate = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "Mon");
       
       // Set exchange rate to 1:1 (1 ether)
       const oneToOneRate = etherUtils.parseUnits("1", 18);
@@ -2887,18 +2806,18 @@ export const TokenSwap = () => {
       setIsRefreshing(true);
       toast.loading("Funding contract with tokens...", { id: "fund-toast" });
       
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider, is  } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Switch to Abstract Testnet if needed
-      if (!isAGW) {
-        await switchToAbstractTestnet();
+      // Switch to Monad Testnet if needed
+      if (!is ) {
+        await switchToMonadTestnet();
       }
       
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
-      // Get all tokens including NOOT
+      // Get all tokens including Mon
       const tokensToFund = Object.keys(TOKEN_ADDRESSES);
       
       // Amount to fund per token (1000 tokens)
@@ -2932,8 +2851,8 @@ export const TokenSwap = () => {
           
           // Use the appropriate funding method based on token
           let fundTx;
-          if (tokenKey === "NOOT") {
-            fundTx = await swapContract.fundNOOT(fundAmount, { gasLimit: 500000 });
+          if (tokenKey === "Mon") {
+            fundTx = await swapContract.fundMon(fundAmount, { gasLimit: 500000 });
           } else {
             fundTx = await swapContract.fundToken(tokenAddress, fundAmount, { gasLimit: 500000 });
           }
@@ -2971,19 +2890,19 @@ export const TokenSwap = () => {
       setIsRefreshing(true);
       toast.loading("Registering and configuring all tokens...", { id: "configure-toast" });
       
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider, is  } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Switch to Abstract Testnet if needed
-      if (!isAGW) {
-        await switchToAbstractTestnet();
+      // Switch to Monad Testnet if needed
+      if (!is ) {
+        await switchToMonadTestnet();
       }
       
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
-      // Get all tokens except NOOT
-      const tokensToRegister = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "NOOT");
+      // Get all tokens except Mon
+      const tokensToRegister = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "Mon");
       
       // Set exchange rate to 1:1 (1 ether)
       const oneToOneRate = etherUtils.parseUnits("1", 18);
@@ -3060,8 +2979,8 @@ export const TokenSwap = () => {
   
   // Update the AdminSettings component to include the new function
   const AdminSettings = () => (
-    <div className="noot-settings-section border border-[#333] rounded p-4 mb-4">
-      <h2 className="noot-settings-title font-bold mb-2">Admin Settings</h2>
+    <div className="Mon-settings-section border border-[#333] rounded p-4 mb-4">
+      <h2 className="Mon-settings-title font-bold mb-2">Admin Settings</h2>
       
       <div className="space-y-2">
         <div className="flex flex-col space-y-2">
@@ -3121,16 +3040,16 @@ export const TokenSwap = () => {
         return;
       }
       
-      const { provider: ethersProvider, isAGW } = await getEthersProvider();
+      const { provider: ethersProvider, is  } = await getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
       // Setup contract instances
-      const nootAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
       const selectedTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[selectedToken as keyof typeof TOKEN_ADDRESSES]);
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
       // Create contract instances
-      const nootContract = new Contract(nootAddress, TOKEN_ABI, signer);
+      const MonContract = new Contract(MonAddress, TOKEN_ABI, signer);
       const tokenContract = new Contract(selectedTokenAddress, TOKEN_ABI, signer);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
@@ -3138,10 +3057,10 @@ export const TokenSwap = () => {
       const amount = etherUtils.parseUnits(swapAmount.toString(), 18);
       
       // Check balances based on swap direction
-      if (swapDirection === 'noot-to-token') {
-        // Check user NOOT balance
-        if (parseFloat(actualNootBalance) < swapAmount) {
-          toast.error(`Not enough NOOT tokens. You have ${actualNootBalance} NOOT`);
+      if (swapDirection === 'Mon-to-token') {
+        // Check user Mon balance
+        if (parseFloat(actualMonBalance) < swapAmount) {
+          toast.error(`Not enough Mon tokens. You have ${actualMonBalance} Mon`);
           setIsMultiSwapLoading(false);
           return;
         }
@@ -3155,13 +3074,13 @@ export const TokenSwap = () => {
           return;
         }
         
-        // Step 1: Approve NOOT spending
-        toast.loading("Approving NOOT transfer...", { id: "direct-swap-toast" });
+        // Step 1: Approve Mon spending
+        toast.loading("Approving Mon transfer...", { id: "direct-swap-toast" });
         
         try {
-          const currentAllowance = await nootContract.allowance(walletAddress, farmSwapAddress);
+          const currentAllowance = await MonContract.allowance(walletAddress, farmSwapAddress);
           if (currentAllowance < amount) {
-            const approveTx = await nootContract.approve(farmSwapAddress, amount * BigInt(2));
+            const approveTx = await MonContract.approve(farmSwapAddress, amount * BigInt(2));
             console.log("Approval transaction submitted:", approveTx.hash);
             await approveTx.wait();
             console.log("Approval confirmed");
@@ -3172,13 +3091,13 @@ export const TokenSwap = () => {
           // Step 2: Execute the swap directly through the contract
           toast.loading("Processing swap...", { id: "direct-swap-toast" });
           
-          console.log("Executing swapNOOTForToken with params:", {
+          console.log("Executing swapMonForToken with params:", {
             tokenAddress: selectedTokenAddress,
             amount: amount.toString()
           });
           
-          // FIXED: Use the correct contract function call matching the NooterSwap.sol contract
-          const swapTx = await swapContract.swapNOOTForToken(
+          // FIXED: Use the correct contract function call matching the MonerSwap.sol contract
+          const swapTx = await swapContract.swapMonForToken(
             selectedTokenAddress, // toTokenAddress
             amount, // amount
             { 
@@ -3210,7 +3129,7 @@ export const TokenSwap = () => {
                 <span className="text-2xl animate-bounce">✨</span>
                 <div>
                   <p className="font-bold text-white text-lg animate-pulse">SWAP COMPLETE!</p>
-                  <p className="text-sm text-white/90">Swapped {swapAmount} NOOT for {swapAmount} {selectedToken}</p>
+                  <p className="text-sm text-white/90">Swapped {swapAmount} Mon for {swapAmount} {selectedToken}</p>
                 </div>
               </div>,
               {
@@ -3226,7 +3145,7 @@ export const TokenSwap = () => {
             );
             
             // Refresh balances
-            await fetchNootBalance(walletAddress);
+            await fetchMonBalance(walletAddress);
             await handleManualRefresh();
           } else {
             throw new Error("Swap transaction failed");
@@ -3242,7 +3161,7 @@ export const TokenSwap = () => {
             } else if (errorStr.includes("allowance")) {
               toast.error("Swap failed: Not enough allowance. Try approving more tokens.");
             } else if (errorStr.includes("balance")) {
-              toast.error("Swap failed: Not enough NOOT tokens in your wallet.");
+              toast.error("Swap failed: Not enough Mon tokens in your wallet.");
             } else {
               toast.error("Swap failed: Insufficient funds or gas.");
             }
@@ -3266,7 +3185,7 @@ export const TokenSwap = () => {
           }));
         }
       } else {
-        // TOKEN TO NOOT SWAP
+        // TOKEN TO Mon SWAP
         // Check user token balance
         const tokenBalance = tokenBalances[selectedToken] || "0";
         if (parseFloat(tokenBalance) < swapAmount) {
@@ -3275,11 +3194,11 @@ export const TokenSwap = () => {
           return;
         }
         
-        // Check contract NOOT balance
-        const contractNootBalanceStr = contractTokenBalances.NOOT || "0";
-        const contractNootBalance = parseFloat(contractNootBalanceStr);
-        if (contractNootBalance < swapAmount) {
-          toast.error(`Contract has insufficient NOOT liquidity. Available: ${contractNootBalance}`);
+        // Check contract Mon balance
+        const contractMonBalanceStr = contractTokenBalances.Mon || "0";
+        const contractMonBalance = parseFloat(contractMonBalanceStr);
+        if (contractMonBalance < swapAmount) {
+          toast.error(`Contract has insufficient Mon liquidity. Available: ${contractMonBalance}`);
           setIsMultiSwapLoading(false);
           return;
         }
@@ -3301,13 +3220,13 @@ export const TokenSwap = () => {
           // Step 2: Execute the swap directly through the contract
           toast.loading("Processing swap...", { id: "direct-swap-toast" });
           
-          console.log("Executing swapTokenForNOOT with params:", {
+          console.log("Executing swapTokenForMon with params:", {
             tokenAddress: selectedTokenAddress,
             amount: amount.toString()
           });
           
           // FIXED: Make sure we're correctly calling the contract function
-          const swapTx = await swapContract.swapTokenForNOOT(
+          const swapTx = await swapContract.swapTokenForMon(
             selectedTokenAddress, // fromTokenAddress
             amount, // amount
             { 
@@ -3339,7 +3258,7 @@ export const TokenSwap = () => {
                 <span className="text-2xl animate-spin">🚀</span>
                 <div>
                   <p className="font-bold text-white text-lg animate-pulse">SWAP COMPLETE!</p>
-                  <p className="text-sm text-white/90">Swapped {swapAmount} {selectedToken} for {swapAmount} NOOT</p>
+                  <p className="text-sm text-white/90">Swapped {swapAmount} {selectedToken} for {swapAmount} Mon</p>
                 </div>
               </div>,
               {
@@ -3355,7 +3274,7 @@ export const TokenSwap = () => {
             );
             
             // Refresh balances
-            await fetchNootBalance(walletAddress);
+            await fetchMonBalance(walletAddress);
             await handleManualRefresh();
           } else {
             throw new Error("Swap transaction failed");
@@ -3367,7 +3286,7 @@ export const TokenSwap = () => {
           const errorStr = String(error).toLowerCase();
           if (errorStr.includes("insufficient")) {
             if (errorStr.includes("liquidity")) {
-              toast.error("Swap failed: The contract doesn't have enough NOOT tokens.");
+              toast.error("Swap failed: The contract doesn't have enough Mon tokens.");
             } else if (errorStr.includes("allowance")) {
               toast.error(`Swap failed: Not enough allowance. Try approving more ${selectedToken} tokens.`);
             } else if (errorStr.includes("balance")) {
@@ -3408,7 +3327,7 @@ export const TokenSwap = () => {
   const renderSwapButtons = () => (
     <div className="flex flex-col space-y-2">
       <button
-        onClick={swapDirection === 'noot-to-token' ? swapNootForToken : swapTokenForNOOT}
+        onClick={swapDirection === 'Mon-to-token' ? swapMonForToken : swapTokenForMon}
         disabled={isMultiSwapLoading || swapAmount <= 0 || !isWalletConnected}
         className="w-full py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-md font-medium transition"
       >
@@ -3419,7 +3338,7 @@ export const TokenSwap = () => {
           </div>
         ) : (
           <span>
-            Swap {swapAmount > 0 ? swapAmount : '0'} {swapDirection === 'noot-to-token' ? 'NOOT' : selectedToken} for {expectedOutputAmount ? expectedOutputAmount.toFixed(4) : '0'} {swapDirection === 'noot-to-token' ? selectedToken : 'NOOT'}
+            Swap {swapAmount > 0 ? swapAmount : '0'} {swapDirection === 'Mon-to-token' ? 'Mon' : selectedToken} for {expectedOutputAmount ? expectedOutputAmount.toFixed(4) : '0'} {swapDirection === 'Mon-to-token' ? selectedToken : 'Mon'}
           </span>
         )}
       </button>
@@ -3444,7 +3363,7 @@ export const TokenSwap = () => {
   );
 
   return (
-    <div className="noot-swap-container noot-text">
+    <div className="Mon-swap-container Mon-text">
       {/* Wallet Options Dialog */}
       <WalletOptionsDialog />
       
@@ -3517,7 +3436,7 @@ export const TokenSwap = () => {
       {/* Add a prominent banner */}
       <div className="mb-4 bg-gradient-to-r from-purple-900 to-blue-900 p-3 rounded-lg flex flex-col sm:flex-row items-center justify-between">
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-white">Need $NOOT in your wallet?</span>
+          <span className="text-sm font-bold text-white">Need $Mon in your wallet?</span>
           <span className="text-xs text-gray-300">Add the token to your Web3 wallet</span>
         </div>
         <Button 
@@ -3526,7 +3445,7 @@ export const TokenSwap = () => {
           size="sm"
         >
           <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Add $NOOT to Wallet
+          Add $Mon to Wallet
         </Button>
       </div>
       
@@ -3543,7 +3462,7 @@ export const TokenSwap = () => {
                 toast.loading("Adding tokens to wallet...");
                 // Add each token one by one with slight delay
                 for (const key of Object.keys(TOKEN_ADDRESSES)) {
-                  if (key === "NOOT") {
+                  if (key === "Mon") {
                     await addTokenToWallet();
                   } else {
                     await addSelectedTokenToWallet(key);
@@ -3566,7 +3485,7 @@ export const TokenSwap = () => {
           {Object.keys(TOKEN_ADDRESSES).map(key => (
             <Button
               key={key}
-              onClick={() => key === "NOOT" ? addTokenToWallet() : addSelectedTokenToWallet(key)}
+              onClick={() => key === "Mon" ? addTokenToWallet() : addSelectedTokenToWallet(key)}
               variant="outline"
               className="h-auto py-1.5 border-[#333] hover:bg-[#222] flex items-center justify-center"
               size="sm"
@@ -3581,22 +3500,22 @@ export const TokenSwap = () => {
       {/* Add contract balance information */}
       <div className="mb-4 border border-[#333] p-3 rounded-lg">
         <div className="flex justify-between items-center">
-          <span className="text-xs text-white/70">FarmSwap Contract NOOT Balance:</span>
+          <span className="text-xs text-white/70">FarmSwap Contract Mon Balance:</span>
           <span className="text-sm font-bold text-white">
-            {Number(contractNootBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} NOOT
+            {Number(contractMonBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} Mon
           </span>
         </div>
-        {Number(contractNootBalance) === 0 && (
+        {Number(contractMonBalance) === 0 && (
           <p className="text-xs text-red-400 mt-1">
-            ⚠️ Contract has no NOOT tokens. Please contact admin to fund the contract.
+            ⚠️ Contract has no Mon tokens. Please contact admin to fund the contract.
           </p>
         )}
       </div>
       
       <div className="wallet-info mb-4">
         <div className="text-sm text-white/60 flex justify-between">
-          <span>NOOT Balance:</span> 
-          <span>{isWalletConnected ? actualNootBalance : nootBalance}</span>
+          <span>Mon Balance:</span> 
+          <span>{isWalletConnected ? actualMonBalance : MonBalance}</span>
         </div>
         <div className="text-sm text-white/60 flex justify-between">
           <span>Farm Coins:</span>
@@ -3610,7 +3529,7 @@ export const TokenSwap = () => {
               size="sm" 
               variant="outline" 
               className="text-xs border-[#333] flex items-center justify-center gap-1 hover:bg-blue-900/20"
-              onClick={() => viewOnExplorer("token", NOOT_TOKEN_ADDRESS)}
+              onClick={() => viewOnExplorer("token", TOKEN_ADDRESSES.aprMON)}
             >
               <ExternalLink className="h-3 w-3" />
               View Token
@@ -3634,10 +3553,10 @@ export const TokenSwap = () => {
       
      
       
-      {/* Swap interface: NOOT to Farm Coins */}
+      {/* Swap interface: Mon to Farm Coins */}
       <div className="border border-[#333] p-4 bg-[#111] mb-4">
         <h3 className="text-white mb-3 flex justify-between items-center">
-          <span>Swap NOOT for Farm Coins</span>
+          <span>Swap Mon for Farm Coins</span>
           <Button 
             onClick={handleManualRefresh}
             size="sm"
@@ -3656,7 +3575,7 @@ export const TokenSwap = () => {
         
         <div>
           <div className="text-sm text-white/60 mb-1">Amount to Swap</div>
-          <div className="noot-swap-input-container mb-3">
+          <div className="Mon-swap-input-container mb-3">
             <input
               type="number"
               value={swapAmount}
@@ -3666,11 +3585,11 @@ export const TokenSwap = () => {
                 setError("");
               }}
               min="0"
-              className="noot-swap-input noot-text"
+              className="Mon-swap-input Mon-text"
             />
-            <div className="noot-swap-token">
-              <span>NOOT</span>
-              <span className="text-xs opacity-60">Balance: {isWalletConnected ? actualNootBalance : "0"}</span>
+            <div className="Mon-swap-token">
+              <span>Mon</span>
+              <span className="text-xs opacity-60">Balance: {isWalletConnected ? actualMonBalance : "0"}</span>
             </div>
           </div>
           
@@ -3678,11 +3597,11 @@ export const TokenSwap = () => {
             <ArrowDown className="text-blue-500" />
           </div>
           
-          <div className="noot-swap-output-container mb-4">
-            <div className="noot-swap-output">
+          <div className="Mon-swap-output-container mb-4">
+            <div className="Mon-swap-output">
               {swapAmount * 10}
             </div>
-            <div className="noot-swap-token">
+            <div className="Mon-swap-token">
               <span>Farm Coins</span>
               <span className="text-xs opacity-60">Current: {farmCoins}</span>
             </div>
@@ -3696,32 +3615,32 @@ export const TokenSwap = () => {
         </div>
         
         <Button
-          onClick={swapNOOTForFarmCoins}
+          onClick={swapMonForFarmCoins}
           className="w-full mb-2 bg-blue-600 hover:bg-blue-700"
-          disabled={isLoading || !isWalletConnected || parseFloat(actualNootBalance) < swapAmount}
+          disabled={isLoading || !isWalletConnected || parseFloat(actualMonBalance) < swapAmount}
         >
           {isLoading ? (
             <Loader className="h-4 w-4 mr-2 animate-spin" />
           ) : null}
           {!isWalletConnected ? "Connect Wallet First" : 
-           parseFloat(actualNootBalance) < swapAmount ? "Insufficient NOOT Balance" :
-           `Swap ${swapAmount} NOOT for ${swapAmount * 10} Farm Coins`}
+           parseFloat(actualMonBalance) < swapAmount ? "Insufficient Mon Balance" :
+           `Swap ${swapAmount} Mon for ${swapAmount * 10} Farm Coins`}
         </Button>
       </div>
       
-      {/* NEW: Swap Farm Coins for NOOT */}
+      {/* NEW: Swap Farm Coins for Mon */}
       <div className="border border-[#333] p-4 bg-[#111] mb-4">
-        <h3 className="text-white mb-3">Swap Farm Coins for NOOT</h3>
+        <h3 className="text-white mb-3">Swap Farm Coins for Mon</h3>
         
         {/* Contract balance warning */}
-        {Number(contractNootBalance) < 10 && (
+        {Number(contractMonBalance) < 10 && (
           <div className="p-2 mb-3 bg-red-900/30 border border-red-800 rounded text-sm">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-red-400" />
-              <span className="text-red-400 font-semibold">Warning: Contract Low on NOOT</span>
+              <span className="text-red-400 font-semibold">Warning: Contract Low on Mon</span>
             </div>
             <p className="text-xs text-white/70 mt-1">
-              The swap contract has only {Number(contractNootBalance).toFixed(2)} NOOT tokens available.
+              The swap contract has only {Number(contractMonBalance).toFixed(2)} Mon tokens available.
               Swaps might fail if there are insufficient tokens.
             </p>
           </div>
@@ -3729,16 +3648,16 @@ export const TokenSwap = () => {
         
         <div>
           <div className="text-sm text-white/60 mb-1">Farm Coins to Swap</div>
-          <div className="noot-swap-input-container mb-3">
+          <div className="Mon-swap-input-container mb-3">
             <Input 
               type="number"
               min="10"
               step="10"
-              value={farmToNootAmount}
-              onChange={(e) => setFarmToNootAmount(Number(e.target.value))}
-              className="noot-swap-input"
+              value={farmToMonAmount}
+              onChange={(e) => setFarmToMonAmount(Number(e.target.value))}
+              className="Mon-swap-input"
             />
-            <div className="noot-swap-token-info">
+            <div className="Mon-swap-token-info">
               <span>Farm Coins</span>
               <span className="text-xs opacity-60">Balance: {farmCoins}</span>
             </div>
@@ -3748,34 +3667,34 @@ export const TokenSwap = () => {
             <ArrowDown className="text-purple-500" />
           </div>
           
-          <div className="text-sm text-white/60 mb-1">NOOT to Receive</div>
-          <div className="noot-swap-output-container mb-4">
-            <div className="noot-swap-output">
-              {(farmToNootAmount / 10).toFixed(2)}
+          <div className="text-sm text-white/60 mb-1">Mon to Receive</div>
+          <div className="Mon-swap-output-container mb-4">
+            <div className="Mon-swap-output">
+              {(farmToMonAmount / 10).toFixed(2)}
             </div>
-            <div className="noot-swap-token-info">
-              <span>NOOT</span>
-              <span className="text-xs opacity-60">Balance: {isWalletConnected ? actualNootBalance : "0"}</span>
+            <div className="Mon-swap-token-info">
+              <span>Mon</span>
+              <span className="text-xs opacity-60">Balance: {isWalletConnected ? actualMonBalance : "0"}</span>
             </div>
           </div>
           
-          {farmToNootError && (
+          {farmToMonError && (
             <div className="p-2 mb-4 bg-red-900/20 border border-red-800/40 rounded text-sm text-red-400">
-              {farmToNootError}
+              {farmToMonError}
             </div>
           )}
           
           <Button
-            onClick={swapFarmCoinsForNOOT}
+            onClick={swapFarmCoinsForMon}
             className="w-full bg-green-600 hover:bg-green-700"
-            disabled={isFarmToNootLoading || !isWalletConnected || Number(contractNootBalance) < farmToNootAmount / 10}
+            disabled={isFarmToMonLoading || !isWalletConnected || Number(contractMonBalance) < farmToMonAmount / 10}
           >
-            {isFarmToNootLoading ? (
+            {isFarmToMonLoading ? (
               <Loader className="h-4 w-4 mr-2 animate-spin" />
             ) : null}
             {!isWalletConnected ? "Connect Wallet First" : 
-             Number(contractNootBalance) < farmToNootAmount / 10 ? "Insufficient Contract Balance" :
-             `Swap ${farmToNootAmount} Farm Coins for ${(farmToNootAmount / 10).toFixed(2)} NOOT`}
+             Number(contractMonBalance) < farmToMonAmount / 10 ? "Insufficient Contract Balance" :
+             `Swap ${farmToMonAmount} Farm Coins for ${(farmToMonAmount / 10).toFixed(2)} Mon`}
           </Button>
         </div>
       </div>
@@ -3786,8 +3705,8 @@ export const TokenSwap = () => {
       <Dialog open={showTxDetails} onOpenChange={setShowTxDetails}>
         <DialogContent className="bg-[#111] border border-[#333] text-white">
           <DialogHeader>
-            <DialogTitle className="text-white noot-title">Transaction Details</DialogTitle>
-            <DialogDescription className="text-white/60 noot-text">
+            <DialogTitle className="text-white Mon-title">Transaction Details</DialogTitle>
+            <DialogDescription className="text-white/60 Mon-text">
               Your swap transaction information.
             </DialogDescription>
           </DialogHeader>
@@ -3846,7 +3765,7 @@ export const TokenSwap = () => {
           <DialogFooter>
             <Button 
               onClick={() => setShowTxDetails(false)}
-              className="w-full bg-white text-black hover:bg-white/90 noot-text"
+              className="w-full bg-white text-black hover:bg-white/90 Mon-text"
             >
               Close
             </Button>
@@ -3871,7 +3790,7 @@ export const TokenSwap = () => {
                 try {
                   let ethersProvider;
                   
-                  if (activeWallet === WALLET_OPTIONS.AGW && abstractClient) {
+                  if (false) { // Removed old wallet logic
                     if (window.ethereum) {
                       ethersProvider = getProvider(window.ethereum);
                     } else {
@@ -3883,10 +3802,10 @@ export const TokenSwap = () => {
                   }
                   
                   const signer = await ethersProvider.getSigner();
-                  const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
-                  const nootContract = new Contract(checksummedNOOTAddress, TOKEN_ABI, ethersProvider);
-                  const name = await nootContract.name();
-                  const symbol = await nootContract.symbol();
+                  const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+                  const MonContract = new Contract(checksummedMonAddress, TOKEN_ABI, ethersProvider);
+                  const name = await MonContract.name();
+                  const symbol = await MonContract.symbol();
                   toast.success(`Token info: ${name} (${symbol})`);
                 } catch (e) {
                   console.error(e);
@@ -3896,7 +3815,7 @@ export const TokenSwap = () => {
               className="bg-blue-900 hover:bg-blue-800 text-xs"
               size="sm"
             >
-              Test NOOT Contract
+              Test Mon Contract
             </Button>
             
             <Button
@@ -3908,7 +3827,7 @@ export const TokenSwap = () => {
                   let ethersProvider;
                   let signer;
                   
-                  if (activeWallet === WALLET_OPTIONS.AGW && abstractClient) {
+                  if (false) { // Removed old wallet logic
                     if (window.ethereum) {
                       ethersProvider = getProvider(window.ethereum);
                       signer = await ethersProvider.getSigner();
@@ -3923,9 +3842,9 @@ export const TokenSwap = () => {
                   
                   const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
                   const swapContract = new Contract(checksummedFarmSwapAddress, SWAP_ABI, ethersProvider);
-                  const nootAddr = await swapContract.nootToken();
-                  const checksummedNootAddr = getChecksumAddress(nootAddr);
-                  toast.success(`FarmSwap linked to NOOT at: ${checksummedNootAddr}`);
+                  const MonAddr = await swapContract.MonToken();
+                  const checksummedMonAddr = getChecksumAddress(MonAddr);
+                  toast.success(`FarmSwap linked to Mon at: ${checksummedMonAddr}`);
                 } catch (e) {
                   console.error(e);
                   toast.error("Failed to get FarmSwap info");
@@ -3958,7 +3877,7 @@ export const TokenSwap = () => {
                   let signer;
                   let walletAddr;
                   
-                  if (activeWallet === WALLET_OPTIONS.AGW && abstractClient) {
+                  if (false) { // Removed old wallet logic
                     if (!window.ethereum) {
                       toast.error("No provider available for funding");
                       return;
@@ -3966,7 +3885,7 @@ export const TokenSwap = () => {
                     
                     ethersProvider = getProvider(window.ethereum);
                     signer = await ethersProvider.getSigner();
-                    walletAddr = address;
+                    walletAddr = walletAddress || "";
                   } else {
                     ethersProvider = getProvider(provider);
                     signer = await ethersProvider.getSigner();
@@ -3979,16 +3898,16 @@ export const TokenSwap = () => {
                     return;
                   }
                   
-                  // Create NOOT contract instance
-                  const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
-                  const nootContract = new Contract(checksummedNOOTAddress, TOKEN_ABI, signer);
+                  // Create Mon contract instance
+                  const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+                  const MonContract = new Contract(checksummedMonAddress, TOKEN_ABI, signer);
                   
                   // Get current balance
-                  const currentBalance = await nootContract.balanceOf(walletAddr);
+                  const currentBalance = await MonContract.balanceOf(walletAddr);
                   const formattedBalance = etherUtils.formatUnits(currentBalance, 18);
                   
                   // Ask how much to fund
-                  const inputAmount = prompt(`Current balance: ${formattedBalance} NOOT\nHow many NOOT tokens do you want to fund to the contract?`, "100");
+                  const inputAmount = prompt(`Current balance: ${formattedBalance} Mon\nHow many Mon tokens do you want to fund to the contract?`, "100");
                   if (!inputAmount) return;
                   
                   const amount = parseFloat(inputAmount);
@@ -4003,11 +3922,11 @@ export const TokenSwap = () => {
                   // Get the contract address
                   const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
                   
-                  // Direct transfer instead of using fundNOOT function
+                  // Direct transfer instead of using fundMon function
                   toast.success("Sending tokens to FarmSwap contract...");
                   
                   // Transfer directly to the contract
-                  const tx = await nootContract.transfer(checksummedFarmSwapAddress, weiAmount, {
+                  const tx = await MonContract.transfer(checksummedFarmSwapAddress, weiAmount, {
                     gasLimit: 200000
                   });
                   
@@ -4016,17 +3935,17 @@ export const TokenSwap = () => {
                   const receipt = await tx.wait();
                   
                   if (receipt.status === 1) {
-                    toast.success(`Successfully sent ${amount} NOOT to the contract!`);
+                    toast.success(`Successfully sent ${amount} Mon to the contract!`);
                     
                     // Fetch new balances to keep UI in sync
-                    fetchNootBalance(walletAddr);
+                    fetchMonBalance(walletAddr);
                     checkContractBalance();
                     
                     // Fetch balance of the contract for immediate feedback
-                    const contractBalance = await nootContract.balanceOf(checksummedFarmSwapAddress);
+                    const contractBalance = await MonContract.balanceOf(checksummedFarmSwapAddress);
                     const formattedContractBalance = etherUtils.formatUnits(contractBalance, 18);
                     
-                    toast.success(`Contract now has ${formattedContractBalance} NOOT`);
+                    toast.success(`Contract now has ${formattedContractBalance} Mon`);
                   } else {
                     toast.error("Transaction failed");
                   }
@@ -4048,15 +3967,15 @@ export const TokenSwap = () => {
           </div>
           
           <p className="text-xs text-white/60 mb-3">
-            Use these tools to deploy and interact with the NOOT token and FarmSwap contracts directly.
-            You can deploy a fresh NOOT token, fund the contract, and check contract statuses.
+            Use these tools to deploy and interact with the Mon token and FarmSwap contracts directly.
+            You can deploy a fresh Mon token, fund the contract, and check contract statuses.
           </p>
         </div>
       )}
       
       {/* Update the multi-token swap section */}
-      <div className="noot-swap-section mb-4">
-        <h2 className="noot-swap-title flex items-center">
+      <div className="Mon-swap-section mb-4">
+        <h2 className="Mon-swap-title flex items-center">
           <span>Multi-Token Swap</span>
           <span className="ml-2 px-2 py-0.5 text-xs bg-purple-600 text-white rounded">NEW</span>
         </h2>
@@ -4067,24 +3986,24 @@ export const TokenSwap = () => {
             <div className="flex justify-center mb-2">
               <div className="bg-[#222] rounded p-1 flex">
                 <button 
-                  className={`px-3 py-1 rounded ${swapDirection === 'noot-to-token' ? 'bg-purple-600' : 'hover:bg-[#333]'}`}
+                  className={`px-3 py-1 rounded ${swapDirection === 'Mon-to-token' ? 'bg-purple-600' : 'hover:bg-[#333]'}`}
                   onClick={() => {
-                    setSwapDirection('noot-to-token');
+                    setSwapDirection('Mon-to-token');
                     // Recalculate expected output when direction changes
                     setTimeout(() => calculateExpectedOutput(), 100);
                   }}
                 >
-                  NOOT → Token
+                  Mon → Token
                 </button>
                 <button 
-                  className={`px-3 py-1 rounded ${swapDirection === 'token-to-noot' ? 'bg-blue-600' : 'hover:bg-[#333]'}`}
+                  className={`px-3 py-1 rounded ${swapDirection === 'token-to-Mon' ? 'bg-blue-600' : 'hover:bg-[#333]'}`}
                   onClick={() => {
-                    setSwapDirection('token-to-noot');
+                    setSwapDirection('token-to-Mon');
                     // Recalculate expected output when direction changes
                     setTimeout(() => calculateExpectedOutput(), 100);
                   }}
                 >
-                  Token → NOOT
+                  Token → Mon
                 </button>
               </div>
             </div>
@@ -4092,9 +4011,9 @@ export const TokenSwap = () => {
             {/* Token Selector */}
             <div>
               <label className="text-sm text-white/70 mb-1 block flex justify-between items-center">
-                <span>{swapDirection === 'noot-to-token' ? 'Select Target Token' : 'Select Source Token'}</span>
+                <span>{swapDirection === 'Mon-to-token' ? 'Select Target Token' : 'Select Source Token'}</span>
                 <Button
-                  onClick={() => swapDirection === 'noot-to-token' 
+                  onClick={() => swapDirection === 'Mon-to-token' 
                     ? addSelectedTokenToWallet() 
                     : addTokenToWallet()}
                   size="sm"
@@ -4102,7 +4021,7 @@ export const TokenSwap = () => {
                   className="h-7 text-xs border-[#333] hover:bg-[#222] flex items-center"
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  Add {swapDirection === 'noot-to-token' ? selectedToken : 'NOOT'} to Wallet
+                  Add {swapDirection === 'Mon-to-token' ? selectedToken : 'Mon'} to Wallet
                 </Button>
               </label>
               <div 
@@ -4117,7 +4036,7 @@ export const TokenSwap = () => {
               
               {showTokenSelector && (
                 <div className="mt-1 border border-[#333] bg-[#171717] rounded max-h-40 overflow-y-auto">
-                  {Object.keys(TOKEN_ADDRESSES).filter(key => key !== "NOOT").map((key) => (
+                  {Object.keys(TOKEN_ADDRESSES).filter(key => key !== "Mon").map((key) => (
                     <div 
                       key={key}
                       className={`p-2 hover:bg-[#222] cursor-pointer ${selectedToken === key ? "bg-[#222]" : ""}`}
@@ -4138,7 +4057,7 @@ export const TokenSwap = () => {
             {/* Input */}
             <div>
               <label className="text-sm text-white/70 mb-1 block">
-                {swapDirection === 'noot-to-token' ? 'NOOT to Swap' : `${selectedToken} to Swap`}
+                {swapDirection === 'Mon-to-token' ? 'Mon to Swap' : `${selectedToken} to Swap`}
               </label>
               <div className="flex items-center border border-[#333] bg-[#111] rounded overflow-hidden">
                 <input
@@ -4151,11 +4070,11 @@ export const TokenSwap = () => {
                   className="flex-1 bg-[#111] border-none px-3 py-2 text-white focus:outline-none"
                 />
                 <div className="px-3 py-2 bg-[#222]">
-                  {swapDirection === 'noot-to-token' ? 'NOOT' : selectedToken}
+                  {swapDirection === 'Mon-to-token' ? 'Mon' : selectedToken}
                 </div>
               </div>
               <div className="text-xs text-white/60 mt-1">
-                Balance: {swapDirection === 'noot-to-token' ? actualNootBalance : parseFloat(tokenBalances[selectedToken] || "0").toFixed(2)}
+                Balance: {swapDirection === 'Mon-to-token' ? actualMonBalance : parseFloat(tokenBalances[selectedToken] || "0").toFixed(2)}
               </div>
             </div>
             
@@ -4167,23 +4086,23 @@ export const TokenSwap = () => {
             {/* Output */}
             <div>
               <label className="text-sm text-white/70 mb-1 block">
-                {swapDirection === 'noot-to-token' ? `${selectedToken} to Receive` : 'NOOT to Receive'}
+                {swapDirection === 'Mon-to-token' ? `${selectedToken} to Receive` : 'Mon to Receive'}
               </label>
               <div className="p-3 border border-[#333] bg-[#191919] rounded text-center">
-                <div className="font-medium">{expectedOutputAmount || swapAmount} {swapDirection === 'noot-to-token' ? selectedToken : 'NOOT'}</div>
+                <div className="font-medium">{expectedOutputAmount || swapAmount} {swapDirection === 'Mon-to-token' ? selectedToken : 'Mon'}</div>
                 <div className="text-xs text-white/40">(estimated)</div>
               </div>
             </div>
             
             {/* Swap Button */}
             <Button 
-              onClick={swapDirection === 'noot-to-token' ? swapNootForToken : swapTokenForNOOT}
-              className={`w-full ${swapDirection === 'noot-to-token' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+              onClick={swapDirection === 'Mon-to-token' ? swapMonForToken : swapTokenForMon}
+              className={`w-full ${swapDirection === 'Mon-to-token' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}
               disabled={
                 isMultiSwapLoading || 
                 !isWalletConnected || 
-                (swapDirection === 'noot-to-token' 
-                  ? parseFloat(actualNootBalance) < swapAmount 
+                (swapDirection === 'Mon-to-token' 
+                  ? parseFloat(actualMonBalance) < swapAmount 
                   : parseFloat(tokenBalances[selectedToken] || "0") < swapAmount)
               }
             >
@@ -4191,13 +4110,13 @@ export const TokenSwap = () => {
                 <Loader className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
               {!isWalletConnected ? "Connect Wallet First" : 
-               swapDirection === 'noot-to-token' 
-                ? (parseFloat(actualNootBalance) < swapAmount 
-                    ? "Insufficient NOOT Balance" 
-                    : `Swap NOOT for ${TOKEN_INFO[selectedToken as keyof typeof TOKEN_INFO]?.symbol || selectedToken}`)
+               swapDirection === 'Mon-to-token' 
+                ? (parseFloat(actualMonBalance) < swapAmount 
+                    ? "Insufficient Mon Balance" 
+                    : `Swap Mon for ${TOKEN_INFO[selectedToken as keyof typeof TOKEN_INFO]?.symbol || selectedToken}`)
                 : (parseFloat(tokenBalances[selectedToken] || "0") < swapAmount 
                     ? `Insufficient ${selectedToken} Balance` 
-                    : `Swap ${TOKEN_INFO[selectedToken as keyof typeof TOKEN_INFO]?.symbol || selectedToken} for NOOT`)
+                    : `Swap ${TOKEN_INFO[selectedToken as keyof typeof TOKEN_INFO]?.symbol || selectedToken} for Mon`)
               }
             </Button>
             
@@ -4215,19 +4134,19 @@ export const TokenSwap = () => {
                   const { provider: ethersProvider } = await getEthersProvider();
                   const signer = await ethersProvider.getSigner();
                   
-                  // Switch to Abstract Testnet if needed
-                  await switchToAbstractTestnet();
+                  // Switch to Monad Testnet if needed
+                  await switchToMonadTestnet();
                   
                   // Create contract instance
                   const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
                   const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
                   
                   let tx;
-                  if (swapDirection === 'noot-to-token' || selectedToken === 'NOOT') {
-                    // Get test NOOT tokens
-                    const nootAmount = etherUtils.parseUnits("10", 18); // 10 NOOT
-                    toast.loading("Claiming NOOT test tokens...");
-                    tx = await swapContract.claimTestNOOT(nootAmount);
+                  if (swapDirection === 'Mon-to-token' || selectedToken === 'Mon') {
+                    // Get test Mon tokens
+                    const MonAmount = etherUtils.parseUnits("10", 18); // 10 Mon
+                    toast.loading("Claiming Mon test tokens...");
+                    tx = await swapContract.claimTestMon(MonAmount);
                   } else {
                     // Get test selected tokens
                     const tokenAmount = etherUtils.parseUnits("5", 18); // 5 tokens
@@ -4240,7 +4159,7 @@ export const TokenSwap = () => {
                   toast.dismiss();
                   
                   // Update balances
-                  await fetchNootBalance(walletAddress);
+                  await fetchMonBalance(walletAddress);
                   
                   toast.success(`Test tokens claimed successfully!`);
                 } catch (error: any) {
@@ -4259,7 +4178,7 @@ export const TokenSwap = () => {
               ) : (
                 <Coins className="h-4 w-4 mr-2" />
               )}
-              Get Test {swapDirection === 'noot-to-token' ? 'NOOT' : selectedToken}
+              Get Test {swapDirection === 'Mon-to-token' ? 'Mon' : selectedToken}
             </Button>
           </div>
         </div>
@@ -4423,8 +4342,8 @@ export const TokenSwap = () => {
                   </div>
                 </div>
                 <div className="text-xs text-white/60 mt-1">
-                  Current Balance: {selectedFundToken === "NOOT" ? 
-                    actualNootBalance : 
+                  Current Balance: {selectedFundToken === "Mon" ? 
+                    actualMonBalance : 
                     parseFloat(tokenBalances[selectedFundToken] || "0").toFixed(2)}
                 </div>
               </div>
@@ -4476,7 +4395,7 @@ export const TokenSwap = () => {
                 {/* Exchange Rate Input */}
                 <div>
                   <label className="text-sm text-white/70 mb-1 block">
-                    Exchange Rate (1 Token = X NOOT)
+                    Exchange Rate (1 Token = X Mon)
                   </label>
                   <input
                     type="number"
@@ -4491,7 +4410,7 @@ export const TokenSwap = () => {
                     min="0.1"
                   />
                   <div className="text-xs text-white/60 mt-1">
-                    Example: Setting 2.5 means 1 Token = 2.5 NOOT
+                    Example: Setting 2.5 means 1 Token = 2.5 Mon
                   </div>
                 </div>
                 

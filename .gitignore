@@ -157,3 +157,5 @@ nooter contract/abstract-fullstack-starterpack-master/artifacts-zk/contracts/Gre
 .env
 docs/error-fixes-summary.md
 SOCIAL_FEED_ERROR_FIX.md
+.env
+DEPLOYMENT-INSTRUCTIONS.md
