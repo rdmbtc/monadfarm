@@ -70,7 +70,7 @@ const TOKEN_ADDRESSES = {
   DAK: "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
   gMON: "0xaEef2f6B429Cb59C9B2D7bB2141ADa993E8571c3",
   shMON: "0x3a98250F98Dd388C211206983453837C8365BDc1",
-  MON: "0xc00000000000000000000000000000000000000000" // MON token address - to be determined
+  MON: "0x0000000000000000000000000000000000000000" // Native MON token (confirmed from contract docs)
 };
 
 // Token information with symbols and names
@@ -478,24 +478,50 @@ export const TokenSwap = () => {
       }
 
       try {
-        // MON is the native token on Monad (like ETH on Ethereum)
-        console.log("Checking native MON balance...");
+        // Check if MON is native token (zero address) or ERC-20
+        const monTokenAddress = TOKEN_ADDRESSES.MON;
+        console.log("Checking MON balance for address:", monTokenAddress);
 
-        try {
-          const nativeBalance = await ethersProvider.getBalance(checksummedWalletAddress);
-          const formattedMonBalance = etherUtils.formatUnits(nativeBalance, 18);
+        if (monTokenAddress === "0x0000000000000000000000000000000000000000") {
+          // MON is native token - check native balance
+          console.log("MON is native token - checking native balance...");
+          try {
+            const nativeBalance = await ethersProvider.getBalance(checksummedWalletAddress);
+            const formattedMonBalance = etherUtils.formatUnits(nativeBalance, 18);
 
-          console.log("Native MON balance:", formattedMonBalance);
-          setActualMonBalance(formattedMonBalance);
+            console.log("Native MON balance:", formattedMonBalance);
+            setActualMonBalance(formattedMonBalance);
 
-          if (parseFloat(formattedMonBalance) > 0) {
-            console.log(`Found ${formattedMonBalance} native MON!`);
-          } else {
-            console.log("No native MON found. You may need to get some MON tokens.");
+            if (parseFloat(formattedMonBalance) > 0) {
+              console.log(`Found ${formattedMonBalance} native MON!`);
+            } else {
+              console.log("No native MON found. You may need to get some MON tokens.");
+            }
+          } catch (error) {
+            console.log("Error checking native MON balance:", error);
+            setActualMonBalance("0");
           }
-        } catch (error) {
-          console.log("Error checking native MON balance:", error);
-          setActualMonBalance("0");
+        } else {
+          // MON is ERC-20 token - check token balance
+          console.log("MON is ERC-20 token - checking token balance...");
+          try {
+            const checksummedMonAddress = getChecksumAddress(monTokenAddress);
+            const monTokenContract = new Contract(checksummedMonAddress, TOKEN_ABI, ethersProvider);
+            const monBalance = await monTokenContract.balanceOf(checksummedWalletAddress);
+            const formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
+
+            console.log("ERC-20 MON token balance:", formattedMonBalance);
+            setActualMonBalance(formattedMonBalance);
+
+            if (parseFloat(formattedMonBalance) > 0) {
+              console.log(`Found ${formattedMonBalance} ERC-20 MON tokens!`);
+            } else {
+              console.log("No ERC-20 MON tokens found. Try the 'Find MON Tokens' button.");
+            }
+          } catch (error) {
+            console.log("Error checking ERC-20 MON token balance:", error);
+            setActualMonBalance("0");
+          }
         }
 
         // Also check contract's native MON balance for UI display
