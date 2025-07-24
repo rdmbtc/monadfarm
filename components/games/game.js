@@ -1495,6 +1495,11 @@ export default function platformerSketch(p) {
       }));
       stars = level.stars.map(s => ({ ...s, isCollected: false, color: p.color(255, 223, 0) }));
       console.log(`🌟 Level ${currentLevelIndex + 1} initialized with ${stars.length} stars:`, stars.map((s, i) => `Star ${i}: (${s.x.toFixed(0)}, ${s.y.toFixed(0)})`));
+
+      // Notify multiplayer system of total stars in this level
+      if (multiplayerCallbacks.onLevelLoaded) {
+        multiplayerCallbacks.onLevelLoaded(stars.length);
+      }
       hazards = level.hazards ? level.hazards.map(h => ({ ...h })) : []; // Load hazards
       powerups = level.powerups ? level.powerups.map(pow => ({ ...pow, isCollected: false })) : []; // Load powerups
       // levelGoal = level.goal ? { ...level.goal, isReached: false } : null; // Load the goal object if it exists - REMOVED

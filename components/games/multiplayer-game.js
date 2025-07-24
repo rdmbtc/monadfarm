@@ -24,7 +24,8 @@ export default function multiplayerPlatformerSketch(p) {
   let gameModelCallbacks = {
     recordStarCollection: null,
     checkLevelComplete: null,
-    advanceToNextLevel: null
+    advanceToNextLevel: null,
+    updateTotalStars: null
   }
 
   // CRITICAL: Initialize base game immediately to set up preload function
@@ -114,6 +115,12 @@ export default function multiplayerPlatformerSketch(p) {
             return gameModelCallbacks.checkLevelComplete()
           }
           return false
+        },
+        onLevelLoaded: (totalStars) => {
+          console.log('MultiplayerGame: Level loaded with', totalStars, 'stars')
+          if (gameModelCallbacks.updateTotalStars) {
+            gameModelCallbacks.updateTotalStars(totalStars)
+          }
         }
       })
     }

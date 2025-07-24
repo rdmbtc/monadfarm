@@ -101,7 +101,8 @@ export default function MultiplayerPlatformerGame({
     canStartGame = () => false,
     recordStarCollection = () => {},
     checkLevelComplete = () => false,
-    advanceToNextLevel = () => {}
+    advanceToNextLevel = () => {},
+    updateTotalStars = () => {}
   } = localGameMode === 'online' ? (multiplayerData || {}) : {}
 
   console.log('🎮 Game State:', {
@@ -465,7 +466,14 @@ export default function MultiplayerPlatformerGame({
           game.setGameModelCallbacks({
             recordStarCollection,
             checkLevelComplete,
-            advanceToNextLevel
+            advanceToNextLevel,
+            updateTotalStars: (totalStars: number) => {
+              console.log('MultiplayerPlatformerGame: Updating total stars to', totalStars)
+              // Update the game session with total stars
+              if (multiplayerData?.gameSession) {
+                multiplayerData.gameSession.totalStarsInLevel = totalStars
+              }
+            }
           })
         }
 

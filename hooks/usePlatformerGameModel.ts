@@ -92,6 +92,7 @@ export interface UsePlatformerGameModelReturn {
   recordStarCollection: (playerId: string, starId: string) => void
   checkLevelComplete: () => boolean
   advanceToNextLevel: () => void
+  updateTotalStars: (totalStars: number) => void
 
   // Utility
   getPlayerById: (playerId: string) => PlatformerPlayer | null
@@ -513,6 +514,19 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
     setChatMessages(prev => [...(prev || []).slice(-49), message])
   }, [gameSession, setGameSession, setChatMessages])
 
+  const updateTotalStars = useCallback((totalStars: number) => {
+    console.log('usePlatformerGameModel: Updating total stars in level to', totalStars)
+
+    setGameSession(prev => {
+      if (!prev) return prev
+
+      return {
+        ...prev,
+        totalStarsInLevel: totalStars
+      }
+    })
+  }, [setGameSession])
+
   return {
     // State
     players,
@@ -539,6 +553,7 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
     recordStarCollection,
     checkLevelComplete,
     advanceToNextLevel,
+    updateTotalStars,
 
     // Utility
     getPlayerById,
