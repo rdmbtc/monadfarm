@@ -67,19 +67,6 @@ class VolumeControls {
         this.uiContainer.add(this.sfxSlider.handle);
         this.uiContainer.add(this.sfxSlider.valueText);
 
-        // --- Test Button ---
-        const testButton = this.scene.add.text(0, this.height / 2 - 25, 'Test Sound', {
-            fontSize: '12px',
-            color: '#ffffff',
-            backgroundColor: '#444444',
-            padding: { x: 8, y: 4 }
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        testButton.on('pointerdown', () => {
-            console.log("Testing volume controls...");
-            this.testVolumeControls();
-        });
-        this.uiContainer.add(testButton);
-
         // --- Close Button ---
         const closeButton = this.scene.add.text(this.width / 2 - 15, -this.height / 2 + 15, 'X', {
             fontSize: '16px',
