@@ -17,11 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-// Import viem utilities for AGW compatibility
-import { parseAbi } from "viem"
-import { getGeneralPaymasterInput } from "viem/zksync"
-
-// Import Privy packages
+// Import Privy packages (keeping for potential future use)
 import { usePrivy, useWallets } from "@privy-io/react-auth"
 
 // Create compatibility layer for ethers v5/v6
@@ -104,7 +100,7 @@ const TOKEN_INFO = {
 };
 
 // Block explorer URL
-const ABSTRACT_BLOCK_EXPLORER = "https://explorer.testnet.abs.xyz";
+const MONAD_BLOCK_EXPLORER = "https://testnet.monadexplorer.com";
 
 // Token ABI - minimal for ERC-20 interactions
 const TOKEN_ABI = [
@@ -146,11 +142,11 @@ const getChecksumAddress = (address: string): string => {
   }
 };
 
-const ABSTRACT_TESTNET_CHAIN_ID = "0x2b74";
+const MONAD_TESTNET_CHAIN_ID = "0x279F"; // 10143 in hex
 
 // Add wallet connection options
 const WALLET_OPTIONS = {
-  METAMASK: "metamask" 
+  METAMASK: "metamask"
 }
 
 // Add the FAUCET constants near other contract constants
@@ -160,15 +156,14 @@ const FAUCET_ABI = [
   "function getTokenBalance() external view returns (uint256)"
 ]; // Simplified ABI, add more functions if needed
 
-// Add a utility function to correctly format addresses for AGW transactions
-const formatAddressForAGW = (address: string): `0x${string}` => {
+// Utility function to format addresses (removed AGW-specific functionality)
+const formatAddress = (address: string): string => {
   // Ensure the address starts with 0x
-  const normalizedAddress = address.startsWith('0x') 
-    ? address.toLowerCase() 
+  const normalizedAddress = address.startsWith('0x')
+    ? address.toLowerCase()
     : `0x${address.toLowerCase()}`;
-  
-  // Cast to the required type
-  return normalizedAddress as `0x${string}`;
+
+  return normalizedAddress;
 };
 
 export const TokenSwap = () => {
@@ -203,10 +198,7 @@ export const TokenSwap = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isGettingTestTokens, setIsGettingTestTokens] = useState(false);
   
-  // AGW wallet hooks
-  const { login: loginWithAbstract, logout: logoutAbstract } = useLoginWithAbstract();
-  const { data: abstractClient } = useAbstractClient();
-  const { address, isConnected } = useAccount();
+  // Wallet connection state (removed AGW dependencies)
   
   // Initialize wallet providers
   const [metamaskProvider, setMetamaskProvider] = useState<any>(null);
@@ -225,20 +217,12 @@ export const TokenSwap = () => {
   const [isAddingToken, setIsAddingToken] = useState<boolean>(false);
   
   useEffect(() => {
-    // Check if AGW wallet is connected
-    if (isConnected && address) {
-      setIsWalletConnected(true);
-      setActiveWallet(WALLET_OPTIONS.AGW);
-      setWalletAddress(address);
-      fetchNootBalance(address);
-    }
-    
     // Check if MetaMask is connected
     const checkMetaMaskConnection = async () => {
       if (typeof window !== 'undefined' && window.ethereum) {
         try {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          if (accounts.length > 0 && !isConnected) {
+          if (accounts.length > 0) {
             setIsWalletConnected(true);
             setActiveWallet(WALLET_OPTIONS.METAMASK);
             setWalletAddress(accounts[0]);
@@ -250,20 +234,20 @@ export const TokenSwap = () => {
         }
       }
     };
-    
+
     checkMetaMaskConnection();
-    
+
     // Set up event listeners for wallet changes
     if (typeof window !== 'undefined' && window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
-    
+
     return () => {
       if (typeof window !== 'undefined' && window.ethereum) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-  }, [isConnected, address]);
+  }, []);
   
   // Handle account changes
   const handleAccountsChanged = async (accounts: string[]) => {
@@ -282,16 +266,8 @@ export const TokenSwap = () => {
   // Get current provider based on active wallet
   const getCurrentProvider = () => {
     console.log("Getting provider for wallet type:", activeWallet);
-    
+
     switch (activeWallet) {
-      case WALLET_OPTIONS.AGW:
-        // For AGW, check if abstractClient is available
-        if (!abstractClient) {
-          console.warn("abstractClient not available yet for AGW wallet");
-          return null;
-        }
-        console.log("Returning AGW abstractClient provider");
-        return abstractClient;
       case WALLET_OPTIONS.METAMASK:
         if (!metamaskProvider) {
           console.warn("metamaskProvider not available yet for MetaMask wallet");
@@ -309,26 +285,6 @@ export const TokenSwap = () => {
   // Get a proper ethers provider based on the wallet type
   const getEthersProvider = async () => {
     switch (activeWallet) {
-      case WALLET_OPTIONS.AGW:
-        // For AGW, we shouldn't rely on window.ethereum
-        if (!abstractClient) {
-          throw new Error("No AGW client available");
-        }
-        
-        try {
-          // Use the abstractClient's transformed provider
-          // Note: The client itself can be used as a provider in most cases
-          const ethProvider = getProvider(abstractClient);
-          return {
-            provider: ethProvider,
-            signer: await ethProvider.getSigner(),
-            isAGW: true
-          };
-        } catch (err) {
-          console.error("Error getting signer from abstractClient:", err);
-          throw new Error("Cannot get signer for AGW");
-        }
-      
       case WALLET_OPTIONS.METAMASK:
         if (!metamaskProvider) {
           throw new Error("No MetaMask provider available");
@@ -339,7 +295,7 @@ export const TokenSwap = () => {
           signer: await ethProviderMM.getSigner(),
           isAGW: false
         };
-      
+
       default:
         if (!window.ethereum) {
           throw new Error("No wallet provider detected");
@@ -357,35 +313,21 @@ export const TokenSwap = () => {
   const connectWallet = async (walletType: string) => {
     try {
       setIsLoading(true);
-      
+
       switch (walletType) {
-        case WALLET_OPTIONS.AGW:
-          await connectAGW();
-          break;
         case WALLET_OPTIONS.METAMASK:
           await connectMetaMask();
           break;
         default:
           console.error("Unknown wallet type");
       }
-      
+
       setShowWalletOptions(false);
     } catch (error) {
       console.error(`Error connecting to ${walletType}:`, error);
       toast.error(`Failed to connect to ${walletType}`);
     } finally {
       setIsLoading(false);
-    }
-  };
-  
-  // Connect to AGW
-  const connectAGW = async () => {
-    try {
-      await loginWithAbstract();
-      toast.success("Connected to Abstract Gaming Wallet");
-    } catch (error) {
-      console.error("AGW connection error:", error);
-      throw error;
     }
   };
   
@@ -405,8 +347,8 @@ export const TokenSwap = () => {
         setWalletAddress(accounts[0]);
         setMetamaskProvider(window.ethereum);
         
-        // Switch to Abstract Testnet
-        await switchToAbstractTestnet(window.ethereum);
+        // Switch to Monad Testnet
+        await switchToMonadTestnet(window.ethereum);
         
         // Fetch NOOT balance
         fetchNootBalance(accounts[0]);
@@ -424,21 +366,18 @@ export const TokenSwap = () => {
   const handleDisconnect = async () => {
     try {
       switch (activeWallet) {
-        case WALLET_OPTIONS.AGW:
-          await logoutAbstract();
-          break;
         case WALLET_OPTIONS.METAMASK:
           // MetaMask doesn't have a disconnect method in its API
           // We just reset the state
           break;
       }
-      
+
       // Reset connection state
       setIsWalletConnected(false);
       setActiveWallet(null);
       setWalletAddress(null);
       setActualNootBalance("0");
-      
+
       toast.success("Wallet disconnected");
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
@@ -446,40 +385,34 @@ export const TokenSwap = () => {
     }
   };
   
-  // Update switchToAbstractTestnet to support multiple providers
-  const switchToAbstractTestnet = async (provider: any = null) => {
+  // Update switchToMonadTestnet to support multiple providers
+  const switchToMonadTestnet = async (provider: any = null) => {
     // Use provided provider or get current provider
     const targetProvider = provider || getCurrentProvider();
-    
+
     if (!targetProvider) {
       toast.error("No wallet provider detected");
       return false;
     }
-    
-    // If using AGW, no need to switch networks - it's already on Abstract Testnet
-    if (activeWallet === WALLET_OPTIONS.AGW && targetProvider === abstractClient) {
-      toast.success("AGW is already on Abstract Testnet");
-      return true;
-    }
-    
+
     try {
       // Check current network
       const chainId = await targetProvider.request({ method: 'eth_chainId' });
       console.log("Current chain ID:", chainId);
-      
-      // Already on Abstract Testnet
-      if (chainId === ABSTRACT_TESTNET_CHAIN_ID) {
-        toast.success("Already connected to Abstract Testnet");
+
+      // Already on Monad Testnet
+      if (chainId === MONAD_TESTNET_CHAIN_ID) {
+        toast.success("Already connected to Monad Testnet");
         return true;
       }
-      
-      // Try to switch to Abstract Testnet
+
+      // Try to switch to Monad Testnet
       await targetProvider.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: ABSTRACT_TESTNET_CHAIN_ID }], // Abstract Testnet
+        params: [{ chainId: MONAD_TESTNET_CHAIN_ID }], // Monad Testnet
       });
-      
-      toast.success("Successfully switched to Abstract Testnet");
+
+      toast.success("Successfully switched to Monad Testnet");
       return true;
     } catch (switchError: any) {
       // This error code indicates the chain has not been added to the wallet
@@ -489,28 +422,28 @@ export const TokenSwap = () => {
           await targetProvider.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: ABSTRACT_TESTNET_CHAIN_ID,
-              chainName: 'Abstract Testnet',
+              chainId: MONAD_TESTNET_CHAIN_ID,
+              chainName: 'Monad Testnet',
               nativeCurrency: {
-                name: 'Abstract ETH',
-                symbol: 'ETH',
+                name: 'Monad',
+                symbol: 'MON',
                 decimals: 18
               },
-              rpcUrls: ['https://api.testnet.abs.xyz', 'https://rpc.testnet.abs.xyz'],
-              blockExplorerUrls: [ABSTRACT_BLOCK_EXPLORER],
+              rpcUrls: ['https://testnet-rpc.monad.xyz'],
+              blockExplorerUrls: [MONAD_BLOCK_EXPLORER],
               iconUrls: []
             }]
           });
-          toast.success("Abstract Testnet added to your wallet");
+          toast.success("Monad Testnet added to your wallet");
           return true;
         } catch (addError) {
           console.error("Error adding chain:", JSON.stringify(addError, Object.getOwnPropertyNames(addError)));
-          toast.error("Could not add Abstract Testnet to your wallet");
+          toast.error("Could not add Monad Testnet to your wallet");
           return false;
         }
       } else {
         console.error("Error switching network:", switchError);
-        toast.error("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
+        toast.error("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
         return false;
       }
     }
@@ -544,29 +477,22 @@ export const TokenSwap = () => {
       
       // Check network/chain ID
       let chainId;
-      
-      // For AGW, we assume it's always on Abstract Testnet
-      if (isAGW) {
-        chainId = ABSTRACT_TESTNET_CHAIN_ID;
-        console.log("Using AGW, assuming chain ID:", chainId);
-      } else {
-        // For MetaMask or other direct providers
-        // Check current network first
-        chainId = await provider.request({ method: 'eth_chainId' });
-        console.log("Current chain ID when fetching balance:", chainId);
-      }
-      
+
+      // For standard wallets, check current network
+      chainId = await provider.request({ method: 'eth_chainId' });
+      console.log("Current chain ID when fetching balance:", chainId);
+
       // For debugging - use checksummed addresses
       const checksummedNOOTAddress = getChecksumAddress(NOOT_TOKEN_ADDRESS);
       console.log("NOOT token address (checksummed):", checksummedNOOTAddress);
-      
+
       // Ensure wallet address is properly checksummed
       const checksummedWalletAddress = getChecksumAddress(address);
       console.log("Wallet address (checksummed):", checksummedWalletAddress);
-      
-      // If we're not on Abstract Testnet, show placeholder balance
-      if (chainId !== ABSTRACT_TESTNET_CHAIN_ID) { 
-        console.log("Not on Abstract Testnet, showing placeholder balance");
+
+      // If we're not on Monad Testnet, show placeholder balance
+      if (chainId !== MONAD_TESTNET_CHAIN_ID) {
+        console.log("Not on Monad Testnet, showing placeholder balance");
         setActualNootBalance("0");
         return;
       }
@@ -645,19 +571,13 @@ export const TokenSwap = () => {
       
       // Check chain ID
       let chainId;
-      
-      // For AGW, assume it's always on Abstract Testnet
-      if (isAGW) {
-        chainId = ABSTRACT_TESTNET_CHAIN_ID;
-        console.log("Using AGW for contract balance check, assuming chain ID:", chainId);
-      } else {
-        // For MetaMask or other direct providers
-        chainId = await provider.request({ method: 'eth_chainId' });
-        console.log("Current chain ID for contract balance check:", chainId);
-      }
-      
-      if (chainId !== ABSTRACT_TESTNET_CHAIN_ID) {
-        console.log(`Currently on chain ID ${chainId}, not on Abstract Testnet`);
+
+      // For standard wallets, check current network
+      chainId = await provider.request({ method: 'eth_chainId' });
+      console.log("Current chain ID for contract balance check:", chainId);
+
+      if (chainId !== MONAD_TESTNET_CHAIN_ID) {
+        console.log(`Currently on chain ID ${chainId}, not on Monad Testnet`);
         return;
       }
       
@@ -791,7 +711,7 @@ export const TokenSwap = () => {
   
   // Add a function to view token on explorer
   const viewOnExplorer = (type: "token" | "address" | "contract" | string, address: string) => {
-    let url = ABSTRACT_BLOCK_EXPLORER;
+    let url = MONAD_BLOCK_EXPLORER;
     
     switch(type) {
       case "token":
@@ -944,19 +864,7 @@ export const TokenSwap = () => {
             )}
           </Button>
           
-          {/* AGW */}
-          <Button
-            onClick={() => connectWallet(WALLET_OPTIONS.AGW)}
-            className="bg-[#6F4CFF] hover:bg-[#5A3DD8] text-white flex items-center justify-between w-full"
-            disabled={isLoading}
-          >
-            <span>AGW Wallet</span>
-            {isLoading && activeWallet === WALLET_OPTIONS.AGW ? (
-              <Loader className="h-4 w-4 animate-spin" />
-            ) : (
-              <img src="/images/agw-logo.svg" alt="AGW" className="h-5 w-5" />
-            )}
-          </Button>
+
         </div>
         
         <DialogFooter>
@@ -1011,50 +919,39 @@ export const TokenSwap = () => {
       const ethersProvider = ethersProviderInfo.provider;
       const signer = ethersProviderInfo.signer;
 
-      // Check network ID to ensure we're on Abstract Testnet
+      // Check network ID to ensure we're on Monad Testnet
       let chainId;
       try {
-        // For AGW, we assume it's always on Abstract Testnet
-        if (isAGW) {
-          chainId = ABSTRACT_TESTNET_CHAIN_ID;
-          console.log("Using AGW, assuming chain ID:", chainId);
-        } else {
-          chainId = await provider.request({ method: 'eth_chainId' });
-          console.log("Current chain ID:", chainId);
-        }
-        
-        // Check if on Abstract Testnet
-        if (chainId !== ABSTRACT_TESTNET_CHAIN_ID) {
-          console.log("Not on Abstract Testnet, attempting to switch network...");
-          const switched = await switchToAbstractTestnet();
+        chainId = await provider.request({ method: 'eth_chainId' });
+        console.log("Current chain ID:", chainId);
+
+        // Check if on Monad Testnet
+        if (chainId !== MONAD_TESTNET_CHAIN_ID) {
+          console.log("Not on Monad Testnet, attempting to switch network...");
+          const switched = await switchToMonadTestnet();
           if (!switched) {
-            setError("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
-            
+            setError("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
+
             // Provide Farm Coins anyway as fallback
             updateFarmCoins(farmCoins + 500);
-            toast.success("Added 500 Farm Coins as a fallback, but you need to switch to Abstract Testnet for full functionality.");
-            
+            toast.success("Added 500 Farm Coins as a fallback, but you need to switch to Monad Testnet for full functionality.");
+
             setIsGettingTestTokens(false);
             return;
           }
         }
       } catch (error) {
         console.error("Error checking or switching network:", error);
-        setError("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
+        setError("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
         setIsGettingTestTokens(false);
         return;
       }
 
       // Get wallet address
       let walletAddr;
-      if (isAGW) {
-        walletAddr = address;
-        console.log("Using AGW address:", walletAddr);
-      } else {
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        walletAddr = accounts[0];
-        console.log("Using wallet address:", walletAddr);
-      }
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      walletAddr = accounts[0];
+      console.log("Using wallet address:", walletAddr);
 
       if (!walletAddr) {
         toast.error("Could not determine wallet address");
@@ -1069,142 +966,52 @@ export const TokenSwap = () => {
       console.log("Requesting test tokens...");
       toast.loading("Requesting test tokens...", {id: "faucet-toast"});
 
-      // Different transaction handling based on wallet type
+      // Standard wallet transaction handling
       try {
         let txHash;
-        
-        if (isAGW) {
-          console.log("Using AGW direct method for test token request");
-          
-          if (!abstractClient) {
-            throw new Error("No abstractClient available");
-          }
-          
-          try {
-            // First try to get a fresh provider check
-            if (!getCurrentProvider()) {
-              throw new Error("AGW provider not properly initialized");
-            }
-            
-            console.log("Starting AGW writeContract call with these parameters:", {
-              address: formatAddressForAGW(checksummedFaucetAddress),
-              functionName: "requestTokens",
-              gas: "1000000"
-            });
-            
-            // Use properly typed transaction with paymaster
-            // Use type assertion to fix TypeScript errors
-            txHash = await abstractClient.writeContract({
-              address: formatAddressForAGW(checksummedFaucetAddress),
-              abi: parseAbi(FAUCET_ABI),
-              functionName: "requestTokens",
-              args: [], // Make sure to pass empty args array for functions with no parameters
-              gas: BigInt(1000000), // Increase to 1,000,000 for more transaction headroom
-              // Restore paymaster configuration for gas sponsoring
-              paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391" as `0x${string}`,
-              paymasterInput: getGeneralPaymasterInput({
-                innerInput: "0x"
-              })
-            } as any); // Use type assertion to fix TypeScript errors
-            
-            console.log("AGW test token request sent:", txHash);
-            
-            // Set transaction details
-            setCurrentTx({
-              hash: txHash,
-              status: "success" // AGW transactions are considered successful immediately
-            });
-            setShowTxDetails(true);
-            
-            // Update UI immediately for AGW
-            await fetchNootBalance(walletAddr);
-            toast.dismiss("faucet-toast");
-            toast.success("Successfully received test tokens!");
-            
-            // Force refresh after a delay
-            setTimeout(() => forceRefreshAllBalances(), 2000);
-            
-            // Mark faucet request as successful
-            faucetSuccess = true;
-          } catch (agwError: any) {
-            console.error("AGW-specific error during transaction:", agwError);
-            
-            // Handle AGW-specific errors with more detailed information
-            let errorMessage = "Failed to process transaction";
-            let detailedMessage = "";
-            
-            if (typeof agwError === "object") {
-              if (agwError.message?.includes("rejected")) {
-                errorMessage = "Transaction was rejected by user";
-              } else if (agwError.message?.includes("reverted")) {
-                errorMessage = "Transaction reverted";
-                detailedMessage = "You may have already claimed tokens recently";
-              } else if (agwError.message?.includes("insufficient funds")) {
-                errorMessage = "Insufficient funds for transaction";
-              } else {
-                // Log detailed error for debugging
-                console.log("Detailed AGW error:", JSON.stringify(agwError));
-                errorMessage = agwError.message || "Unknown error";
-              }
-            }
-            
-            toast.dismiss("faucet-toast");
-            toast.error(
-              React.createElement("div", { className: "space-y-1 text-sm" },
-                React.createElement("p", { className: "font-semibold" }, "Failed to get test tokens:"),
-                React.createElement("p", { className: "text-xs" }, errorMessage),
-                detailedMessage && React.createElement("p", { className: "text-xs text-red-300" }, detailedMessage)
-              ),
-              {duration: 5000}
-            );
-            
-            setError(errorMessage);
-            throw agwError; // Rethrow to be caught by outer catch
-          }
+
+        // For standard wallets
+        const faucetContract = new Contract(checksummedFaucetAddress, FAUCET_ABI, signer);
+
+        const tx = await faucetContract.requestTokens({
+          gasLimit: 300000,
+        });
+
+        txHash = tx.hash;
+        console.log("Test token request transaction sent:", txHash);
+
+        // Set transaction details
+        setCurrentTx({
+          hash: txHash,
+          status: "pending"
+        });
+        setShowTxDetails(true);
+
+        toast.loading("Transaction sent. Waiting for confirmation...", {id: "faucet-toast"});
+
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        toast.dismiss("faucet-toast");
+
+        // Update transaction status
+        setCurrentTx(prev => ({
+          ...prev,
+          status: receipt && receipt.status === 1 ? "success" : "failed"
+        }));
+
+        if (receipt && receipt.status === 1) {
+          // Transaction successful
+          await fetchNootBalance(walletAddr);
+          toast.success("Successfully received test tokens!");
+
+          // Force refresh after a delay
+          setTimeout(() => forceRefreshAllBalances(), 2000);
+
+          // Mark faucet request as successful
+          faucetSuccess = true;
         } else {
-          // For standard wallets
-          const faucetContract = new Contract(checksummedFaucetAddress, FAUCET_ABI, signer);
-          
-          const tx = await faucetContract.requestTokens({
-            gasLimit: 300000,
-          });
-          
-          txHash = tx.hash;
-          console.log("Test token request transaction sent:", txHash);
-          
-          // Set transaction details
-          setCurrentTx({
-            hash: txHash,
-            status: "pending"
-          });
-          setShowTxDetails(true);
-          
-          toast.loading("Transaction sent. Waiting for confirmation...", {id: "faucet-toast"});
-          
-          // Wait for confirmation
-          const receipt = await tx.wait();
-          toast.dismiss("faucet-toast");
-          
-          // Update transaction status
-          setCurrentTx(prev => ({
-            ...prev,
-            status: receipt && receipt.status === 1 ? "success" : "failed"
-          }));
-          
-          if (receipt && receipt.status === 1) {
-            // Transaction successful
-            await fetchNootBalance(walletAddr);
-            toast.success("Successfully received test tokens!");
-            
-            // Force refresh after a delay
-            setTimeout(() => forceRefreshAllBalances(), 2000);
-            
-            // Mark faucet request as successful
-            faucetSuccess = true;
-          } else {
-            toast.error("Failed to get test tokens. The transaction was reverted.");
-            // faucetSuccess remains false for the fallback to kick in
-          }
+          toast.error("Failed to get test tokens. The transaction was reverted.");
+          // faucetSuccess remains false for the fallback to kick in
         }
       } catch (error: any) {
         toast.dismiss("faucet-toast");
@@ -1329,12 +1136,7 @@ export const TokenSwap = () => {
         return;
       }
       
-      // For AGW, use the fallback method directly as it doesn't support wallet_watchAsset
-      if (activeWallet === WALLET_OPTIONS.AGW) {
-        console.log("AGW detected, using manual token addition method");
-        fallbackToManualMethod(checksummedAddress);
-        return;
-      }
+
       
       // Try to use wallet_watchAsset for other wallets
       try {
@@ -1436,12 +1238,7 @@ export const TokenSwap = () => {
         return;
       }
       
-      // For AGW, use the fallback method directly as it doesn't support wallet_watchAsset
-      if (activeWallet === WALLET_OPTIONS.AGW) {
-        console.log("AGW detected, using manual token addition method");
-        fallbackToManualTokenMethod(tokenAddress, tokenInfo);
-        return;
-      }
+
       
       // Try to use wallet_watchAsset for other wallets
       try {
@@ -1574,45 +1371,34 @@ export const TokenSwap = () => {
       const signer = ethersProviderInfo.signer;
       const isAGW = ethersProviderInfo.isAGW;
       
-      // Check network ID to ensure we're on Abstract Testnet
+      // Check network ID to ensure we're on Monad Testnet
       let chainId;
       try {
-        // For AGW, we assume it's always on Abstract Testnet
-        if (isAGW) {
-          chainId = ABSTRACT_TESTNET_CHAIN_ID;
-          console.log("Using AGW, assuming chain ID:", chainId);
-        } else {
-          chainId = await provider.request({ method: 'eth_chainId' });
-          console.log("Current chain ID:", chainId);
-        }
-        
-        // Check if on Abstract Testnet
-        if (chainId !== ABSTRACT_TESTNET_CHAIN_ID) {
-          console.log("Not on Abstract Testnet, attempting to switch network...");
-          const switched = await switchToAbstractTestnet();
+        chainId = await provider.request({ method: 'eth_chainId' });
+        console.log("Current chain ID:", chainId);
+
+        // Check if on Monad Testnet
+        if (chainId !== MONAD_TESTNET_CHAIN_ID) {
+          console.log("Not on Monad Testnet, attempting to switch network...");
+          const switched = await switchToMonadTestnet();
           if (!switched) {
-            setError("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
+            setError("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
             setIsLoading(false);
             return;
           }
         }
       } catch (error) {
         console.error("Error checking or switching network:", error);
-        setError("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
+        setError("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
         setIsLoading(false);
         return;
       }
       
       // Get the connected wallet address
       let walletAddr;
-      if (isAGW) {
-        walletAddr = address;
-        console.log("Using AGW address:", walletAddr);
-      } else {
-        const accounts = await provider.request({ method: 'eth_requestAccounts' });
-        walletAddr = accounts[0];
-        console.log("Using wallet address:", walletAddr);
-      }
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      walletAddr = accounts[0];
+      console.log("Using wallet address:", walletAddr);
       
       if (!walletAddr) {
         toast.error("Could not determine wallet address");
@@ -1669,50 +1455,23 @@ export const TokenSwap = () => {
             let approvalTx: any;
             let approvalTxHash: string;
             
-            if (isAGW) {
-              console.log("Using AGW direct method for token approval");
-              
-              // For AGW, use the abstractClient directly
-              if (!abstractClient) {
-                throw new Error("No abstractClient available");
-              }
-              
-              // Use AGW's writeContract method with minimal gas settings
-              approvalTx = await abstractClient.writeContract({
-                address: formatAddressForAGW(checksummedNOOTAddress),
-                abi: parseAbi(TOKEN_ABI),
-                functionName: "approve",
-                args: [formatAddressForAGW(checksummedFarmSwapAddress), largeApprovalAmount],
-                gas: BigInt(300000), // Increased for safety
-                paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391" as `0x${string}`,
-                paymasterInput: getGeneralPaymasterInput({
-                  innerInput: "0x"
-                })
-              } as any); // Type assertion needed for TypeScript
-              
-              approvalTxHash = approvalTx;
-              
-            } else {
-              // Standard wallets use regular ethers.js calls
-              approvalTx = await nootContract.approve(checksummedFarmSwapAddress, largeApprovalAmount);
-              approvalTxHash = approvalTx.hash;
-            }
+            // Standard wallets use regular ethers.js calls
+            approvalTx = await nootContract.approve(checksummedFarmSwapAddress, largeApprovalAmount);
+            approvalTxHash = approvalTx.hash;
             
             console.log("Approval transaction submitted:", approvalTxHash);
             
             // Show transaction details
             setCurrentTx({
               hash: approvalTxHash,
-              status: isAGW ? "success" : "pending" // AGW tx are considered successful immediately
+              status: "pending"
             });
             setShowTxDetails(true);
-            
-            // Handle confirmation based on wallet type
-            if (!isAGW) {
-              toast.loading("Waiting for approval confirmation...", { id: "approval-toast" });
-              await approvalTx.wait();
-            }
-            
+
+            // Handle confirmation for standard wallets
+            toast.loading("Waiting for approval confirmation...", { id: "approval-toast" });
+            await approvalTx.wait();
+
             toast.dismiss("approval-toast");
             toast.success("NOOT spending approved!");
           } catch (approvalError: any) {
@@ -1746,29 +1505,9 @@ export const TokenSwap = () => {
           
           console.log(`Calling swapNOOTForToken with target token: ${farmToken} (${farmTokenAddress}) and amount: ${nootAmount.toString()}`);
           
-          let tx;
-          if (isAGW) {
-            if (!abstractClient) {
-              throw new Error("No abstractClient available");
-            }
-            
-            tx = await abstractClient.writeContract({
-              address: formatAddressForAGW(checksummedFarmSwapAddress),
-              abi: parseAbi(SWAP_ABI),
-              functionName: "swapNOOTForToken",
-              args: [formatAddressForAGW(farmTokenAddress), nootAmount],
-              gas: BigInt(1500000),
-              paymaster: "0x5407B5040dec3D339A9247f3654E59EEccbb6391" as `0x${string}`,
-              paymasterInput: getGeneralPaymasterInput({
-                innerInput: "0x"
-              })
-            } as any);
-            
-          } else {
-            tx = await swapContract.swapNOOTForToken(farmTokenAddress, nootAmount, {
-              gasLimit: 2000000
-            });
-          }
+          const tx = await swapContract.swapNOOTForToken(farmTokenAddress, nootAmount, {
+            gasLimit: 2000000
+          });
           
           console.log("Swap transaction submitted:", tx.hash);
           setCurrentTx({
@@ -3762,15 +3501,15 @@ export const TokenSwap = () => {
         </div>
       </div>
       
-      {/* Add the Abstract Testnet button */}
+      {/* Add the Monad Testnet button */}
       {isWalletConnected && (
         <div className="mt-2 mb-4">
-          <Button 
-            onClick={() => switchToAbstractTestnet()}
+          <Button
+            onClick={() => switchToMonadTestnet()}
             size="sm"
             className="w-full bg-purple-700 hover:bg-purple-800 text-xs py-2"
           >
-            Switch to Abstract Testnet
+            Switch to Monad Testnet
           </Button>
         </div>
       )}
@@ -4077,7 +3816,7 @@ export const TokenSwap = () => {
                   variant="outline" 
                   className="h-8 px-2 border-[#333] text-white/80"
                   onClick={() => {
-                    window.open(`${ABSTRACT_BLOCK_EXPLORER}/tx/${currentTx.hash}`, '_blank');
+                    window.open(`${MONAD_BLOCK_EXPLORER}/tx/${currentTx.hash}`, '_blank');
                   }}
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -4551,8 +4290,8 @@ export const TokenSwap = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-white/60">Hash:</span>
-              <a 
-                href={`${ABSTRACT_BLOCK_EXPLORER}/tx/${currentTx.hash}`}
+              <a
+                href={`${MONAD_BLOCK_EXPLORER}/tx/${currentTx.hash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:underline truncate max-w-[180px]"
