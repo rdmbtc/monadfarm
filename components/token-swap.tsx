@@ -171,7 +171,7 @@ export const TokenSwap = () => {
   
   // Add new state for token management
   const [tokenBalances, setTokenBalances] = useState<{[key: string]: string}>({})
-  const [selectedToken, setSelectedToken] = useState<string>("ABSTER")
+  const [selectedToken, setSelectedToken] = useState<string>("aprMON")
   const [showTokenSelector, setShowTokenSelector] = useState<boolean>(false)
   const [supportedTokens, setSupportedTokens] = useState<string[]>([])
   const [isMultiSwapLoading, setIsMultiSwapLoading] = useState<boolean>(false)
@@ -478,15 +478,29 @@ export const TokenSwap = () => {
       }
 
       try {
-        // Check MON token balance specifically for swapping
-        const monTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
-        console.log("Checking MON token balance at:", monTokenAddress);
+        // Check MON balance - if it's the zero address, check native balance
+        const monTokenAddress = TOKEN_ADDRESSES.MON;
+        console.log("Checking MON balance for address:", monTokenAddress);
 
-        const monTokenContract = new Contract(monTokenAddress, TOKEN_ABI, ethersProvider);
-        const monBalance = await monTokenContract.balanceOf(checksummedWalletAddress);
-        const formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
+        let formattedMonBalance;
 
-        console.log("MON token balance:", formattedMonBalance);
+        if (monTokenAddress === "0x0000000000000000000000000000000000000000" ||
+            monTokenAddress === "0x00000000000000000000000000000000000000000") {
+          // Check native MON balance (like ETH balance)
+          console.log("Checking native MON balance...");
+          const nativeBalance = await ethersProvider.getBalance(checksummedWalletAddress);
+          formattedMonBalance = etherUtils.formatUnits(nativeBalance, 18);
+          console.log("Native MON balance:", formattedMonBalance);
+        } else {
+          // Check ERC-20 MON token balance
+          console.log("Checking ERC-20 MON token balance at:", monTokenAddress);
+          const checksummedMonAddress = getChecksumAddress(monTokenAddress);
+          const monTokenContract = new Contract(checksummedMonAddress, TOKEN_ABI, ethersProvider);
+          const monBalance = await monTokenContract.balanceOf(checksummedWalletAddress);
+          formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
+          console.log("ERC-20 MON token balance:", formattedMonBalance);
+        }
+
         setActualMonBalance(formattedMonBalance);
 
         if (parseFloat(formattedMonBalance) > 0) {
@@ -1473,8 +1487,8 @@ export const TokenSwap = () => {
           toast.loading("Processing swap via direct transfer...", { id: "swap-toast" });
           
           // Instead of direct transfer, use the swapMonForToken function directly
-          // First determine which farm token to swap to (default to ABSTER)
-          const farmToken = selectedToken || "ABSTER";
+          // First determine which farm token to swap to (default to aprMON)
+          const farmToken = selectedToken || "aprMON";
           const farmTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[farmToken as keyof typeof TOKEN_ADDRESSES]);
           
           console.log(`Calling swapMonForToken with target token: ${farmToken} (${farmTokenAddress}) and amount: ${MonAmount.toString()}`);
@@ -2278,7 +2292,6 @@ export const TokenSwap = () => {
       // Get all tokens including Mon
       const allTokens = [
         "Mon",
-        "ABSTER",
         "ABBY",
         "CHESTER",
         "DOJO3",
@@ -3527,11 +3540,30 @@ export const TokenSwap = () => {
 
                 toast.loading("Checking all token balances...");
                 console.log("=== TOKEN BALANCE DEBUG ===");
+                console.log("Wallet Address:", walletAddress);
 
                 try {
                   const { provider: ethersProvider } = await getEthersProvider();
 
+                  // First check native MON balance
+                  console.log("=== CHECKING NATIVE MON BALANCE ===");
+                  try {
+                    const nativeBalance = await ethersProvider.getBalance(walletAddress);
+                    const formattedNative = etherUtils.formatUnits(nativeBalance, 18);
+                    console.log(`Native MON Balance: ${formattedNative}`);
+                    toast.success(`Native MON: ${formattedNative}`, { duration: 3000 });
+                  } catch (error) {
+                    console.log("Error checking native balance:", error);
+                  }
+
+                  // Then check all ERC-20 tokens
+                  console.log("=== CHECKING ERC-20 TOKENS ===");
                   for (const [tokenKey, tokenAddress] of Object.entries(TOKEN_ADDRESSES)) {
+                    if (tokenAddress === "0x0000000000000000000000000000000000000000" ||
+                        tokenAddress === "0x00000000000000000000000000000000000000000") {
+                      console.log(`Skipping ${tokenKey} (native token)`);
+                      continue;
+                    }
 
                     try {
                       const tokenContract = new Contract(tokenAddress, TOKEN_ABI, ethersProvider);
@@ -3540,7 +3572,7 @@ export const TokenSwap = () => {
                       console.log(`${tokenKey}: ${formattedBalance} tokens`);
 
                       if (parseFloat(formattedBalance) > 0) {
-                        toast.success(`Found ${formattedBalance} ${tokenKey} tokens!`);
+                        toast.success(`Found ${formattedBalance} ${tokenKey} tokens!`, { duration: 3000 });
                       }
                     } catch (error) {
                       console.log(`Error checking ${tokenKey}:`, error);
@@ -3557,7 +3589,7 @@ export const TokenSwap = () => {
               }}
             >
               <RefreshCw className="h-3 w-3" />
-              Check Balances
+              Debug Balances
             </Button>
             <Button
               size="sm"
@@ -3609,21 +3641,24 @@ export const TokenSwap = () => {
         
         <div>
           <div className="text-sm text-white/60 mb-1">Amount to Swap</div>
-          <div className="Mon-swap-input-container mb-3">
-            <input
-              type="number"
-              value={swapAmount}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value);
-                setSwapAmount(isNaN(value) ? 0 : value);
-                setError("");
-              }}
-              min="0"
-              className="Mon-swap-input Mon-text"
-            />
-            <div className="Mon-swap-token">
-              <span>Mon</span>
-              <span className="text-xs opacity-60">Balance: {isWalletConnected ? actualMonBalance : "0"}</span>
+          <div className="mb-3">
+            <div className="bg-[#111] border border-[#333] rounded-lg p-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white font-medium">MON</span>
+                <span className="text-xs text-gray-400">Balance: {isWalletConnected ? actualMonBalance : "0"}</span>
+              </div>
+              <input
+                type="number"
+                value={swapAmount}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setSwapAmount(isNaN(value) ? 0 : value);
+                  setError("");
+                }}
+                min="0"
+                className="w-full bg-transparent border-none text-white text-lg placeholder-gray-400 focus:outline-none"
+                placeholder="0.0"
+              />
             </div>
           </div>
           
@@ -3631,13 +3666,15 @@ export const TokenSwap = () => {
             <ArrowDown className="text-blue-500" />
           </div>
           
-          <div className="Mon-swap-output-container mb-4">
-            <div className="Mon-swap-output">
-              {swapAmount * 10}
-            </div>
-            <div className="Mon-swap-token">
-              <span>Farm Coins</span>
-              <span className="text-xs opacity-60">Current: {farmCoins}</span>
+          <div className="mb-4">
+            <div className="bg-[#111] border border-[#333] rounded-lg p-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white font-medium">Farm Coins</span>
+                <span className="text-xs text-gray-400">Current: {farmCoins}</span>
+              </div>
+              <div className="text-white text-lg">
+                {swapAmount * 10}
+              </div>
             </div>
           </div>
           
