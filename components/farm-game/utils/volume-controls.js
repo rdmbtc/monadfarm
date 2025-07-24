@@ -67,6 +67,19 @@ class VolumeControls {
         this.uiContainer.add(this.sfxSlider.handle);
         this.uiContainer.add(this.sfxSlider.valueText);
 
+        // --- Test Button ---
+        const testButton = this.scene.add.text(0, this.height / 2 - 25, 'Test Sound', {
+            fontSize: '12px',
+            color: '#ffffff',
+            backgroundColor: '#444444',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        testButton.on('pointerdown', () => {
+            console.log("Testing volume controls...");
+            this.testVolumeControls();
+        });
+        this.uiContainer.add(testButton);
+
         // --- Close Button ---
         const closeButton = this.scene.add.text(this.width / 2 - 15, -this.height / 2 + 15, 'X', {
             fontSize: '16px',
@@ -182,6 +195,26 @@ class VolumeControls {
        }
         this.musicSlider = null;
         this.sfxSlider = null;
+    }
+
+    /**
+     * Test method to verify volume controls are working
+     */
+    testVolumeControls() {
+        console.log("=== VOLUME CONTROLS TEST ===");
+        console.log("VolumeControls exists:", !!this);
+        console.log("SoundManager exists:", !!this.soundManager);
+        console.log("UI Container exists:", !!this.uiContainer);
+        console.log("Music slider exists:", !!this.musicSlider);
+        console.log("SFX slider exists:", !!this.sfxSlider);
+
+        if (this.soundManager) {
+            console.log("Current music volume:", this.soundManager.getMusicVolume());
+            console.log("Current SFX volume:", this.soundManager.getSfxVolume());
+
+            // Test the SoundManager's test method
+            this.soundManager.testVolumeControl();
+        }
     }
 }
 

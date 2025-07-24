@@ -237,7 +237,20 @@ export default class SoundManager {
       }
 
       if (sound) {
-        sound.play(options); // Play normally if not muted
+        // Apply current volume settings if no volume specified in options
+        if (options.volume === undefined) {
+          // Find which category this sound belongs to and apply its volume
+          let categoryVolume = 0.5; // Default fallback
+          for (const [category, keys] of Object.entries(this.soundCategories)) {
+            if (keys.includes(key)) {
+              categoryVolume = this.volumes[category] ?? 0.5;
+              break;
+            }
+          }
+          options = { ...options, volume: categoryVolume };
+        }
+
+        sound.play(options); // Play with proper volume
       } else {
         console.warn(`SoundManager: Sound '${key}' not found to play.`);
       }
@@ -329,14 +342,14 @@ export default class SoundManager {
    */
   setVolume(category, volume) {
     const clampedVolume = Phaser.Math.Clamp(volume, 0, 1);
-    
+
     if (this.volumes[category] === undefined) {
       console.warn(`SoundManager: Unknown volume category '${category}'`);
       return;
     }
 
     this.volumes[category] = clampedVolume;
-    console.log(`SoundManager: Setting volume for category '${category}' to ${volume.toFixed(2)}`);
+    console.log(`SoundManager: Setting volume for category '${category}' to ${clampedVolume.toFixed(2)}`);
 
     // Update the actual sound instances in this category
     if (this.soundCategories[category]) {
@@ -345,6 +358,7 @@ export default class SoundManager {
         if (sound) {
           try {
             sound.setVolume(clampedVolume);
+            console.log(`SoundManager: Updated volume for '${key}' to ${clampedVolume.toFixed(2)}`);
           } catch (error) {
             console.warn(`SoundManager: Error setting volume for sound key '${key}' in category '${category}':`, error);
           }
@@ -352,7 +366,12 @@ export default class SoundManager {
       });
     } else if (category === 'music' && this.music) {
         // Special handling for music if setup hasn't run yet or failed partially
-        try { this.music.setVolume(clampedVolume); } catch (e) { /* ignore */ }
+        try {
+          this.music.setVolume(clampedVolume);
+          console.log(`SoundManager: Updated music volume to ${clampedVolume.toFixed(2)}`);
+        } catch (e) {
+          console.warn(`SoundManager: Error setting music volume:`, e);
+        }
     }
   }
 
@@ -387,6 +406,29 @@ export default class SoundManager {
     return this.volumes.action ?? 1; // Default to 1 if not set
   }
   // --- End Volume Getters ---
+
+  /**
+   * Test method to verify volume controls are working
+   */
+  testVolumeControl() {
+    console.log("=== VOLUME CONTROL TEST ===");
+    console.log("Current volumes:", this.volumes);
+    console.log("Music volume:", this.getMusicVolume());
+    console.log("SFX volume:", this.getSfxVolume());
+
+    // Test playing a sound with current volume
+    if (this.sounds['click']) {
+      console.log("Playing test click sound...");
+      this.play('click');
+    }
+
+    if (this.sounds['coins']) {
+      setTimeout(() => {
+        console.log("Playing test coin sound...");
+        this.play('coins');
+      }, 500);
+    }
+  }
   
   /**
    * Clean up and destroy all sounds

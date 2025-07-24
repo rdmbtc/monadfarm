@@ -3024,6 +3024,14 @@ if (isBrowser) {
           this.input.keyboard.on('keydown-T', () => {
             this.createTestEnemy();
           });
+
+          // Add volume control shortcut (V key)
+          this.input.keyboard.on('keydown-V', () => {
+            if (this.volumeControls) {
+              this.volumeControls.toggle();
+              console.log("Volume controls toggled via V key");
+            }
+          });
           
           // Add update callback
           this.events.on('postupdate', this.updateDebugGraphics, this);
