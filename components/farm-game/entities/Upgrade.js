@@ -8,47 +8,47 @@ export default class Upgrade {
     this.levels = {
       clickDamage: 1,     // Player's direct attack strength
       cropYield: 1,       // How much coins crops generate
-      scarecrowPower: 1,  // Scarecrow defense power
-      dogPower: 1,        // Dog defense power
+      chogPower: 1,  // chog defense power
+      molandakPower: 1,        // molandak defense power
       cropGrowth: 1,      // How fast crops grow
-      wizardPower: 1,     // Wizard defense power - advanced defense
-      cannonPower: 1      // Cannon defense power - advanced defense
+      keonPower: 1,     // keon defense power - advanced defense
+      moyakiPower: 1      // moyaki defense power - advanced defense
     };
     
     // Define max levels for each upgrade
     this.maxLevels = {
       clickDamage: 5,
       cropYield: 5,
-      scarecrowPower: 3,
-      dogPower: 3,
+      chogPower: 3,
+      molandakPower: 3,
       cropGrowth: 3,
-      wizardPower: 3,     // Added for wizard
-      cannonPower: 3      // Added for cannon
+      keonPower: 3,     // Added for keon
+      moyakiPower: 3      // Added for moyaki
     };
     
     // Define costs for each upgrade level
     this.costs = {
       clickDamage: [50, 100, 200, 350, 600],
       cropYield: [75, 150, 250, 400, 700],
-      scarecrowPower: [100, 250, 500],
-      dogPower: [120, 280, 550],
+      chogPower: [100, 250, 500],
+      molandakPower: [120, 280, 550],
       cropGrowth: [80, 180, 350],
-      wizardPower: [200, 400, 650],  // Higher cost for advanced defense
-      cannonPower: [250, 500, 750]   // Higher cost for advanced defense
+      keonPower: [200, 400, 650],  // Higher cost for advanced defense
+      moyakiPower: [250, 500, 750]   // Higher cost for advanced defense
     };
     
     // Define unlocked status for advanced defenses
     this.unlockedDefenses = {
-      scarecrow: true,  // Basic defense, starts unlocked
-      dog: true,        // Basic defense, starts unlocked
-      wizard: false,    // Advanced defense, needs to be unlocked
-      cannon: false     // Advanced defense, needs to be unlocked
+      chog: true,  // Basic defense, starts unlocked
+      molandak: true,        // Basic defense, starts unlocked
+      keon: false,    // Advanced defense, needs to be unlocked
+      moyaki: false     // Advanced defense, needs to be unlocked
     };
     
     // Define unlock conditions for advanced defenses
     this.unlockRequirements = {
-      wizard: { wave: 5, cost: 350 },  // Reduced from 500
-      cannon: { wave: 8, cost: 600 }   // Reduced from 750
+      keon: { wave: 5, cost: 350 },  // Reduced from 500
+      moyaki: { wave: 8, cost: 600 }   // Reduced from 750
     };
     
     // Initialize UI elements
@@ -66,15 +66,15 @@ export default class Upgrade {
         return 0.5 + (level * 0.5); // Starts at 1.0, +0.5 per level
       case 'cropYield':
         return 1 + (level * 0.25); // Starts at 1.25, +0.25 per level
-      case 'scarecrowPower':
+      case 'chogPower':
         return 1 + (level * 0.5); // Starts at 1.5, +0.5 per level
-      case 'dogPower':
+      case 'molandakPower':
         return 1 + (level * 0.6); // Starts at 1.6, +0.6 per level
       case 'cropGrowth':
         return 1 + (level * 0.2); // Starts at 1.2, +0.2 per level
-      case 'wizardPower':
+      case 'keonPower':
         return 1 + (level * 0.7); // Starts at 1.7, +0.7 per level (stronger than base defenses)
-      case 'cannonPower':
+      case 'moyakiPower':
         return 1 + (level * 0.8); // Starts at 1.8, +0.8 per level (strongest defense upgrade)
       default:
         return 1;
@@ -155,13 +155,13 @@ export default class Upgrade {
           });
         }
         break;
-      case 'scarecrowPower':
-      case 'dogPower':
-      case 'wizardPower':
-      case 'cannonPower':
+      case 'chogPower':
+      case 'molandakPower':
+      case 'keonPower':
+      case 'moyakiPower':
         // Update all existing defenses of this type
         if (this.scene.defenses) {
-          this.scene.defenses.forEach(defense => {
+          this.scene.defenses.forEach(defense => {f
             if (defense && defense.type === type.replace('Power', '')) {
               if (typeof defense.updatePower === 'function') {
                 defense.updatePower(value);
@@ -289,7 +289,7 @@ export default class Upgrade {
     // Get list of available upgrades (filter out advanced defense power upgrades if not unlocked)
     const availableUpgrades = Object.keys(this.levels).filter(type => {
       // Always show base upgrades
-      if (!type.includes('Power') || type === 'scarecrowPower' || type === 'dogPower' || type === 'cropGrowth') {
+      if (!type.includes('Power') || type === 'chogPower' || type === 'molandakPower' || type === 'cropGrowth') {
         return true;
       }
       
@@ -392,16 +392,16 @@ export default class Upgrade {
         return 'Click Damage';
       case 'cropYield':
         return 'Crop Yield';
-      case 'scarecrowPower':
-        return 'ABS Mage Power';
-      case 'dogPower':
-        return 'NOOT Mage Power';
+      case 'chogPower':
+        return 'Chog Mage Power';
+      case 'molandakPower':
+        return 'Molandak Mage Power';
       case 'cropGrowth':
         return 'Crop Growth Rate';
-      case 'wizardPower':
-        return 'Wizard Power';
-      case 'cannonPower':
-        return 'Cannon Power';
+      case 'keonPower':
+        return 'keon Power';
+      case 'moyakiPower':
+        return 'moyaki Power';
       default:
         return type;
     }
