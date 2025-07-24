@@ -70,7 +70,7 @@ const TOKEN_ADDRESSES = {
   DAK: "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
   gMON: "0xaEef2f6B429Cb59C9B2D7bB2141ADa993E8571c3",
   shMON: "0x3a98250F98Dd388C211206983453837C8365BDc1",
-  MON: "0x0000000000000000000000000000000000000000" // Native MON token (ETH-like)
+  MON: "0x00000000000000000000000000000000000000000" // Main Monad token
 };
 
 // Token information with symbols and names
@@ -466,10 +466,6 @@ export const TokenSwap = () => {
       chainId = await provider.request({ method: 'eth_chainId' });
       console.log("Current chain ID when fetching balance:", chainId);
 
-      // For debugging - use checksummed addresses for aprMON (primary token)
-      const checksummedPrimaryTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
-      console.log("Primary token address (checksummed):", checksummedPrimaryTokenAddress);
-
       // Ensure wallet address is properly checksummed
       const checksummedWalletAddress = getChecksumAddress(address);
       console.log("Wallet address (checksummed):", checksummedWalletAddress);
@@ -480,42 +476,36 @@ export const TokenSwap = () => {
         setActualMonBalance("0");
         return;
       }
-      
+
       try {
-        // Create the contract instance with our consistent provider for aprMON
-        const primaryTokenContract = new Contract(checksummedPrimaryTokenAddress, TOKEN_ABI, ethersProvider);
+        // Check MON token balance specifically for swapping
+        const monTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
+        console.log("Checking MON token balance at:", monTokenAddress);
 
-        // Try to get token name first as a test
-        const tokenName = await primaryTokenContract.name().catch((e: any) => {
-          console.log("Error getting token name:", e);
-          return "Unknown";
-        });
-        console.log("Token name:", tokenName);
+        const monTokenContract = new Contract(monTokenAddress, TOKEN_ABI, ethersProvider);
+        const monBalance = await monTokenContract.balanceOf(checksummedWalletAddress);
+        const formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
 
-        // Now try to get balance
-        const balance = await primaryTokenContract.balanceOf(checksummedWalletAddress).catch((e: any) => {
-          console.error("Error getting balance:", e);
-          return 0; // Return 0 on error
-        });
-        console.log("Raw balance result:", balance.toString());
+        console.log("MON token balance:", formattedMonBalance);
+        setActualMonBalance(formattedMonBalance);
 
-        // Use our etherUtils compatibility layer
-        const formattedBalance = etherUtils.formatUnits(balance, 18);
-        console.log("Formatted balance:", formattedBalance);
-        setActualMonBalance(formattedBalance);
+        if (parseFloat(formattedMonBalance) > 0) {
+          console.log(`Found ${formattedMonBalance} MON tokens!`);
+        } else {
+          console.log("No MON tokens found. User may need to get test tokens.");
+        }
 
-        // Also check contract's token balance for UI display
-        const contractBalance = await primaryTokenContract.balanceOf(getChecksumAddress(FARM_SWAP_ADDRESS)).catch((e: any) => {
-          console.error("Error getting contract balance:", e);
-          return 0; // Return 0 on error
-        });
-
-        // Use our etherUtils compatibility layer
-        const formattedContractBalance = etherUtils.formatUnits(contractBalance, 18);
-        console.log("Contract balance:", formattedContractBalance);
-        
-        // Update both balances
-        setContractMonBalance(formattedContractBalance);
+        // Also check contract's MON token balance for UI display
+        try {
+          const monContract = new Contract(getChecksumAddress(TOKEN_ADDRESSES.MON), TOKEN_ABI, ethersProvider);
+          const contractBalance = await monContract.balanceOf(getChecksumAddress(FARM_SWAP_ADDRESS));
+          const formattedContractBalance = etherUtils.formatUnits(contractBalance, 18);
+          console.log("Contract MON balance:", formattedContractBalance);
+          setContractMonBalance(formattedContractBalance);
+        } catch (error) {
+          console.log("Error checking contract MON balance:", error);
+          setContractMonBalance("0");
+        }
         
         // Also fetch all token balances
         fetchAllTokenBalances();
@@ -565,9 +555,9 @@ export const TokenSwap = () => {
         return;
       }
       
-      // Create contract instance 
+      // Create contract instance
       const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-      const MonContract = new Contract(TOKEN_ADDRESSES.aprMON, tokenAbi, ethersProvider);
+      const MonContract = new Contract(TOKEN_ADDRESSES.MON, tokenAbi, ethersProvider);
       
       // Get the balance from the Mon swap address
       // FIX: Check the balance of FARM_SWAP_ADDRESS, not Mon_SWAP_ADDRESS
@@ -741,7 +731,7 @@ export const TokenSwap = () => {
       const signer = ethersProviderInfo.signer;
       
       // Check if we're using the correct addresses
-      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
       // Create contract instances 
@@ -1111,7 +1101,7 @@ export const TokenSwap = () => {
   const addTokenToWallet = async () => {
     try {
       // Get checksummed address
-      const checksummedAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const checksummedAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       console.log("Adding token to wallet:", checksummedAddress);
       
       const provider = getCurrentProvider();
@@ -1159,7 +1149,7 @@ export const TokenSwap = () => {
       toast.error("Error adding token to wallet", {
         duration: 5000,
       });
-      fallbackToManualMethod(TOKEN_ADDRESSES.aprMON);
+      fallbackToManualMethod(TOKEN_ADDRESSES.MON);
     }
   };
   
@@ -1301,7 +1291,7 @@ export const TokenSwap = () => {
     });
   };
 
-  // Swap Mon for Farm Coins with blockchain transaction
+  // Swap MON for Farm Coins with blockchain transaction
   const swapMonForFarmCoins = async () => {
     const provider = getCurrentProvider();
     if (!provider) {
@@ -1325,7 +1315,7 @@ export const TokenSwap = () => {
       
       // For blockchain swaps, we need to check actual balance
       if (parseFloat(actualMonBalance) < swapAmount) {
-        toast.error(`Not enough Mon tokens. You have ${actualMonBalance} Mon`);
+        toast.error(`Not enough MON tokens. You have ${actualMonBalance} MON`);
         setIsLoading(false);
         return;
       }
@@ -1391,7 +1381,7 @@ export const TokenSwap = () => {
       }
       
       // Create contract instances
-      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
       console.log("Creating contracts with signer:", signer ? "Available" : "Not available");
@@ -1423,7 +1413,7 @@ export const TokenSwap = () => {
           toast.success(
             React.createElement("div", { className: "space-y-1 text-sm" },
               React.createElement("p", { className: "font-semibold" }, "Approval Required"),
-              React.createElement("p", { className: "text-xs" }, "Please approve Mon tokens in your wallet"),
+              React.createElement("p", { className: "text-xs" }, "Please approve MON tokens in your wallet"),
               React.createElement("p", { className: "text-xs" }, "This is required only once")
             ),
             {duration: 8000}
@@ -1684,7 +1674,7 @@ export const TokenSwap = () => {
       }
       
       // Create contract instances with contract runner that works for both   and standard wallets
-      const checksummedMonTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const checksummedMonTokenAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS); // Use FARM_SWAP_ADDRESS here
       const MonContract = new Contract(checksummedMonTokenAddress, TOKEN_ABI, ethersProvider);
       const swapContract = new Contract(checksummedFarmSwapAddress, SWAP_ABI, signer);
@@ -1722,7 +1712,7 @@ export const TokenSwap = () => {
       }
       
       // Get the Mon token address to be used in claimTestTokens
-      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       
       // TRY DIRECT TRANSFER APPROACH
       try {
@@ -1776,8 +1766,8 @@ export const TokenSwap = () => {
               <div className="flex items-center space-x-3 p-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg shadow-lg">
                 <span className="text-2xl animate-pulse">💎</span>
                 <div>
-                  <p className="font-bold text-white text-lg animate-pulse">Mon ACQUIRED!</p>
-                  <p className="text-sm text-white/90">Got {MonToReceive.toFixed(2)} Mon!</p>
+                  <p className="font-bold text-white text-lg animate-pulse">MON ACQUIRED!</p>
+                  <p className="text-sm text-white/90">Got {MonToReceive.toFixed(2)} MON!</p>
                 </div>
               </div>,
               {
@@ -2064,7 +2054,7 @@ export const TokenSwap = () => {
       const signer = await ethersProvider.getSigner();
       
       // Setup contract instances
-      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const selectedTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[selectedToken as keyof typeof TOKEN_ADDRESSES]);
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
@@ -2281,7 +2271,7 @@ export const TokenSwap = () => {
       console.log("Checking all contract token balances...");
       const { provider: ethersProvider } = await getEthersProvider();
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
-      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, ethersProvider);
       
@@ -2373,7 +2363,7 @@ export const TokenSwap = () => {
       
       // Check balance
       if (parseFloat(actualMonBalance) < fundAmount) {
-        toast.error(`Not enough Mon tokens. You have ${actualMonBalance} Mon`);
+        toast.error(`Not enough MON tokens. You have ${actualMonBalance} MON`);
         setIsFunding(false);
         return;
       }
@@ -2388,7 +2378,7 @@ export const TokenSwap = () => {
       await switchToMonadTestnet();
       
       // Setup contract instances
-      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
       const MonContract = new Contract(MonAddress, TOKEN_ABI, signer);
@@ -2424,7 +2414,7 @@ export const TokenSwap = () => {
             throw new Error("Token approval failed");
           }
           
-          toast.success("Mon tokens approved for funding");
+          toast.success("MON tokens approved for funding");
         }
       } catch (error: any) {
         toast.dismiss("approval-toast");
@@ -2466,7 +2456,7 @@ export const TokenSwap = () => {
           await checkContractBalance();
           
           toast.success(
-            `Successfully funded contract with ${fundAmount} Mon tokens!`,
+            `Successfully funded contract with ${fundAmount} MON tokens!`,
             { duration: 5000 }
           );
         } else {
@@ -3044,7 +3034,7 @@ export const TokenSwap = () => {
       const signer = await ethersProvider.getSigner();
       
       // Setup contract instances
-      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+      const MonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const selectedTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[selectedToken as keyof typeof TOKEN_ADDRESSES]);
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       
@@ -3060,7 +3050,7 @@ export const TokenSwap = () => {
       if (swapDirection === 'Mon-to-token') {
         // Check user Mon balance
         if (parseFloat(actualMonBalance) < swapAmount) {
-          toast.error(`Not enough Mon tokens. You have ${actualMonBalance} Mon`);
+          toast.error(`Not enough MON tokens. You have ${actualMonBalance} MON`);
           setIsMultiSwapLoading(false);
           return;
         }
@@ -3161,7 +3151,7 @@ export const TokenSwap = () => {
             } else if (errorStr.includes("allowance")) {
               toast.error("Swap failed: Not enough allowance. Try approving more tokens.");
             } else if (errorStr.includes("balance")) {
-              toast.error("Swap failed: Not enough Mon tokens in your wallet.");
+              toast.error("Swap failed: Not enough MON tokens in your wallet.");
             } else {
               toast.error("Swap failed: Insufficient funds or gas.");
             }
@@ -3500,21 +3490,21 @@ export const TokenSwap = () => {
       {/* Add contract balance information */}
       <div className="mb-4 border border-[#333] p-3 rounded-lg">
         <div className="flex justify-between items-center">
-          <span className="text-xs text-white/70">FarmSwap Contract Mon Balance:</span>
+          <span className="text-xs text-white/70">FarmSwap Contract MON Balance:</span>
           <span className="text-sm font-bold text-white">
-            {Number(contractMonBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} Mon
+            {Number(contractMonBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} MON
           </span>
         </div>
         {Number(contractMonBalance) === 0 && (
           <p className="text-xs text-red-400 mt-1">
-            ⚠️ Contract has no Mon tokens. Please contact admin to fund the contract.
+            ⚠️ Contract has no MON tokens. Please contact admin to fund the contract.
           </p>
         )}
       </div>
       
       <div className="wallet-info mb-4">
         <div className="text-sm text-white/60 flex justify-between">
-          <span>Mon Balance:</span> 
+          <span>MON Balance:</span>
           <span>{isWalletConnected ? actualMonBalance : MonBalance}</span>
         </div>
         <div className="text-sm text-white/60 flex justify-between">
@@ -3525,11 +3515,55 @@ export const TokenSwap = () => {
         {/* Token info and explorer links */}
         {isWalletConnected && (
           <div className="mt-3 text-xs grid grid-cols-2 gap-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               className="text-xs border-[#333] flex items-center justify-center gap-1 hover:bg-blue-900/20"
-              onClick={() => viewOnExplorer("token", TOKEN_ADDRESSES.aprMON)}
+              onClick={async () => {
+                if (!isWalletConnected || !walletAddress) {
+                  toast.error("Please connect your wallet first");
+                  return;
+                }
+
+                toast.loading("Checking all token balances...");
+                console.log("=== TOKEN BALANCE DEBUG ===");
+
+                try {
+                  const { provider: ethersProvider } = await getEthersProvider();
+
+                  for (const [tokenKey, tokenAddress] of Object.entries(TOKEN_ADDRESSES)) {
+
+                    try {
+                      const tokenContract = new Contract(tokenAddress, TOKEN_ABI, ethersProvider);
+                      const balance = await tokenContract.balanceOf(walletAddress);
+                      const formattedBalance = etherUtils.formatUnits(balance, 18);
+                      console.log(`${tokenKey}: ${formattedBalance} tokens`);
+
+                      if (parseFloat(formattedBalance) > 0) {
+                        toast.success(`Found ${formattedBalance} ${tokenKey} tokens!`);
+                      }
+                    } catch (error) {
+                      console.log(`Error checking ${tokenKey}:`, error);
+                    }
+                  }
+
+                  toast.dismiss();
+                  toast.success("Balance check complete! Check console for details.");
+                } catch (error) {
+                  toast.dismiss();
+                  toast.error("Error checking balances");
+                  console.error("Balance check error:", error);
+                }
+              }}
+            >
+              <RefreshCw className="h-3 w-3" />
+              Check Balances
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs border-[#333] flex items-center justify-center gap-1 hover:bg-blue-900/20"
+              onClick={() => viewOnExplorer("token", TOKEN_ADDRESSES.MON)}
             >
               <ExternalLink className="h-3 w-3" />
               View Token
@@ -3556,7 +3590,7 @@ export const TokenSwap = () => {
       {/* Swap interface: Mon to Farm Coins */}
       <div className="border border-[#333] p-4 bg-[#111] mb-4">
         <h3 className="text-white mb-3 flex justify-between items-center">
-          <span>Swap Mon for Farm Coins</span>
+          <span>Swap MON for Farm Coins</span>
           <Button 
             onClick={handleManualRefresh}
             size="sm"
@@ -3623,8 +3657,8 @@ export const TokenSwap = () => {
             <Loader className="h-4 w-4 mr-2 animate-spin" />
           ) : null}
           {!isWalletConnected ? "Connect Wallet First" : 
-           parseFloat(actualMonBalance) < swapAmount ? "Insufficient Mon Balance" :
-           `Swap ${swapAmount} Mon for ${swapAmount * 10} Farm Coins`}
+           parseFloat(actualMonBalance) < swapAmount ? "Insufficient MON Balance" :
+           `Swap ${swapAmount} MON for ${swapAmount * 10} Farm Coins`}
         </Button>
       </div>
       
@@ -3802,7 +3836,7 @@ export const TokenSwap = () => {
                   }
                   
                   const signer = await ethersProvider.getSigner();
-                  const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+                  const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
                   const MonContract = new Contract(checksummedMonAddress, TOKEN_ABI, ethersProvider);
                   const name = await MonContract.name();
                   const symbol = await MonContract.symbol();
@@ -3899,7 +3933,7 @@ export const TokenSwap = () => {
                   }
                   
                   // Create Mon contract instance
-                  const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.aprMON);
+                  const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
                   const MonContract = new Contract(checksummedMonAddress, TOKEN_ABI, signer);
                   
                   // Get current balance
