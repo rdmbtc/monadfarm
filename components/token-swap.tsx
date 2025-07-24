@@ -70,7 +70,7 @@ const TOKEN_ADDRESSES = {
   DAK: "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
   gMON: "0xaEef2f6B429Cb59C9B2D7bB2141ADa993E8571c3",
   shMON: "0x3a98250F98Dd388C211206983453837C8365BDc1",
-  MON: "0x00000000000000000000000000000000000000000" // Main Monad token
+  MON: "0xc00000000000000000000000000000000000000000" // MON token address - to be determined
 };
 
 // Token information with symbols and names
@@ -478,35 +478,27 @@ export const TokenSwap = () => {
       }
 
       try {
-        // Check MON balance - if it's the zero address, check native balance
+        // Check MON token balance as ERC-20
         const monTokenAddress = TOKEN_ADDRESSES.MON;
-        console.log("Checking MON balance for address:", monTokenAddress);
+        console.log("Checking MON token balance at:", monTokenAddress);
 
-        let formattedMonBalance;
-
-        if (monTokenAddress === "0x0000000000000000000000000000000000000000" ||
-            monTokenAddress === "0x00000000000000000000000000000000000000000") {
-          // Check native MON balance (like ETH balance)
-          console.log("Checking native MON balance...");
-          const nativeBalance = await ethersProvider.getBalance(checksummedWalletAddress);
-          formattedMonBalance = etherUtils.formatUnits(nativeBalance, 18);
-          console.log("Native MON balance:", formattedMonBalance);
-        } else {
-          // Check ERC-20 MON token balance
-          console.log("Checking ERC-20 MON token balance at:", monTokenAddress);
+        try {
           const checksummedMonAddress = getChecksumAddress(monTokenAddress);
           const monTokenContract = new Contract(checksummedMonAddress, TOKEN_ABI, ethersProvider);
           const monBalance = await monTokenContract.balanceOf(checksummedWalletAddress);
-          formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
-          console.log("ERC-20 MON token balance:", formattedMonBalance);
-        }
+          const formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
 
-        setActualMonBalance(formattedMonBalance);
+          console.log("MON token balance:", formattedMonBalance);
+          setActualMonBalance(formattedMonBalance);
 
-        if (parseFloat(formattedMonBalance) > 0) {
-          console.log(`Found ${formattedMonBalance} MON tokens!`);
-        } else {
-          console.log("No MON tokens found. User may need to get test tokens.");
+          if (parseFloat(formattedMonBalance) > 0) {
+            console.log(`Found ${formattedMonBalance} MON tokens!`);
+          } else {
+            console.log("No MON tokens found at this address. Try the 'Find MON Tokens' button.");
+          }
+        } catch (error) {
+          console.log("Error checking MON token balance:", error);
+          setActualMonBalance("0");
         }
 
         // Also check contract's MON token balance for UI display
@@ -3562,14 +3554,20 @@ export const TokenSwap = () => {
                   }
 
                   // Check if MON might be an ERC-20 token with a different address
-                  console.log("=== TRYING COMMON MON TOKEN ADDRESSES ===");
+                  console.log("=== TRYING POSSIBLE MON TOKEN ADDRESSES ===");
                   const possibleMonAddresses = [
                     "0xc00000000000000000000000000000000000000000", // Your suggested address
-                    "0x1000000000000000000000000000000000000000", // Common test address
-                    "0x2000000000000000000000000000000000000000", // Another test address
-                    "0x3000000000000000000000000000000000000000", // Another test address
-                    "0x4000000000000000000000000000000000000000", // Another test address
-                    "0x5000000000000000000000000000000000000000", // Another test address
+                    "0x1111111111111111111111111111111111111111", // Common pattern
+                    "0x2222222222222222222222222222222222222222", // Common pattern
+                    "0x3333333333333333333333333333333333333333", // Common pattern
+                    "0x4444444444444444444444444444444444444444", // Common pattern
+                    "0x5555555555555555555555555555555555555555", // Common pattern
+                    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Common pattern
+                    "0xffffffffffffffffffffffffffffffffffffffff", // Max address
+                    "0x1000000000000000000000000000000000000001", // Monad-like pattern
+                    "0x0000000000000000000000000000000000000001", // Minimal non-zero
+                    "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", // Test pattern
+                    "0xcafebabecafebabecafebabecafebabecafebabe", // Test pattern
                   ];
 
                   for (const address of possibleMonAddresses) {
