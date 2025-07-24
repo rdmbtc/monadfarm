@@ -27,7 +27,7 @@ import { useState, useEffect, useContext } from "react"
 import { useToast } from "../../hooks/use-toast"
 import { useIsTogether } from 'react-together'
 import { GameContext } from "../../context/game-context"
-import { RewardPopup } from "../../components/ui/reward-popup"
+
 import BulletproofSocialFeed from "../../components/bulletproof-social-feed"
 import { NotificationDropdown } from "../../components/notification-dropdown"
 import { useUnifiedNickname } from "../../hooks/useUnifiedNickname"
@@ -92,7 +92,7 @@ function SocialHubPageContent({
   addFarmCoins = (amount: number) => {console.log(`Added ${amount} coins`)},
   nickname = "FarmerJoe123"
 }: SocialHubPageProps) {
-  const [showDailyReward, setShowDailyReward] = useState(false)
+
   const [activeTab, setActiveTab] = useState<'social' | 'quests' | 'trading'>('social')
   const { toast } = useToast()
 
@@ -167,27 +167,9 @@ function SocialHubPageContent({
 
   // The unified hook handles all synchronization automatically
 
-  // Show daily reward popup after a short delay
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowDailyReward(true)
-    }, 3000)
 
-    return () => clearTimeout(timer)
-  }, [])
 
-  const handleClaimDailyReward = () => {
-    // Add coins when claiming reward
-    addFarmCoins(200)
 
-    toast({
-      title: "Daily Reward Claimed!",
-      description: "Come back tomorrow for another reward!",
-      variant: "default",
-    })
-
-    setShowDailyReward(false)
-  }
 
   const container = {
     hidden: { opacity: 0 },
@@ -209,16 +191,7 @@ function SocialHubPageContent({
 
   return (
     <div className="min-h-screen bg-black">
-      {showDailyReward && (
-        <RewardPopup
-          title="Social Hub Daily Reward!"
-          description="Thanks for visiting the Social Hub today!"
-          reward="200 Farm Coins + 5 Premium Seeds"
-          icon="🎁"
-          onClaim={handleClaimDailyReward}
-          onClose={() => setShowDailyReward(false)}
-        />
-      )}
+
 
       {/* Header */}
       <header className="border-b border-[#333] py-3 px-4 flex justify-between items-center bg-[#111]">

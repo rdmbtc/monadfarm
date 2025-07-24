@@ -3539,29 +3539,73 @@ export const TokenSwap = () => {
                 }
 
                 toast.loading("Checking all token balances...");
-                console.log("=== TOKEN BALANCE DEBUG ===");
+                console.log("=== ENHANCED TOKEN BALANCE DEBUG ===");
                 console.log("Wallet Address:", walletAddress);
+                console.log("Current Chain ID:", (window.ethereum as any)?.chainId);
 
                 try {
                   const { provider: ethersProvider } = await getEthersProvider();
 
-                  // First check native MON balance
-                  console.log("=== CHECKING NATIVE MON BALANCE ===");
+                  // Check network info
+                  const network = await ethersProvider.getNetwork();
+                  console.log("Network Info:", network);
+
+                  // First check native balance (ETH-like)
+                  console.log("=== CHECKING NATIVE BALANCE ===");
                   try {
                     const nativeBalance = await ethersProvider.getBalance(walletAddress);
                     const formattedNative = etherUtils.formatUnits(nativeBalance, 18);
-                    console.log(`Native MON Balance: ${formattedNative}`);
-                    toast.success(`Native MON: ${formattedNative}`, { duration: 3000 });
+                    console.log(`Native Balance: ${formattedNative}`);
+                    toast.success(`Native Balance: ${formattedNative}`, { duration: 5000 });
                   } catch (error) {
                     console.log("Error checking native balance:", error);
                   }
 
-                  // Then check all ERC-20 tokens
-                  console.log("=== CHECKING ERC-20 TOKENS ===");
+                  // Check if MON might be an ERC-20 token with a different address
+                  console.log("=== TRYING COMMON MON TOKEN ADDRESSES ===");
+                  const possibleMonAddresses = [
+                    "0xc00000000000000000000000000000000000000000", // Your suggested address
+                    "0x1000000000000000000000000000000000000000", // Common test address
+                    "0x2000000000000000000000000000000000000000", // Another test address
+                    "0x3000000000000000000000000000000000000000", // Another test address
+                    "0x4000000000000000000000000000000000000000", // Another test address
+                    "0x5000000000000000000000000000000000000000", // Another test address
+                  ];
+
+                  for (const address of possibleMonAddresses) {
+                    try {
+                      console.log(`Trying MON address: ${address}`);
+                      const tokenContract = new Contract(address, TOKEN_ABI, ethersProvider);
+                      const balance = await tokenContract.balanceOf(walletAddress);
+                      const formattedBalance = etherUtils.formatUnits(balance, 18);
+
+                      if (parseFloat(formattedBalance) > 0) {
+                        console.log(`🎉 FOUND MON TOKENS! Address: ${address}, Balance: ${formattedBalance}`);
+                        toast.success(`🎉 Found ${formattedBalance} MON at ${address}!`, { duration: 10000 });
+
+                        // Try to get token info
+                        try {
+                          const name = await tokenContract.name();
+                          const symbol = await tokenContract.symbol();
+                          console.log(`Token Info: ${name} (${symbol})`);
+                          toast.success(`Token: ${name} (${symbol})`, { duration: 5000 });
+                        } catch (e) {
+                          console.log("Could not get token info");
+                        }
+                      } else {
+                        console.log(`No balance at ${address}`);
+                      }
+                    } catch (error) {
+                      console.log(`Error checking ${address}:`, (error as any)?.message || error);
+                    }
+                  }
+
+                  // Then check all configured ERC-20 tokens
+                  console.log("=== CHECKING CONFIGURED TOKENS ===");
                   for (const [tokenKey, tokenAddress] of Object.entries(TOKEN_ADDRESSES)) {
                     if (tokenAddress === "0x0000000000000000000000000000000000000000" ||
                         tokenAddress === "0x00000000000000000000000000000000000000000") {
-                      console.log(`Skipping ${tokenKey} (native token)`);
+                      console.log(`Skipping ${tokenKey} (zero address)`);
                       continue;
                     }
 
@@ -3575,7 +3619,7 @@ export const TokenSwap = () => {
                         toast.success(`Found ${formattedBalance} ${tokenKey} tokens!`, { duration: 3000 });
                       }
                     } catch (error) {
-                      console.log(`Error checking ${tokenKey}:`, error);
+                      console.log(`Error checking ${tokenKey}:`, (error as any)?.message || error);
                     }
                   }
 
@@ -3589,16 +3633,30 @@ export const TokenSwap = () => {
               }}
             >
               <RefreshCw className="h-3 w-3" />
-              Debug Balances
+              Find MON Tokens
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="text-xs border-[#333] flex items-center justify-center gap-1 hover:bg-blue-900/20"
-              onClick={() => viewOnExplorer("token", TOKEN_ADDRESSES.MON)}
+              onClick={async () => {
+                const newAddress = prompt("Enter the correct MON token address:", TOKEN_ADDRESSES.MON);
+                if (newAddress && newAddress.length === 42 && newAddress.startsWith("0x")) {
+                  // Temporarily update the MON address for testing
+                  (TOKEN_ADDRESSES as any).MON = newAddress;
+                  toast.success(`MON address updated to: ${newAddress}`);
+
+                  // Refresh balance with new address
+                  if (walletAddress) {
+                    await fetchMonBalance(walletAddress);
+                  }
+                } else if (newAddress) {
+                  toast.error("Invalid address format. Must be 42 characters starting with 0x");
+                }
+              }}
             >
               <ExternalLink className="h-3 w-3" />
-              View Token
+              Set MON Address
             </Button>
             <Button 
               size="sm" 
