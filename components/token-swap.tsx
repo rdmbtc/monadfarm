@@ -478,38 +478,34 @@ export const TokenSwap = () => {
       }
 
       try {
-        // Check MON token balance as ERC-20
-        const monTokenAddress = TOKEN_ADDRESSES.MON;
-        console.log("Checking MON token balance at:", monTokenAddress);
+        // MON is the native token on Monad (like ETH on Ethereum)
+        console.log("Checking native MON balance...");
 
         try {
-          const checksummedMonAddress = getChecksumAddress(monTokenAddress);
-          const monTokenContract = new Contract(checksummedMonAddress, TOKEN_ABI, ethersProvider);
-          const monBalance = await monTokenContract.balanceOf(checksummedWalletAddress);
-          const formattedMonBalance = etherUtils.formatUnits(monBalance, 18);
+          const nativeBalance = await ethersProvider.getBalance(checksummedWalletAddress);
+          const formattedMonBalance = etherUtils.formatUnits(nativeBalance, 18);
 
-          console.log("MON token balance:", formattedMonBalance);
+          console.log("Native MON balance:", formattedMonBalance);
           setActualMonBalance(formattedMonBalance);
 
           if (parseFloat(formattedMonBalance) > 0) {
-            console.log(`Found ${formattedMonBalance} MON tokens!`);
+            console.log(`Found ${formattedMonBalance} native MON!`);
           } else {
-            console.log("No MON tokens found at this address. Try the 'Find MON Tokens' button.");
+            console.log("No native MON found. You may need to get some MON tokens.");
           }
         } catch (error) {
-          console.log("Error checking MON token balance:", error);
+          console.log("Error checking native MON balance:", error);
           setActualMonBalance("0");
         }
 
-        // Also check contract's MON token balance for UI display
+        // Also check contract's native MON balance for UI display
         try {
-          const monContract = new Contract(getChecksumAddress(TOKEN_ADDRESSES.MON), TOKEN_ABI, ethersProvider);
-          const contractBalance = await monContract.balanceOf(getChecksumAddress(FARM_SWAP_ADDRESS));
+          const contractBalance = await ethersProvider.getBalance(getChecksumAddress(FARM_SWAP_ADDRESS));
           const formattedContractBalance = etherUtils.formatUnits(contractBalance, 18);
-          console.log("Contract MON balance:", formattedContractBalance);
+          console.log("Contract native MON balance:", formattedContractBalance);
           setContractMonBalance(formattedContractBalance);
         } catch (error) {
-          console.log("Error checking contract MON balance:", error);
+          console.log("Error checking contract native MON balance:", error);
           setContractMonBalance("0");
         }
         
@@ -561,17 +557,12 @@ export const TokenSwap = () => {
         return;
       }
       
-      // Create contract instance
-      const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-      const MonContract = new Contract(TOKEN_ADDRESSES.MON, tokenAbi, ethersProvider);
-      
-      // Get the balance from the Mon swap address
-      // FIX: Check the balance of FARM_SWAP_ADDRESS, not Mon_SWAP_ADDRESS
-      const balanceWei = await MonContract.balanceOf(FARM_SWAP_ADDRESS);
+      // Check native MON balance of the contract
+      const balanceWei = await ethersProvider.getBalance(FARM_SWAP_ADDRESS);
       const balanceFormatted = etherUtils.formatUnits(balanceWei, 18);
-      
+
       setContractMonBalance(balanceFormatted);
-      console.log(`Mon Swap contract Mon balance: ${balanceFormatted}`);
+      console.log(`Farm Swap contract native MON balance: ${balanceFormatted}`);
     } catch (error) {
       console.error("Failed to check contract balance:", error);
     }
@@ -3542,13 +3533,19 @@ export const TokenSwap = () => {
                   const network = await ethersProvider.getNetwork();
                   console.log("Network Info:", network);
 
-                  // First check native balance (ETH-like)
-                  console.log("=== CHECKING NATIVE BALANCE ===");
+                  // First check native MON balance (this should be your 10 MON!)
+                  console.log("=== CHECKING NATIVE MON BALANCE ===");
                   try {
                     const nativeBalance = await ethersProvider.getBalance(walletAddress);
                     const formattedNative = etherUtils.formatUnits(nativeBalance, 18);
-                    console.log(`Native Balance: ${formattedNative}`);
-                    toast.success(`Native Balance: ${formattedNative}`, { duration: 5000 });
+                    console.log(`🎯 Native MON Balance: ${formattedNative}`);
+
+                    if (parseFloat(formattedNative) > 0) {
+                      toast.success(`🎉 Found ${formattedNative} native MON tokens!`, { duration: 10000 });
+                      console.log("🎉 SUCCESS: This is your MON balance! MON is the native token.");
+                    } else {
+                      toast.error(`Native MON Balance: ${formattedNative}`, { duration: 5000 });
+                    }
                   } catch (error) {
                     console.log("Error checking native balance:", error);
                   }
