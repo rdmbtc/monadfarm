@@ -305,9 +305,9 @@ function CrashoutGameContent({
   const [multiplayerGameState, setMultiplayerGameState] = useStateTogether<string>('crashout-state', 'waiting');
   const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('crashout-nicknames', {});
 
-  // Hide Multisynq loading spinner (same approach as social hub)
+  // Hide Multisynq loading spinner and add custom scrollbar styles
   useEffect(() => {
-    // Inject CSS to hide spinner
+    // Inject CSS to hide spinner and style scrollbars
     const style = document.createElement('style');
     style.textContent = `
       #croquet_spinnerOverlay {
@@ -319,6 +319,30 @@ function CrashoutGameContent({
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
+      }
+
+      /* Custom scrollbar styles for chat */
+      .scrollbar-thin {
+        scrollbar-width: thin;
+        scrollbar-color: #333 #111;
+      }
+
+      .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .scrollbar-thin::-webkit-scrollbar-track {
+        background: #111;
+        border-radius: 3px;
+      }
+
+      .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 3px;
+      }
+
+      .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: #555;
       }
     `;
     document.head.appendChild(style);
@@ -367,6 +391,10 @@ function CrashoutGameContent({
   const isMultiplayerMode = true; // Always multiplayer mode
   const [showChat, setShowChat] = useState<boolean>(true);
   const [showPlayerBets, setShowPlayerBets] = useState<boolean>(true);
+
+  // Chat scroll management
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const [isUserScrolling, setIsUserScrolling] = useState<boolean>(false);
 
   // Multiplayer event broadcasting (using ReactTogether hooks)
   const broadcastChatMessage = useFunctionTogether('broadcastChatMessage', (message: ChatMessage) => {
@@ -494,6 +522,62 @@ function CrashoutGameContent({
     });
   }, [isTogether, myId, connectedUsers.length, playerBets.length, chatMessages.length, multiplayerGameState, gameCountdown, multiplier]);
 
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatMessagesRef.current && !isUserScrolling) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [chatMessages.length, isUserScrolling]);
+
+  // Auto-clear chat every 15 minutes
+  useEffect(() => {
+    const clearChatInterval = setInterval(() => {
+      const now = Date.now();
+      const fifteenMinutesAgo = now - (15 * 60 * 1000);
+
+      setChatMessages(prev => {
+        const filteredMessages = prev.filter(message => {
+          // Keep system messages longer (30 minutes)
+          if (message.type === 'system') {
+            return message.timestamp > (now - (30 * 60 * 1000));
+          }
+          // Keep regular messages for 15 minutes
+          return message.timestamp > fifteenMinutesAgo;
+        });
+
+        // If we removed messages, add a system message about it
+        if (filteredMessages.length < prev.length && filteredMessages.length > 0) {
+          console.log('🧹 Auto-cleared chat messages', {
+            removed: prev.length - filteredMessages.length,
+            remaining: filteredMessages.length
+          });
+
+          const clearMessage: ChatMessage = {
+            id: `clear-${Date.now()}`,
+            userId: 'system',
+            nickname: 'System',
+            text: '🧹 Chat cleared - keeping recent messages',
+            timestamp: now,
+            type: 'system'
+          };
+
+          return [...filteredMessages, clearMessage];
+        }
+
+        return filteredMessages;
+      });
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(clearChatInterval);
+  }, [setChatMessages]);
+
+  // Handle chat scroll detection
+  const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget;
+    const isAtBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + 10;
+    setIsUserScrolling(!isAtBottom);
+  }, []);
+
   // Auto-run system handles bet placement - no test bets needed
 
   // Start automatic crashout round
@@ -552,6 +636,9 @@ function CrashoutGameContent({
         console.log('💥 CRASH! Final multiplier:', currentMultiplier.toFixed(2) + 'x');
         clearInterval(multiplierInterval);
 
+        // Set crashed state immediately
+        setMultiplayerGameState('crashed');
+
         // Crash the game
         const crashMessage: ChatMessage = {
           id: `system-${Date.now()}`,
@@ -565,9 +652,9 @@ function CrashoutGameContent({
         broadcastChatMessage(crashMessage);
         broadcastGameEvent({ type: 'roundEnd', crashMultiplier: currentMultiplier });
 
-        // Reset for next round after brief pause
+        // Show crash state for 3 seconds, then start countdown
         setTimeout(() => {
-          console.log('🔄 Resetting for next round');
+          console.log('🔄 Starting countdown for next round');
           setMultiplayerGameState('waiting');
           setGameCountdown(30);
           setPlayerBets([]); // Clear bets for next round
@@ -588,24 +675,22 @@ function CrashoutGameContent({
     console.log('🎮 Initializing automatic round system');
     console.log('Current state:', { multiplayerGameState, gameCountdown, isTogether, myId });
 
-    // Force initialize to waiting state if needed
-    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active')) {
-      console.log('🔧 Force initializing to waiting state');
-      setMultiplayerGameState('waiting');
-      setGameCountdown(30);
-    }
+    // Initialize to 'initializing' state first, then start first round automatically
+    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && multiplayerGameState !== 'initializing')) {
+      console.log('🔧 Setting to initializing state');
+      setMultiplayerGameState('initializing');
 
-    // If already in waiting state but countdown is 0 or negative, reset it
-    if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
-      console.log('🔧 Resetting countdown from', gameCountdown, 'to 30');
-      setGameCountdown(30);
+      // Start first round after a brief delay
+      setTimeout(() => {
+        console.log('🚀 Starting first round automatically');
+        startAutoCrashoutRound();
+      }, 2000); // 2 second delay to show initialization
     }
   }, [isTogether, myId]); // Only run when connection status changes
 
-  // Simple countdown timer (separate from round logic)
+  // Countdown timer (only runs during waiting phase after a crash)
   useEffect(() => {
     if (multiplayerGameState !== 'waiting') {
-      console.log('⏰ Not in waiting state, skipping countdown. Current state:', multiplayerGameState);
       return;
     }
 
@@ -615,6 +700,14 @@ function CrashoutGameContent({
       setGameCountdown(prev => {
         const newCountdown = prev - 1;
         console.log('⏱️ Countdown tick:', newCountdown);
+
+        if (newCountdown <= 0) {
+          console.log('🚀 Countdown reached 0! Auto-starting next round...');
+          // Start next round immediately
+          startAutoCrashoutRound();
+          return 30; // Reset for next cycle
+        }
+
         return newCountdown;
       });
     }, 1000);
@@ -623,17 +716,7 @@ function CrashoutGameContent({
       console.log('🛑 Cleaning up countdown interval');
       clearInterval(countdownInterval);
     };
-  }, [multiplayerGameState, gameCountdown]);
-
-  // Separate effect to handle round start when countdown reaches 0
-  useEffect(() => {
-    if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
-      console.log('🚀 Countdown reached 0! Auto-starting round...');
-
-      // Use the existing function
-      startAutoCrashoutRound();
-    }
-  }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
+  }, [multiplayerGameState, startAutoCrashoutRound]);
 
 
 
@@ -2350,22 +2433,61 @@ function CrashoutGameContent({
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+          <div
+            ref={chatMessagesRef}
+            onScroll={handleChatScroll}
+            className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0 scrollbar-thin scrollbar-track-[#111] scrollbar-thumb-[#333] hover:scrollbar-thumb-[#555]"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#333 #111'
+            }}
+          >
             {chatMessages.map((message) => (
-              <div key={message.id} className="text-sm">
+              <div key={message.id} className={`text-sm ${
+                message.type === 'system' ? 'bg-[#1a1a1a] border-l-2 border-blue-400 pl-2' : ''
+              }`}>
                 <div className="flex items-start gap-2">
                   <span className="text-white/60 text-xs">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </span>
-                  <span className="text-white font-medium">{message.nickname}:</span>
+                  <span className={`font-medium text-xs ${
+                    message.type === 'system' ? 'text-blue-400' :
+                    message.type === 'cashout' ? 'text-green-400' :
+                    message.userId === myId ? 'text-white' : 'text-white/80'
+                  }`}>
+                    {message.nickname}:
+                  </span>
                 </div>
-                <p className="text-white/80 ml-2">{message.text}</p>
+                <p className={`ml-2 ${
+                  message.type === 'system' ? 'text-blue-300' :
+                  message.type === 'cashout' ? 'text-green-300' :
+                  'text-white/80'
+                }`}>
+                  {message.text}
+                </p>
               </div>
             ))}
             {chatMessages.length === 0 && (
               <div className="text-white/40 text-center py-8">
                 <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No messages yet. Start the conversation!</p>
+              </div>
+            )}
+
+            {/* Scroll to bottom indicator */}
+            {isUserScrolling && (
+              <div className="sticky bottom-0 text-center">
+                <button
+                  onClick={() => {
+                    if (chatMessagesRef.current) {
+                      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+                      setIsUserScrolling(false);
+                    }
+                  }}
+                  className="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                >
+                  ↓ New messages
+                </button>
               </div>
             )}
           </div>
@@ -2649,16 +2771,24 @@ function CrashoutGameContent({
 
              {/* Round Status Display */}
              <div className="mb-4 p-3 bg-[#111] border border-[#333] text-center">
+               {multiplayerGameState === 'initializing' && (
+                 <div>
+                   <div className="text-blue-400 font-medium mb-1">⚙️ Initializing Game</div>
+                   <div className="text-white/60 text-sm">Preparing first round...</div>
+                 </div>
+               )}
+
                {multiplayerGameState === 'waiting' && (
                  <div>
                    <div className="text-white font-medium mb-1">Next Round Starting In</div>
                    <div className="text-2xl font-bold text-white">{gameCountdown}s</div>
                    <div className="text-white/60 text-sm">Place your bets now!</div>
-                   {gameCountdown <= 0 && (
-                     <div className="text-yellow-400 text-xs mt-1">⚠️ Starting round...</div>
+                   {gameCountdown <= 3 && (
+                     <div className="text-yellow-400 text-xs mt-1 animate-pulse">⚠️ Starting soon...</div>
                    )}
                  </div>
                )}
+
                {multiplayerGameState === 'active' && (
                  <div>
                    <div className="text-green-400 font-medium mb-1">🚀 Round In Progress</div>
@@ -2668,10 +2798,12 @@ function CrashoutGameContent({
                    </div>
                  </div>
                )}
-               {multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && (
+
+               {multiplayerGameState === 'crashed' && (
                  <div>
-                   <div className="text-yellow-400 font-medium mb-1">⚙️ Initializing...</div>
-                   <div className="text-white/60 text-sm">Setting up automatic rounds</div>
+                   <div className="text-red-400 font-medium mb-1">💥 CRASHED!</div>
+                   <div className="text-2xl font-bold text-red-400">{multiplier.toFixed(2)}x</div>
+                   <div className="text-white/60 text-sm">Round ended - calculating results...</div>
                  </div>
                )}
 
