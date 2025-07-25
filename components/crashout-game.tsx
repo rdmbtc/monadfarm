@@ -75,7 +75,7 @@ interface ChatMessage {
   nickname: string;
   text: string;
   timestamp: number;
-  type?: 'text' | 'system';
+  type?: 'text' | 'system' | 'cashout';
 }
 
 interface PlayerBet {
@@ -378,12 +378,14 @@ function CrashoutGameContent({
   });
 
   const broadcastPlayerBet = useFunctionTogether('broadcastPlayerBet', (bet: PlayerBet) => {
+    console.log('📡 Broadcasting player bet:', bet);
     setPlayerBets(prev => {
       const exists = prev.some(b => b.userId === bet.userId);
-      if (exists) {
-        return prev.map(b => b.userId === bet.userId ? bet : b);
-      }
-      return [...prev, bet];
+      const newBets = exists
+        ? prev.map(b => b.userId === bet.userId ? bet : b)
+        : [...prev, bet];
+      console.log('🎯 Updated player bets:', newBets);
+      return newBets;
     });
   });
 
@@ -435,6 +437,7 @@ function CrashoutGameContent({
       hasCashed: false
     };
 
+    console.log('🎰 Placing bet in multiplayer:', bet);
     broadcastPlayerBet(bet);
   }, [myId, localWalletAddress, userNicknames, broadcastPlayerBet]);
 
@@ -454,14 +457,32 @@ function CrashoutGameContent({
 
   // Always in multiplayer mode - no need for auto-enable logic
 
+  // Debug: Log player bets changes
+  useEffect(() => {
+    console.log('🎲 Player bets state changed:', playerBets);
+  }, [playerBets]);
+
+  // Debug: Log multiplayer state
+  useEffect(() => {
+    console.log('🌐 Multiplayer state:', {
+      isTogether,
+      myId,
+      connectedUsers: connectedUsers.length,
+      playerBetsCount: playerBets.length,
+      chatMessagesCount: chatMessages.length
+    });
+  }, [isTogether, myId, connectedUsers.length, playerBets.length, chatMessages.length]);
+
+  // Auto-run system handles bet placement - no test bets needed
+
   // Automatic game management for multiplayer mode
   useEffect(() => {
-    if (!isMultiplayerMode || multiplayerGameState !== 'waiting') return;
+    if (multiplayerGameState !== 'waiting') return;
 
     const countdownInterval = setInterval(() => {
       setGameCountdown(prev => {
         if (prev <= 1) {
-          // Start new round
+          // Start new round automatically
           const newRound: GameRound = {
             id: `round-${Date.now()}`,
             startTime: Date.now(),
@@ -471,47 +492,122 @@ function CrashoutGameContent({
 
           broadcastGameEvent({ type: 'roundStart', round: newRound });
 
-          // Auto-start the game if there are bets
-          if (playerBets.length > 0) {
-            setTimeout(() => {
-              setGameState('active');
-              startMultiplayerRound();
-            }, 1000);
-          }
+          // Auto-start the crashout game
+          setTimeout(() => {
+            startAutoCrashoutRound();
+          }, 1000);
 
-          return 30; // Reset countdown
+          return 30; // Reset countdown for next round
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(countdownInterval);
-  }, [isMultiplayerMode, multiplayerGameState, playerBets, broadcastGameEvent]);
+  }, [multiplayerGameState, playerBets, broadcastGameEvent]);
 
-  // Start multiplayer round
-  const startMultiplayerRound = useCallback(() => {
-    if (!isMultiplayerMode) return;
-
+  // Start automatic crashout round
+  const startAutoCrashoutRound = useCallback(() => {
     // Send system message
     const systemMessage: ChatMessage = {
       id: `system-${Date.now()}`,
       userId: 'system',
       nickname: 'System',
-      text: `🚀 Round started! ${playerBets.length} players joined.`,
+      text: `🚀 Round started! ${playerBets.length} players joined. Multiplier climbing...`,
       timestamp: Date.now(),
       type: 'system'
     };
 
     broadcastChatMessage(systemMessage);
 
-    // Start the crash game logic
-    setGameState('active');
+    // Set game state to active for all players
+    setMultiplayerGameState('active');
     setMultiplier(1.0);
-    setHasCashed(false);
-    setHasWon(false);
-    setWinAmount(0);
 
-  }, [isMultiplayerMode, playerBets.length, broadcastChatMessage]);
+    // Start the automatic multiplier climb
+    startAutomaticMultiplierClimb();
+
+  }, [playerBets.length, broadcastChatMessage, setMultiplayerGameState]);
+
+  // Automatic multiplier climb simulation
+  const startAutomaticMultiplierClimb = useCallback(() => {
+    let currentMultiplier = 1.0;
+    const startTime = Date.now();
+
+    const multiplierInterval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000; // seconds elapsed
+
+      // Calculate multiplier growth (exponential-like curve)
+      currentMultiplier = 1.0 + (elapsed * 0.1) + (elapsed * elapsed * 0.01);
+
+      setMultiplier(currentMultiplier);
+
+      // Broadcast multiplier update
+      broadcastGameEvent({
+        type: 'multiplierUpdate',
+        multiplier: currentMultiplier,
+        elapsed: elapsed
+      });
+
+      // Random crash between 1.2x and 10x (weighted toward lower values)
+      const crashPoint = 1.2 + Math.random() * Math.random() * 8.8; // Weighted random
+
+      if (currentMultiplier >= crashPoint || elapsed > 60) { // Max 60 seconds
+        clearInterval(multiplierInterval);
+
+        // Crash the game
+        const crashMessage: ChatMessage = {
+          id: `system-${Date.now()}`,
+          userId: 'system',
+          nickname: 'System',
+          text: `💥 CRASHED at ${currentMultiplier.toFixed(2)}x! Next round in 30 seconds...`,
+          timestamp: Date.now(),
+          type: 'system'
+        };
+
+        broadcastChatMessage(crashMessage);
+        broadcastGameEvent({ type: 'roundEnd', crashMultiplier: currentMultiplier });
+
+        // Reset for next round
+        setTimeout(() => {
+          setMultiplayerGameState('waiting');
+          setGameCountdown(30);
+          setPlayerBets([]); // Clear bets for next round
+        }, 3000); // 3 second delay to show crash
+      }
+    }, 100); // Update every 100ms for smooth animation
+
+  }, [setMultiplier, broadcastGameEvent, broadcastChatMessage, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
+
+  // Cashout in multiplayer round
+  const cashoutMultiplayer = useCallback(() => {
+    if (!myId || multiplayerGameState !== 'active') return;
+
+    const myBet = playerBets.find(bet => bet.userId === myId && !bet.hasCashed);
+    if (!myBet) return;
+
+    // Update bet to show cashed out
+    const cashedBet: PlayerBet = {
+      ...myBet,
+      hasCashed: true,
+      cashoutMultiplier: multiplier
+    };
+
+    broadcastPlayerBet(cashedBet);
+
+    // Send chat message
+    const cashoutMessage: ChatMessage = {
+      id: `cashout-${Date.now()}`,
+      userId: myId,
+      nickname: userNicknames[myId] || `Player ${myId.slice(0, 6)}`,
+      text: `💰 Cashed out at ${multiplier.toFixed(2)}x for ${(myBet.betAmount * multiplier).toFixed(2)} ${myBet.selectedToken}!`,
+      timestamp: Date.now(),
+      type: 'cashout'
+    };
+
+    broadcastChatMessage(cashoutMessage);
+
+  }, [myId, multiplayerGameState, playerBets, multiplier, broadcastPlayerBet, userNicknames, broadcastChatMessage]);
 
   // Update walletAddress when the prop changes
   useEffect(() => {
@@ -1520,12 +1616,14 @@ function CrashoutGameContent({
   const startGame = () => {
     if (gameState !== 'inactive') return;
 
-    // Place bet and add to multiplayer state
-    approveAndPlaceBet();
+    // Place bet in multiplayer state immediately
     const amount = parseFloat(betAmount);
     if (amount > 0) {
       placeBetInMultiplayer(amount, selectedToken);
     }
+
+    // Then proceed with blockchain approval and bet placement
+    approveAndPlaceBet();
   };
 
   // Claim tokens after winning
@@ -2455,32 +2553,62 @@ function CrashoutGameContent({
                </button>
              )}
 
-             {/* Inactive State: Bet Button */} 
-             {isWalletConnected && gameState === 'inactive' && (
+             {/* Round Status Display */}
+             <div className="mb-4 p-3 bg-[#111] border border-[#333] text-center">
+               {multiplayerGameState === 'waiting' && (
+                 <div>
+                   <div className="text-white font-medium mb-1">Next Round Starting In</div>
+                   <div className="text-2xl font-bold text-white">{gameCountdown}s</div>
+                   <div className="text-white/60 text-sm">Place your bets now!</div>
+                 </div>
+               )}
+               {multiplayerGameState === 'active' && (
+                 <div>
+                   <div className="text-green-400 font-medium mb-1">🚀 Round In Progress</div>
+                   <div className="text-3xl font-bold text-white">{multiplier.toFixed(2)}x</div>
+                   <div className="text-white/60 text-sm">
+                     {playerBets.some(bet => bet.userId === myId) ? 'You\'re in this round!' : 'Too late to join this round'}
+                   </div>
+                 </div>
+               )}
+             </div>
+
+             {/* Betting Interface */}
+             {isWalletConnected && multiplayerGameState === 'waiting' && (
                <button
                  onClick={startGame}
-                 disabled={approvalPending || betPlaced || !betAmount || parseFloat(betAmount) <= 0}
+                 disabled={
+                   approvalPending ||
+                   !betAmount ||
+                   parseFloat(betAmount) <= 0 ||
+                   playerBets.some(bet => bet.userId === myId) ||
+                   gameCountdown < 5 // Prevent late bets
+                 }
                  className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
-                   ${betPlaced ? 'bg-[#333] text-white/60 cursor-not-allowed' :
+                   ${playerBets.some(bet => bet.userId === myId) ? 'bg-green-600 text-white cursor-not-allowed' :
                    approvalPending ? 'bg-[#333] text-white animate-pulse' :
+                   gameCountdown < 5 ? 'bg-red-600 text-white cursor-not-allowed' :
                    'bg-white text-black hover:bg-white/90'}
                  `}
                >
-                 {approvalPending ? 'Approving...' : betPlaced ? 'Bet Placed ✓' : `Place Bet (${selectedToken})`}
+                 {approvalPending ? 'Approving...' :
+                  playerBets.some(bet => bet.userId === myId) ? 'Bet Placed ✓' :
+                  gameCountdown < 5 ? 'Too Late!' :
+                  `Place Bet (${selectedToken})`}
                </button>
              )}
 
-             {/* Active State: Cashout Button */} 
-             {isWalletConnected && gameState === 'active' && (
+             {/* Active Round: Cashout Button */}
+             {isWalletConnected && multiplayerGameState === 'active' && playerBets.some(bet => bet.userId === myId && !bet.hasCashed) && (
                <button
-                 onClick={handleCashout}
-                 disabled={hasCashed || !userJoinedRef.current}
+                 onClick={cashoutMultiplayer}
+                 disabled={playerBets.some(bet => bet.userId === myId && bet.hasCashed)}
                  className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
-                   ${hasCashed ? 'bg-[#333] text-white/60 cursor-not-allowed' :
+                   ${playerBets.some(bet => bet.userId === myId && bet.hasCashed) ? 'bg-[#333] text-white/60 cursor-not-allowed' :
                    'bg-white text-black hover:bg-white/90'}
                  `}
                >
-                 {hasCashed ? 'Cashed Out ✓' : 'Cashout Now!'}
+                 {playerBets.some(bet => bet.userId === myId && bet.hasCashed) ? 'Cashed Out ✓' : 'Cashout Now!'}
                </button>
              )}
 
@@ -2590,10 +2718,21 @@ function CrashoutGameContent({
                   <div>Wallet: {bet.walletAddress.substring(0, 6)}...{bet.walletAddress.substring(bet.walletAddress.length - 4)}</div>
                   <div className="flex justify-between">
                     <span>Bet: {bet.betAmount} {bet.selectedToken}</span>
-                    {bet.cashoutMultiplier && (
-                      <span className="text-green-400">@{bet.cashoutMultiplier}x</span>
+                    {bet.hasCashed && bet.cashoutMultiplier && (
+                      <span className="text-green-400">Cashed @{bet.cashoutMultiplier.toFixed(2)}x</span>
+                    )}
+                    {!bet.hasCashed && multiplayerGameState === 'active' && (
+                      <span className="text-yellow-400">In Round</span>
+                    )}
+                    {!bet.hasCashed && multiplayerGameState === 'waiting' && (
+                      <span className="text-blue-400">Ready</span>
                     )}
                   </div>
+                  {bet.hasCashed && bet.cashoutMultiplier && (
+                    <div className="text-green-400 text-xs">
+                      Won: {(bet.betAmount * bet.cashoutMultiplier).toFixed(2)} {bet.selectedToken}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
