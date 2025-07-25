@@ -698,6 +698,17 @@ function CrashoutGameContent({
           setPlayerBets([]); // Clear bets for next round
           console.log('✅ Set state to waiting with 30s countdown');
         }, 3000); // 3 second delay to show crash
+
+        // Backup recovery in case the first timeout fails
+        setTimeout(() => {
+          console.log('🚨 BACKUP RECOVERY: Checking if still in crashed state');
+          if (multiplayerGameState === 'crashed') {
+            console.log('🔧 BACKUP: Force transitioning to waiting state');
+            setMultiplayerGameState('waiting');
+            setGameCountdown(30);
+            setPlayerBets([]);
+          }
+        }, 6000); // 6 second backup
       }
     }, 100); // Update every 100ms for smooth animation
 
@@ -762,22 +773,56 @@ function CrashoutGameContent({
     }
   }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
 
-  // Backup auto-start mechanism - runs every 5 seconds to check if we're stuck
+  // Aggressive state monitoring and recovery system
   useEffect(() => {
-    const backupInterval = setInterval(() => {
+    const stateMonitor = setInterval(() => {
+      const currentTime = Date.now();
+
+      // Log current state for debugging
+      console.log('🔍 STATE MONITOR:', {
+        multiplayerGameState,
+        gameCountdown,
+        timestamp: new Date().toLocaleTimeString()
+      });
+
+      // Force start if countdown is stuck at 0
       if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
-        console.log('🚨 BACKUP: Detected stuck countdown, force starting round');
+        console.log('🚨 EMERGENCY: Countdown stuck at 0, force starting round');
         startAutoCrashoutRound();
       }
 
-      // Also check if we're stuck in crashed state for too long
+      // Force recovery from crashed state (should never stay crashed for more than 5 seconds)
       if (multiplayerGameState === 'crashed') {
-        console.log('⚠️ BACKUP: Still in crashed state, may need manual intervention');
-      }
-    }, 5000); // Check every 5 seconds
+        console.log('🚨 EMERGENCY: Still in crashed state, forcing immediate recovery');
+        setMultiplayerGameState('waiting');
+        setGameCountdown(30);
+        setPlayerBets([]);
+        setMultiplier(1.0);
 
-    return () => clearInterval(backupInterval);
-  }, [multiplayerGameState, gameCountdown, startAutoCrashoutRound]);
+        // Add system message about recovery
+        const recoveryMessage: ChatMessage = {
+          id: `system-recovery-${Date.now()}`,
+          userId: 'system',
+          nickname: 'System',
+          text: '🔧 System recovered from crash. Starting new round...',
+          timestamp: Date.now(),
+          type: 'system'
+        };
+        broadcastChatMessage(recoveryMessage);
+      }
+
+      // Force recovery from any unknown state
+      if (!['waiting', 'active', 'initializing', 'crashed'].includes(multiplayerGameState)) {
+        console.log('🚨 CRITICAL: Unknown state detected, forcing to waiting:', multiplayerGameState);
+        setMultiplayerGameState('waiting');
+        setGameCountdown(30);
+        setPlayerBets([]);
+        setMultiplier(1.0);
+      }
+    }, 2000); // Check every 2 seconds for aggressive monitoring
+
+    return () => clearInterval(stateMonitor);
+  }, [multiplayerGameState, gameCountdown, startAutoCrashoutRound, setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier, broadcastChatMessage]);
 
   // Simple countdown timer (only runs during waiting phase)
   useEffect(() => {
@@ -2780,6 +2825,19 @@ function CrashoutGameContent({
               Start Countdown
             </button>
             <button
+              onClick={() => {
+                console.log('🚨 EMERGENCY RECOVERY: Forcing system restart');
+                setMultiplayerGameState('waiting');
+                setGameCountdown(30);
+                setPlayerBets([]);
+                setMultiplier(1.0);
+                toast.success('System recovered! Starting countdown...', { duration: 3000 });
+              }}
+              className="text-xs text-white/60 hover:text-white bg-red-900 px-2 py-1 border border-red-700 hover:border-red-500 transition-colors animate-pulse"
+            >
+              🚨 EMERGENCY
+            </button>
+            <button
               onClick={clearChatMessages}
               className="text-xs text-white/60 hover:text-white bg-orange-900 px-2 py-1 border border-orange-700 hover:border-orange-500 transition-colors"
             >
@@ -3033,7 +3091,10 @@ function CrashoutGameContent({
                  <div>
                    <div className="text-red-400 font-medium mb-1">💥 CRASHED!</div>
                    <div className="text-2xl font-bold text-red-400">{multiplier.toFixed(2)}x</div>
-                   <div className="text-white/60 text-sm">Round ended - calculating results...</div>
+                   <div className="text-white/60 text-sm mb-2">Round ended - calculating results...</div>
+                   <div className="text-yellow-400 text-xs animate-pulse">
+                     🔧 Auto-recovery active...
+                   </div>
                  </div>
                )}
 
