@@ -692,23 +692,11 @@ function CrashoutGameContent({
         // Show crash state for 3 seconds, then start countdown
         setTimeout(() => {
           console.log('🔄 Crash timeout completed - transitioning to waiting state');
-          console.log('Current state before transition:', multiplayerGameState);
           setMultiplayerGameState('waiting');
           setGameCountdown(30);
           setPlayerBets([]); // Clear bets for next round
           console.log('✅ Set state to waiting with 30s countdown');
         }, 3000); // 3 second delay to show crash
-
-        // Backup recovery in case the first timeout fails
-        setTimeout(() => {
-          console.log('🚨 BACKUP RECOVERY: Checking if still in crashed state');
-          if (multiplayerGameState === 'crashed') {
-            console.log('🔧 BACKUP: Force transitioning to waiting state');
-            setMultiplayerGameState('waiting');
-            setGameCountdown(30);
-            setPlayerBets([]);
-          }
-        }, 6000); // 6 second backup
       }
     }, 100); // Update every 100ms for smooth animation
 
@@ -745,18 +733,14 @@ function CrashoutGameContent({
       }, 500);
     }
 
-    // Initialize to 'initializing' state first, then start first round automatically
-    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && multiplayerGameState !== 'initializing' && multiplayerGameState !== 'crashed')) {
-      console.log('🔧 Setting to initializing state');
-      setMultiplayerGameState('initializing');
-
-      // Start first round after a brief delay
-      setTimeout(() => {
-        console.log('🚀 Starting first round automatically');
-        startAutoCrashoutRound();
-      }, 3000); // 3 second delay to show initialization
+    // Start the automatic round system immediately
+    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active')) {
+      console.log('🚀 Starting automatic round system');
+      setMultiplayerGameState('waiting');
+      setGameCountdown(30);
+      setPlayerBets([]);
     }
-  }, [isTogether, myId, startAutoCrashoutRound, setChatMessages]); // Added setChatMessages to dependencies
+  }, [isTogether, myId, multiplayerGameState, setChatMessages, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
 
   // Separate effect to handle round start when countdown reaches 0
   useEffect(() => {
@@ -773,56 +757,18 @@ function CrashoutGameContent({
     }
   }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
 
-  // Aggressive state monitoring and recovery system
+  // Gentle state monitoring system - only intervenes when truly stuck
   useEffect(() => {
     const stateMonitor = setInterval(() => {
-      const currentTime = Date.now();
-
-      // Log current state for debugging
-      console.log('🔍 STATE MONITOR:', {
-        multiplayerGameState,
-        gameCountdown,
-        timestamp: new Date().toLocaleTimeString()
-      });
-
-      // Force start if countdown is stuck at 0
+      // Only intervene if countdown is stuck at 0 for too long
       if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
-        console.log('🚨 EMERGENCY: Countdown stuck at 0, force starting round');
+        console.log('🔧 Countdown stuck at 0, starting round');
         startAutoCrashoutRound();
       }
-
-      // Force recovery from crashed state (should never stay crashed for more than 5 seconds)
-      if (multiplayerGameState === 'crashed') {
-        console.log('🚨 EMERGENCY: Still in crashed state, forcing immediate recovery');
-        setMultiplayerGameState('waiting');
-        setGameCountdown(30);
-        setPlayerBets([]);
-        setMultiplier(1.0);
-
-        // Add system message about recovery
-        const recoveryMessage: ChatMessage = {
-          id: `system-recovery-${Date.now()}`,
-          userId: 'system',
-          nickname: 'System',
-          text: '🔧 System recovered from crash. Starting new round...',
-          timestamp: Date.now(),
-          type: 'system'
-        };
-        broadcastChatMessage(recoveryMessage);
-      }
-
-      // Force recovery from any unknown state
-      if (!['waiting', 'active', 'initializing', 'crashed'].includes(multiplayerGameState)) {
-        console.log('🚨 CRITICAL: Unknown state detected, forcing to waiting:', multiplayerGameState);
-        setMultiplayerGameState('waiting');
-        setGameCountdown(30);
-        setPlayerBets([]);
-        setMultiplier(1.0);
-      }
-    }, 2000); // Check every 2 seconds for aggressive monitoring
+    }, 5000); // Check every 5 seconds, less aggressive
 
     return () => clearInterval(stateMonitor);
-  }, [multiplayerGameState, gameCountdown, startAutoCrashoutRound, setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier, broadcastChatMessage]);
+  }, [multiplayerGameState, gameCountdown, startAutoCrashoutRound]);
 
   // Simple countdown timer (only runs during waiting phase)
   useEffect(() => {
@@ -912,100 +858,11 @@ function CrashoutGameContent({
 
   }, [myId, multiplayerGameState, playerBets, multiplier, broadcastPlayerBet, userNicknames, broadcastChatMessage, addFarmCoins]);
 
-  // Manual reset function for debugging
-  const forceResetRound = useCallback(() => {
-    console.log('🔄 Force resetting round');
-    setMultiplayerGameState('waiting');
-    setGameCountdown(30);
-    setPlayerBets([]);
-    setMultiplier(1.0);
 
-    const resetMessage: ChatMessage = {
-      id: `system-${Date.now()}`,
-      userId: 'system',
-      nickname: 'System',
-      text: '🔄 Round manually reset. Next round starting soon...',
-      timestamp: Date.now(),
-      type: 'system'
-    };
 
-    broadcastChatMessage(resetMessage);
-    broadcastGameEvent({ type: 'roundReset' });
-  }, [setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier, broadcastChatMessage, broadcastGameEvent]);
 
-  // Test cashout calculation function for debugging
-  const testCashoutCalculation = useCallback(() => {
-    console.log('🧪 Testing cashout calculation...');
 
-    // Create a test bet
-    const testBet: PlayerBet = {
-      userId: myId || 'test-user',
-      nickname: 'Test Player',
-      walletAddress: '0x1234567890123456789012345678901234567890',
-      betAmount: 100, // Test with 100 tokens
-      selectedToken: 'Farm Coins',
-      timestamp: Date.now(),
-      hasCashed: false
-    };
 
-    const testMultiplier = 3.5; // Test at 3.5x multiplier
-    const expectedWinnings = testBet.betAmount * testMultiplier; // 100 * 3.5 = 350
-    const expectedProfit = expectedWinnings - testBet.betAmount; // 350 - 100 = 250
-
-    console.log('🧪 Test Results:', {
-      betAmount: testBet.betAmount,
-      multiplier: testMultiplier,
-      expectedWinnings: expectedWinnings,
-      expectedProfit: expectedProfit,
-      calculation: `${testBet.betAmount} × ${testMultiplier} = ${expectedWinnings}`
-    });
-
-    // Add test bet to see it in the UI
-    if (myId) {
-      broadcastPlayerBet(testBet);
-
-      // Show test message
-      const testMessage: ChatMessage = {
-        id: `test-${Date.now()}`,
-        userId: 'system',
-        nickname: 'System',
-        text: `🧪 Test bet placed: ${testBet.betAmount} ${testBet.selectedToken}. Try cashing out to test winnings calculation!`,
-        timestamp: Date.now(),
-        type: 'system'
-      };
-
-      broadcastChatMessage(testMessage);
-    }
-  }, [myId, broadcastPlayerBet, broadcastChatMessage]);
-
-  // Manual chat clear function
-  const clearChatMessages = useCallback(() => {
-    console.log('🧹 Manually clearing chat messages');
-    setChatMessages([]);
-
-    // Add clear notification
-    const clearMessage: ChatMessage = {
-      id: `clear-${Date.now()}`,
-      userId: 'system',
-      nickname: 'System',
-      text: '🧹 Chat manually cleared by user',
-      timestamp: Date.now(),
-      type: 'system'
-    };
-
-    setTimeout(() => {
-      setChatMessages([clearMessage]);
-    }, 100);
-  }, [setChatMessages]);
-
-  // Manual round history clear function
-  const clearRoundHistory = useCallback(() => {
-    console.log('🗑️ Manually clearing round history');
-    setHistory([]);
-    setSharedRoundHistory([]);
-
-    toast.success('Round history cleared!', { duration: 2000 });
-  }, [setSharedRoundHistory]);
 
   // Update walletAddress when the prop changes
   useEffect(() => {
@@ -2658,7 +2515,7 @@ function CrashoutGameContent({
   return (
     <div className="w-full max-w-7xl mx-auto p-4 bg-black border border-[#333]">
       {/* Three-panel layout: Chat (25%) | Game (50%) | Player Bets (25%) */}
-      <div className="grid gap-4 h-[400px] sm:h-[450px] grid-cols-1 lg:grid-cols-4">
+      <div className="grid gap-4 h-[calc(100vh-8rem)] min-h-[500px] grid-cols-1 lg:grid-cols-4">
 
         {/* Left Panel - Chat System (25% width) */}
         <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
@@ -2800,83 +2657,6 @@ function CrashoutGameContent({
             Connect Wallet
           </button>
         )}
-        
-          {/* Debug Controls */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => {
-                console.log('🔧 Force initializing system');
-                setMultiplayerGameState('initializing');
-                setTimeout(() => startAutoCrashoutRound(), 1000);
-              }}
-              className="text-xs text-white/60 hover:text-white bg-purple-900 px-2 py-1 border border-purple-700 hover:border-purple-500 transition-colors"
-            >
-              Init System
-            </button>
-            <button
-              onClick={() => {
-                console.log('⏰ Force starting countdown');
-                setMultiplayerGameState('waiting');
-                setGameCountdown(30);
-                setPlayerBets([]);
-              }}
-              className="text-xs text-white/60 hover:text-white bg-yellow-900 px-2 py-1 border border-yellow-700 hover:border-yellow-500 transition-colors"
-            >
-              Start Countdown
-            </button>
-            <button
-              onClick={() => {
-                console.log('🚨 EMERGENCY RECOVERY: Forcing system restart');
-                setMultiplayerGameState('waiting');
-                setGameCountdown(30);
-                setPlayerBets([]);
-                setMultiplier(1.0);
-                toast.success('System recovered! Starting countdown...', { duration: 3000 });
-              }}
-              className="text-xs text-white/60 hover:text-white bg-red-900 px-2 py-1 border border-red-700 hover:border-red-500 transition-colors animate-pulse"
-            >
-              🚨 EMERGENCY
-            </button>
-            <button
-              onClick={clearChatMessages}
-              className="text-xs text-white/60 hover:text-white bg-orange-900 px-2 py-1 border border-orange-700 hover:border-orange-500 transition-colors"
-            >
-              Clear Chat
-            </button>
-            <button
-              onClick={forceResetRound}
-              className="text-xs text-white/60 hover:text-white bg-red-900 px-2 py-1 border border-red-700 hover:border-red-500 transition-colors"
-            >
-              Reset Round
-            </button>
-            <button
-              onClick={() => {
-                console.log('🚀 Force starting round');
-                startAutoCrashoutRound();
-              }}
-              className="text-xs text-white/60 hover:text-white bg-green-900 px-2 py-1 border border-green-700 hover:border-green-500 transition-colors"
-            >
-              Start Round
-            </button>
-            <button
-              onClick={testCashoutCalculation}
-              className="text-xs text-white/60 hover:text-white bg-blue-900 px-2 py-1 border border-blue-700 hover:border-blue-500 transition-colors"
-            >
-              Test Cashout
-            </button>
-            <button
-              onClick={clearRoundHistory}
-              className="text-xs text-white/60 hover:text-white bg-pink-900 px-2 py-1 border border-pink-700 hover:border-pink-500 transition-colors"
-            >
-              Clear History
-            </button>
-            <button
-              onClick={() => setShowDebugPanel(prev => !prev)}
-              className="text-xs text-white/60 hover:text-white bg-[#111] px-2 py-1 border border-[#333] hover:border-white/20 transition-colors"
-            >
-              {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
-            </button>
-          </div>
         </div>
       </div>
       
