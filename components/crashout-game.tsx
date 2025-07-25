@@ -432,7 +432,7 @@ function CrashoutGameContent({
       setTimeout(() => {
         setMultiplayerGameState('waiting');
         setGameCountdown(30);
-        setPlayerBets([]); // Clear bets for next round
+        // Don't clear bets here - they'll be reset when the next round starts
         setMultiplier(1.0); // Reset multiplier
       }, 3000);
     } else if (event.type === 'countdown') {
@@ -677,7 +677,7 @@ function CrashoutGameContent({
           console.log('🔄 Crash timeout completed - transitioning to waiting state');
           setMultiplayerGameState('waiting');
           setGameCountdown(30);
-          setPlayerBets([]); // Clear bets for next round
+          // Don't clear bets here - let players see their results
           console.log('✅ Set state to waiting with 30s countdown');
         }, 3000); // 3 second delay to show crash
       }
@@ -706,6 +706,15 @@ function CrashoutGameContent({
       return;
     }
 
+    // Reset all player bets to uncashed status for the new round
+    const resetBets = playerBets.map(bet => ({
+      ...bet,
+      hasCashed: false,
+      cashoutMultiplier: undefined,
+      winningAmount: undefined
+    }));
+    setPlayerBets(resetBets);
+
     // Send system message
     const systemMessage: ChatMessage = {
       id: `system-${Date.now()}`,
@@ -727,7 +736,7 @@ function CrashoutGameContent({
     console.log('🚀 Starting multiplier climb immediately');
     startAutomaticMultiplierClimb();
 
-  }, [playerBets.length, broadcastChatMessage, setMultiplayerGameState, setMultiplier, startAutomaticMultiplierClimb, multiplayerGameState, gameCountdown]);
+  }, [playerBets, broadcastChatMessage, setMultiplayerGameState, setMultiplier, startAutomaticMultiplierClimb, multiplayerGameState, gameCountdown, setPlayerBets]);
 
   // Initialize automatic round system and clear old chat messages on component mount
   useEffect(() => {
@@ -760,7 +769,7 @@ function CrashoutGameContent({
       console.log('🔧 Initializing game state: waiting with 30s countdown');
       setMultiplayerGameState('waiting');
       setGameCountdown(30);
-      setPlayerBets([]);
+      // Don't clear bets during initialization - preserve existing bets
       setMultiplier(1.0);
     }
   }, [isTogether, myId, multiplayerGameState, setChatMessages, setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier]);
@@ -785,9 +794,25 @@ function CrashoutGameContent({
       multiplayerGameState,
       gameCountdown,
       multiplier,
+      playerBetsCount: playerBets.length,
       timestamp: new Date().toLocaleTimeString()
     });
-  }, [multiplayerGameState, gameCountdown, multiplier]);
+  }, [multiplayerGameState, gameCountdown, multiplier, playerBets.length]);
+
+  // Debug effect to track player bets changes
+  useEffect(() => {
+    console.log('🎰 PLAYER BETS CHANGED:', {
+      count: playerBets.length,
+      bets: playerBets.map(bet => ({
+        userId: bet.userId,
+        nickname: bet.nickname,
+        amount: bet.betAmount,
+        token: bet.selectedToken,
+        hasCashed: bet.hasCashed
+      })),
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [playerBets]);
 
   // Countdown timer (only runs during waiting phase)
   useEffect(() => {
@@ -1882,13 +1907,16 @@ function CrashoutGameContent({
 
   // Place bet only (no longer starts the game manually)
   const placeBet = () => {
-    // Only place bet in multiplayer state - don't trigger round start
+    // Only place bet during waiting state - don't trigger round start
     const amount = parseFloat(betAmount);
     if (amount > 0 && multiplayerGameState === 'waiting') {
+      console.log('🎰 Placing bet:', { amount, token: selectedToken, state: multiplayerGameState });
       placeBetInMultiplayer(amount, selectedToken);
 
       // Optional: Also handle blockchain approval for actual token transfer
       // approveAndPlaceBet();
+    } else {
+      console.log('⚠️ Cannot place bet:', { amount, state: multiplayerGameState });
     }
   };
 
@@ -3127,6 +3155,13 @@ function CrashoutGameContent({
                       <span className="text-yellow-400 font-medium">
                         {(bet.betAmount * multiplier).toFixed(2)} {bet.selectedToken}
                       </span>
+                    </div>
+                  )}
+
+                  {!bet.hasCashed && multiplayerGameState === 'active' && (
+                    <div className="flex justify-between text-xs text-white/40">
+                      <span>Multiplier:</span>
+                      <span>{multiplier.toFixed(2)}x</span>
                     </div>
                   )}
 
