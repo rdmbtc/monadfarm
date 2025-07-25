@@ -530,22 +530,9 @@ export default function GuidePage() {
                     <h4 className="font-fantasy text-white mb-2 flex items-center"><Zap className="inline h-4 w-4 mr-1 text-white"/> Platformer</h4>
                     <p className="text-sm text-gray-300">Jump and run through farm-themed levels. Collect coins and power-ups while avoiding obstacles. Complete levels to earn farm rewards.</p>
                  </div>
-                 <div className="bg-gray-800/60 p-3 rounded-md border border-gray-700">
-                    <h4 className="font-fantasy text-white mb-2 flex items-center"><CircleDollarSign className="inline h-4 w-4 mr-1 text-white"/> Slot Machine</h4>
-                    <p className="text-sm text-gray-300">Try your luck with the farm-themed slot machine. Match crop and animal symbols to win coins. Special combinations offer bigger payouts.</p>
-                 </div>
-                 <div className="bg-gray-800/60 p-3 rounded-md border border-gray-700">
-                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Trophy className="inline h-4 w-4 mr-1 text-white"/> Sport Betting</h4>
-                    <p className="text-sm text-gray-300">Bet on virtual farmyard sports events. Predict winners correctly to multiply your wager. Different events offer varying odds and potential payouts.</p>
-                 </div>
-                 <div className="bg-gray-800/60 p-3 rounded-md border border-gray-700">
-                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Star className="inline h-4 w-4 mr-1 text-white"/> Mon Case</h4>
-                    <p className="text-sm text-gray-300">Open special cases containing random rewards. Each case has different tiers of possible items and coin amounts. Higher-tier cases cost more but offer better rewards.</p>
-                 </div>
-                 <div className="bg-gray-800/60 p-3 rounded-md border border-gray-700">
-                    <h4 className="font-fantasy text-white mb-2 flex items-center"><Users className="inline h-4 w-4 mr-1 text-white"/> Mon.io</h4>
-                    <p className="text-sm text-gray-300">A multiplayer arena where you control your farmer character. Grow by collecting resources and outsmarting other players. Earn rewards based on your final size and survival time.</p>
-                 </div>
+                 
+                 
+                
                </div>
                
                <div className="mt-4 bg-gray-800/60 p-3 rounded-md border border-gray-700">
@@ -578,13 +565,13 @@ export default function GuidePage() {
           <section id="social" className="mb-10 scroll-mt-20">
             <h3 className="text-xl font-fantasy text-white mb-4 flex items-center border-b border-gray-700 pb-2">
               <Users className="w-6 h-6 mr-2 text-white" />
-              📱 11. Social Interactions (Coming Soon)
+              📱 11. Social Interactions 
             </h3>
             <div className="bg-gray-900/50 p-4 rounded-lg mb-4 border border-gray-700 opacity-60">
-              <p className="mb-3 text-gray-400">Features to connect with friends and other farmers via Farcaster are planned for the future!</p>
+              <p className="mb-3 text-gray-400">Features to connect with friends and other farmers </p>
               <ul className="list-disc list-inside space-y-2 mb-3 text-gray-400">
-                <li>View friends' farms.</li>
-                <li>Donate/request items.</li>
+                <li>View friends' trade.</li>
+                <li>Trade/request items.</li>
                 <li>Earn social rewards.</li>
               </ul>
             </div>

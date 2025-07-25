@@ -2425,42 +2425,11 @@ export function Farm() {
                   Crashout
                 </button>
                 {/* Slot Machine Button */}
-                <button
-                  onClick={() => {
-                    setActiveTab("slot-machine");
-                    setShowNootGambleDropdown(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${ // Apply hover effect here
-                    activeTab === "slot-machine" ? "bg-white text-black" : "text-white/80 hover:bg-[#222] hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                  } transition-all duration-200`}
-                >
-                  <Gem className="h-3 w-3 sm:h-4 sm:w-4" />
-                  Slot Machine
-                </button>
+                
                 {/* Noot Case Button */}
-                <button 
-                  onClick={() => {
-                    window.location.href = '/farm-cases/noot-case';
-                    setShowNootGambleDropdown(false); // Close dropdown after navigation
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-white/80 hover:bg-[#222] hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-200`}
-                >
-                  <Leaf className="h-3 w-3 sm:h-4 sm:w-4" />
-                  Mon Case
-                </button>
+               
                 {/* Sport Betting Button */}
-                <button
-                  onClick={() => {
-                    setActiveTab("sport-betting");
-                    setShowNootGambleDropdown(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${ // Apply hover effect here
-                    activeTab === "sport-betting" ? "bg-white text-black" : "text-white/80 hover:bg-[#222] hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                  } transition-all duration-200`}
-                >
-                  <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
-                  Sport Betting
-                </button>
+              
               </div>
             )}
           </div>
