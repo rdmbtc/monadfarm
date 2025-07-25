@@ -1490,8 +1490,9 @@ export const TokenSwap = () => {
               }
             );
             
-            // Update farm coins
-            updateFarmCoins(farmCoinsToReceive);
+            // Add farm coins to existing balance
+            console.log(`Adding ${farmCoinsToReceive} Farm Coins to existing balance of ${farmCoins}`);
+            addFarmCoins(farmCoinsToReceive);
             
             // Update Mon balance
             await fetchMonBalance(walletAddr);
