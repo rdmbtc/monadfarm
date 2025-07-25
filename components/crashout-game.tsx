@@ -364,7 +364,7 @@ function CrashoutGameContent({
 
   // Local multiplayer state
   const [messageInput, setMessageInput] = useState<string>('');
-  const [isMultiplayerMode, setIsMultiplayerMode] = useState<boolean>(false);
+  const isMultiplayerMode = true; // Always multiplayer mode
   const [showChat, setShowChat] = useState<boolean>(true);
   const [showPlayerBets, setShowPlayerBets] = useState<boolean>(true);
 
@@ -452,10 +452,7 @@ function CrashoutGameContent({
     }
   }, [myId, userNicknames, setUserNicknames]);
 
-  // Auto-enable multiplayer mode when in ReactTogether context and connected users > 1
-  useEffect(() => {
-    setIsMultiplayerMode(isTogether && connectedUsers.length > 1);
-  }, [isTogether, connectedUsers.length]);
+  // Always in multiplayer mode - no need for auto-enable logic
 
   // Automatic game management for multiplayer mode
   useEffect(() => {
@@ -1519,21 +1516,15 @@ function CrashoutGameContent({
     }, 100);
   };
 
-  // Start the game (now just triggers bet approval)
+  // Start the game (multiplayer only - place bet and wait for round to start)
   const startGame = () => {
     if (gameState !== 'inactive') return;
 
-    // In multiplayer mode, place bet and wait for round to start
-    if (isMultiplayerMode) {
-      approveAndPlaceBet();
-      // Add bet to multiplayer state
-      const amount = parseFloat(betAmount);
-      if (amount > 0) {
-        placeBetInMultiplayer(amount, selectedToken);
-      }
-    } else {
-      // Single player mode - start immediately
-      approveAndPlaceBet();
+    // Place bet and add to multiplayer state
+    approveAndPlaceBet();
+    const amount = parseFloat(betAmount);
+    if (amount > 0) {
+      placeBetInMultiplayer(amount, selectedToken);
     }
   };
 
@@ -2173,14 +2164,9 @@ function CrashoutGameContent({
   return (
     <div className="w-full max-w-7xl mx-auto p-4 bg-black border border-[#333]">
       {/* Three-panel layout: Chat (25%) | Game (50%) | Player Bets (25%) */}
-      <div className={`grid gap-4 h-screen max-h-[800px] ${
-        isMultiplayerMode
-          ? 'grid-cols-1 lg:grid-cols-4'
-          : 'grid-cols-1 lg:grid-cols-1'
-      }`}>
+      <div className="grid gap-4 h-screen max-h-[800px] grid-cols-1 lg:grid-cols-4">
 
-        {/* Left Panel - Chat System (25% width) - Only in multiplayer mode */}
-        {isMultiplayerMode && isTogether && (
+        {/* Left Panel - Chat System (25% width) */}
         <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
           <div className="p-3 border-b border-[#333] flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-white" />
@@ -2230,12 +2216,9 @@ function CrashoutGameContent({
             </div>
           </div>
         </div>
-        )}
 
         {/* Center Panel - Game Interface (50% width) */}
-        <div className={`bg-black border border-[#333] flex flex-col ${
-          isMultiplayerMode ? 'lg:col-span-2' : 'lg:col-span-1'
-        }`}>
+        <div className="lg:col-span-2 bg-black border border-[#333] flex flex-col">
 
       {/* Loading overlay - Styled for Dark Theme */}
       {isLoadingBalances && (
@@ -2250,29 +2233,14 @@ function CrashoutGameContent({
       
       {showDebugPanel && <DebugPanel />} 
       
-      {/* Header Row - Wallet Info, Mode Toggle, Debug Toggle */}
+      {/* Header Row - Wallet Info, Online Status, Debug Toggle */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          {/* Mode Toggle */}
+          {/* Online Status */}
           <div className="flex items-center gap-2 bg-[#111] border border-[#333] p-2">
-            <span className="text-white/60 text-xs">Mode:</span>
-            <button
-              onClick={() => isTogether && setIsMultiplayerMode(!isMultiplayerMode)}
-              disabled={!isTogether}
-              className={`px-3 py-1 text-xs transition-colors ${
-                isMultiplayerMode
-                  ? 'bg-white text-black'
-                  : 'bg-black text-white border border-[#333]'
-              } ${!isTogether ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isTogether
-                ? (isMultiplayerMode ? 'Multiplayer' : 'Single Player')
-                : 'Single Player Only'
-              }
-            </button>
-            {isMultiplayerMode && isTogether && (
-              <span className="text-white/60 text-xs">({connectedUsers.length} online)</span>
-            )}
+            <span className="text-green-400 animate-pulse">●</span>
+            <span className="text-white text-xs font-medium">Multiplayer Online</span>
+            <span className="text-white/60 text-xs">({connectedUsers.length} players)</span>
           </div>
         </div>
 
@@ -2600,8 +2568,7 @@ function CrashoutGameContent({
        )}
         </div>
 
-        {/* Right Panel - Player Bets Display (25% width) - Only in multiplayer mode */}
-        {isMultiplayerMode && isTogether && (
+        {/* Right Panel - Player Bets Display (25% width) */}
         <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
           <div className="p-3 border-b border-[#333] flex items-center gap-2">
             <Users className="w-4 h-4 text-white" />
@@ -2656,61 +2623,13 @@ function CrashoutGameContent({
             </div>
           </div>
         </div>
-        )}
 
       </div>
     </div>
   );
 } // <<< Closing brace for the CrashoutGameContent component function
 
-// Single-player fallback component (no ReactTogether hooks)
-function CrashoutGameSinglePlayer(props: CrashoutGameProps) {
-  // Create a mock ReactTogether context for single-player mode
-  const mockMultiplayerState = {
-    isTogether: false,
-    myId: null,
-    connectedUsers: [],
-    chatMessages: [],
-    setChatMessages: () => {},
-    playerBets: [],
-    setPlayerBets: () => {},
-    currentGameRound: null,
-    setCurrentGameRound: () => {},
-    gameCountdown: 30,
-    setGameCountdown: () => {},
-    multiplayerGameState: 'waiting',
-    setMultiplayerGameState: () => {},
-    userNicknames: {},
-    setUserNicknames: () => {},
-    broadcastChatMessage: () => {},
-    broadcastPlayerBet: () => {},
-    broadcastGameEvent: () => {}
-  };
 
-  // For now, show a simple message. In the future, we could implement
-  // a full single-player version by extracting the core game logic
-  return (
-    <div className="w-full max-w-2xl mx-auto p-4 bg-black border border-[#333]">
-      <div className="bg-[#111] border border-[#333] p-4 text-center">
-        <h2 className="text-xl text-white mb-2">Single Player Mode</h2>
-        <p className="text-white/60 text-sm mb-4">
-          Multiplayer features are not available. Please check your ReactTogether configuration.
-        </p>
-        <p className="text-white/40 text-xs">
-          To enable multiplayer, ensure NEXT_PUBLIC_REACT_TOGETHER_API_KEY is set in your environment.
-        </p>
-        <div className="mt-4">
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-white text-black px-4 py-2 hover:bg-white/90 transition-colors"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Wrapper component with ReactTogether integration
 import { ReactTogether } from 'react-together';
@@ -2726,11 +2645,32 @@ function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
   const apiKey = process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY;
 
   if (!enableMultiplayer) {
-    return <CrashoutGameSinglePlayer {...gameProps} />;
+    return (
+      <div className="w-full max-w-2xl mx-auto p-4 bg-black border border-[#333]">
+        <div className="bg-[#111] border border-[#333] p-4 text-center">
+          <h2 className="text-xl text-white mb-2">Multiplayer Only</h2>
+          <p className="text-white/60 text-sm mb-4">
+            This game requires multiplayer mode to be enabled.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!apiKey) {
-    return <CrashoutGameSinglePlayer {...gameProps} />;
+    return (
+      <div className="w-full max-w-2xl mx-auto p-4 bg-black border border-[#333]">
+        <div className="bg-[#111] border border-[#333] p-4 text-center">
+          <h2 className="text-xl text-white mb-2">Configuration Required</h2>
+          <p className="text-white/60 text-sm mb-4">
+            ReactTogether API key is required for multiplayer functionality.
+          </p>
+          <p className="text-white/40 text-xs">
+            Please set NEXT_PUBLIC_REACT_TOGETHER_API_KEY in your environment.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -2763,9 +2703,9 @@ function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
   );
 }
 
-// Main component that can be used directly (single-player only)
+// Main component that can be used directly (multiplayer only)
 function CrashoutGame(props: CrashoutGameProps) {
-  return <CrashoutGameSinglePlayer {...props} />;
+  return <CrashoutGameWithMultisynq {...props} />;
 }
 
 // --- Export both components ---
