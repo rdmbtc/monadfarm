@@ -586,44 +586,35 @@ function CrashoutGameContent({
   // Initialize automatic round system on component mount
   useEffect(() => {
     console.log('🎮 Initializing automatic round system');
-    // Start with waiting state if not already set
-    if (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active') {
+    console.log('Current state:', { multiplayerGameState, gameCountdown, isTogether, myId });
+
+    // Force initialize to waiting state if needed
+    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active')) {
+      console.log('🔧 Force initializing to waiting state');
       setMultiplayerGameState('waiting');
       setGameCountdown(30);
     }
-  }, [multiplayerGameState, setMultiplayerGameState, setGameCountdown]);
 
-  // Automatic countdown and round management
+    // If already in waiting state but countdown is 0 or negative, reset it
+    if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
+      console.log('🔧 Resetting countdown from', gameCountdown, 'to 30');
+      setGameCountdown(30);
+    }
+  }, [isTogether, myId]); // Only run when connection status changes
+
+  // Simple countdown timer (separate from round logic)
   useEffect(() => {
-    if (multiplayerGameState !== 'waiting') return;
+    if (multiplayerGameState !== 'waiting') {
+      console.log('⏰ Not in waiting state, skipping countdown. Current state:', multiplayerGameState);
+      return;
+    }
 
     console.log('⏰ Starting countdown timer, current countdown:', gameCountdown);
 
     const countdownInterval = setInterval(() => {
       setGameCountdown(prev => {
         const newCountdown = prev - 1;
-        console.log('⏱️ Countdown:', newCountdown);
-
-        if (newCountdown <= 0) {
-          console.log('🚀 Countdown reached 0, starting new round automatically');
-
-          // Create new round
-          const newRound: GameRound = {
-            id: `round-${Date.now()}`,
-            startTime: Date.now(),
-            playerBets: [...playerBets],
-            status: 'active'
-          };
-
-          // Broadcast round start
-          broadcastGameEvent({ type: 'roundStart', round: newRound });
-
-          // Start the automatic crashout round immediately
-          startAutoCrashoutRound();
-
-          return 30; // This will be overridden by the round start, but set for safety
-        }
-
+        console.log('⏱️ Countdown tick:', newCountdown);
         return newCountdown;
       });
     }, 1000);
@@ -632,7 +623,17 @@ function CrashoutGameContent({
       console.log('🛑 Cleaning up countdown interval');
       clearInterval(countdownInterval);
     };
-  }, [multiplayerGameState, gameCountdown, playerBets, broadcastGameEvent, startAutoCrashoutRound]);
+  }, [multiplayerGameState, gameCountdown]);
+
+  // Separate effect to handle round start when countdown reaches 0
+  useEffect(() => {
+    if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
+      console.log('🚀 Countdown reached 0! Auto-starting round...');
+
+      // Use the existing function
+      startAutoCrashoutRound();
+    }
+  }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
 
 
 
@@ -2653,6 +2654,9 @@ function CrashoutGameContent({
                    <div className="text-white font-medium mb-1">Next Round Starting In</div>
                    <div className="text-2xl font-bold text-white">{gameCountdown}s</div>
                    <div className="text-white/60 text-sm">Place your bets now!</div>
+                   {gameCountdown <= 0 && (
+                     <div className="text-yellow-400 text-xs mt-1">⚠️ Starting round...</div>
+                   )}
                  </div>
                )}
                {multiplayerGameState === 'active' && (
@@ -2664,6 +2668,17 @@ function CrashoutGameContent({
                    </div>
                  </div>
                )}
+               {multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && (
+                 <div>
+                   <div className="text-yellow-400 font-medium mb-1">⚙️ Initializing...</div>
+                   <div className="text-white/60 text-sm">Setting up automatic rounds</div>
+                 </div>
+               )}
+
+               {/* Debug info */}
+               <div className="text-white/30 text-xs mt-2 border-t border-[#333] pt-2">
+                 State: {multiplayerGameState} | Countdown: {gameCountdown} | Connected: {isTogether ? 'Yes' : 'No'}
+               </div>
              </div>
 
              {/* Betting Interface */}
