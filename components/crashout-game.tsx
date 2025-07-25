@@ -305,6 +305,7 @@ function CrashoutGameContent({
   const [gameCountdown, setGameCountdown] = useStateTogether<number>('crashout-countdown', 30);
   const [multiplayerGameState, setMultiplayerGameState] = useStateTogether<string>('crashout-state', 'waiting');
   const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('crashout-nicknames', {});
+  const [sharedRoundHistory, setSharedRoundHistory] = useStateTogether<HistoryEntry[]>('crashout-history', []);
 
   // Hide Multisynq loading spinner and add custom scrollbar styles
   useEffect(() => {
@@ -530,8 +531,28 @@ function CrashoutGameContent({
     }
   }, [chatMessages.length, isUserScrolling]);
 
-  // Auto-clear chat every 15 minutes
+  // Clear old messages on first load and auto-clear every 15 minutes
   useEffect(() => {
+    // Immediate cleanup of old messages when component first loads
+    if (isTogether && myId) {
+      const now = Date.now();
+      const oneHourAgo = now - (60 * 60 * 1000); // Clear messages older than 1 hour
+
+      setChatMessages(prev => {
+        const recentMessages = prev.filter(message => message.timestamp > oneHourAgo);
+
+        if (recentMessages.length !== prev.length) {
+          console.log('🧹 Cleared old messages on component load', {
+            removed: prev.length - recentMessages.length,
+            remaining: recentMessages.length
+          });
+        }
+
+        return recentMessages;
+      });
+    }
+
+    // Set up regular auto-clear interval
     const clearChatInterval = setInterval(() => {
       const now = Date.now();
       const fifteenMinutesAgo = now - (15 * 60 * 1000);
@@ -570,7 +591,7 @@ function CrashoutGameContent({
     }, 5 * 60 * 1000); // Check every 5 minutes
 
     return () => clearInterval(clearChatInterval);
-  }, [setChatMessages]);
+  }, [setChatMessages, isTogether, myId]);
 
   // Handle chat scroll detection
   const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -640,6 +661,21 @@ function CrashoutGameContent({
         // Set crashed state immediately
         setMultiplayerGameState('crashed');
 
+        // Add round to shared history - find current player's bet and cashout info
+        const myBet = playerBets.find(bet => bet.userId === myId);
+        const newHistoryEntry: HistoryEntry = {
+          value: currentMultiplier.toFixed(2),
+          bet: myBet ? myBet.betAmount : 0,
+          token: myBet ? myBet.selectedToken : 'Farm Coins',
+          cashoutMultiplier: myBet?.hasCashed ? myBet.cashoutMultiplier : null
+        };
+
+        console.log('📊 Adding round to shared history:', newHistoryEntry);
+
+        // Update both local and shared history
+        setHistory(prev => [newHistoryEntry, ...prev].slice(0, 10)); // Keep last 10 rounds locally
+        setSharedRoundHistory(prev => [newHistoryEntry, ...prev].slice(0, 10)); // Keep last 10 rounds shared
+
         // Crash the game
         const crashMessage: ChatMessage = {
           id: `system-${Date.now()}`,
@@ -671,10 +707,30 @@ function CrashoutGameContent({
 
   }, [setMultiplier, broadcastGameEvent, broadcastChatMessage, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
 
-  // Initialize automatic round system on component mount
+  // Initialize automatic round system and clear old chat messages on component mount
   useEffect(() => {
     console.log('🎮 Initializing automatic round system');
     console.log('Current state:', { multiplayerGameState, gameCountdown, isTogether, myId });
+
+    // Clear old chat messages when component initializes
+    if (isTogether && myId) {
+      console.log('🧹 Clearing old chat messages from previous sessions');
+      setChatMessages([]);
+
+      // Add welcome message
+      const welcomeMessage: ChatMessage = {
+        id: `welcome-${Date.now()}`,
+        userId: 'system',
+        nickname: 'System',
+        text: '🎮 Welcome to Crashout! Chat cleared for new session.',
+        timestamp: Date.now(),
+        type: 'system'
+      };
+
+      setTimeout(() => {
+        setChatMessages([welcomeMessage]);
+      }, 500);
+    }
 
     // Initialize to 'initializing' state first, then start first round automatically
     if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && multiplayerGameState !== 'initializing' && multiplayerGameState !== 'crashed')) {
@@ -687,7 +743,7 @@ function CrashoutGameContent({
         startAutoCrashoutRound();
       }, 3000); // 3 second delay to show initialization
     }
-  }, [isTogether, myId, startAutoCrashoutRound]); // Added startAutoCrashoutRound to dependencies
+  }, [isTogether, myId, startAutoCrashoutRound, setChatMessages]); // Added setChatMessages to dependencies
 
   // Separate effect to handle round start when countdown reaches 0
   useEffect(() => {
@@ -841,6 +897,35 @@ function CrashoutGameContent({
       broadcastChatMessage(testMessage);
     }
   }, [myId, broadcastPlayerBet, broadcastChatMessage]);
+
+  // Manual chat clear function
+  const clearChatMessages = useCallback(() => {
+    console.log('🧹 Manually clearing chat messages');
+    setChatMessages([]);
+
+    // Add clear notification
+    const clearMessage: ChatMessage = {
+      id: `clear-${Date.now()}`,
+      userId: 'system',
+      nickname: 'System',
+      text: '🧹 Chat manually cleared by user',
+      timestamp: Date.now(),
+      type: 'system'
+    };
+
+    setTimeout(() => {
+      setChatMessages([clearMessage]);
+    }, 100);
+  }, [setChatMessages]);
+
+  // Manual round history clear function
+  const clearRoundHistory = useCallback(() => {
+    console.log('🗑️ Manually clearing round history');
+    setHistory([]);
+    setSharedRoundHistory([]);
+
+    toast.success('Round history cleared!', { duration: 2000 });
+  }, [setSharedRoundHistory]);
 
   // Update walletAddress when the prop changes
   useEffect(() => {
@@ -2637,7 +2722,7 @@ function CrashoutGameContent({
         )}
         
           {/* Debug Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => {
                 console.log('🔧 Force initializing system');
@@ -2647,6 +2732,12 @@ function CrashoutGameContent({
               className="text-xs text-white/60 hover:text-white bg-purple-900 px-2 py-1 border border-purple-700 hover:border-purple-500 transition-colors"
             >
               Init System
+            </button>
+            <button
+              onClick={clearChatMessages}
+              className="text-xs text-white/60 hover:text-white bg-orange-900 px-2 py-1 border border-orange-700 hover:border-orange-500 transition-colors"
+            >
+              Clear Chat
             </button>
             <button
               onClick={forceResetRound}
@@ -2668,6 +2759,12 @@ function CrashoutGameContent({
               className="text-xs text-white/60 hover:text-white bg-blue-900 px-2 py-1 border border-blue-700 hover:border-blue-500 transition-colors"
             >
               Test Cashout
+            </button>
+            <button
+              onClick={clearRoundHistory}
+              className="text-xs text-white/60 hover:text-white bg-pink-900 px-2 py-1 border border-pink-700 hover:border-pink-500 transition-colors"
+            >
+              Clear History
             </button>
             <button
               onClick={() => setShowDebugPanel(prev => !prev)}
@@ -2897,6 +2994,8 @@ function CrashoutGameContent({
                {/* Debug info */}
                <div className="text-white/30 text-xs mt-2 border-t border-[#333] pt-2">
                  State: {multiplayerGameState} | Countdown: {gameCountdown} | Connected: {isTogether ? 'Yes' : 'No'} | Players: {connectedUsers.length}
+                 <br />
+                 History: {isTogether ? sharedRoundHistory.length : history.length} rounds | Local: {history.length} | Shared: {sharedRoundHistory.length}
                  {multiplayerGameState === 'waiting' && gameCountdown > 0 && (
                    <div className="text-green-400 mt-1">⚡ Auto-start active</div>
                  )}
@@ -2974,8 +3073,19 @@ function CrashoutGameContent({
       {/* --- History Row --- */}
       <div className="mt-8">
         <h3 className="text-lg font-semibold text-white mb-3 text-center uppercase tracking-wider">Recent Rounds</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-          {history.map((entry, idx) => {
+        {(isTogether ? sharedRoundHistory : history).length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-white/40 text-sm">
+              🎮 No rounds completed yet
+            </div>
+            <div className="text-white/30 text-xs mt-1">
+              Round history will appear here after games finish
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+            {/* Use shared history in multiplayer mode, local history otherwise */}
+            {(isTogether ? sharedRoundHistory : history).map((entry, idx) => {
             const mul = parseFloat(entry.value);
             const bgColor = getHistoryBgColor(mul); // Use the new function
           
@@ -3021,7 +3131,8 @@ function CrashoutGameContent({
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
       
       {/* Check Contract Balances Button */} 
