@@ -87,6 +87,7 @@ interface PlayerBet {
   timestamp: number;
   hasCashed?: boolean;
   cashoutMultiplier?: number;
+  winningAmount?: number;
 }
 
 interface GameRound {
@@ -727,28 +728,52 @@ function CrashoutGameContent({
     const myBet = playerBets.find(bet => bet.userId === myId && !bet.hasCashed);
     if (!myBet) return;
 
-    // Update bet to show cashed out
+    // Calculate winnings: bet_amount × cashout_multiplier
+    const winningAmount = myBet.betAmount * multiplier;
+    const profitAmount = winningAmount - myBet.betAmount; // Profit = winnings - original bet
+
+    console.log('💰 Cashout calculation:', {
+      betAmount: myBet.betAmount,
+      multiplier: multiplier,
+      winningAmount: winningAmount,
+      profitAmount: profitAmount,
+      token: myBet.selectedToken
+    });
+
+    // Update bet to show cashed out with winning amount
     const cashedBet: PlayerBet = {
       ...myBet,
       hasCashed: true,
-      cashoutMultiplier: multiplier
+      cashoutMultiplier: multiplier,
+      winningAmount: winningAmount
     };
 
     broadcastPlayerBet(cashedBet);
 
-    // Send chat message
+    // Add winnings to player's balance (only for Farm Coins for now)
+    if (myBet.selectedToken === 'Farm Coins' && addFarmCoins) {
+      addFarmCoins(winningAmount);
+      console.log('💰 Added', winningAmount, 'Farm Coins to player balance');
+    }
+
+    // Send chat message with detailed breakdown
     const cashoutMessage: ChatMessage = {
       id: `cashout-${Date.now()}`,
       userId: myId,
       nickname: userNicknames[myId] || `Player ${myId.slice(0, 6)}`,
-      text: `💰 Cashed out at ${multiplier.toFixed(2)}x for ${(myBet.betAmount * multiplier).toFixed(2)} ${myBet.selectedToken}!`,
+      text: `💰 Cashed out at ${multiplier.toFixed(2)}x! Won ${winningAmount.toFixed(2)} ${myBet.selectedToken} (${profitAmount.toFixed(2)} profit)`,
       timestamp: Date.now(),
       type: 'cashout'
     };
 
     broadcastChatMessage(cashoutMessage);
 
-  }, [myId, multiplayerGameState, playerBets, multiplier, broadcastPlayerBet, userNicknames, broadcastChatMessage]);
+    // Show success toast
+    toast.success(`Cashed out successfully! Won ${winningAmount.toFixed(2)} ${myBet.selectedToken}`, {
+      duration: 4000,
+    });
+
+  }, [myId, multiplayerGameState, playerBets, multiplier, broadcastPlayerBet, userNicknames, broadcastChatMessage, addFarmCoins]);
 
   // Manual reset function for debugging
   const forceResetRound = useCallback(() => {
@@ -770,6 +795,51 @@ function CrashoutGameContent({
     broadcastChatMessage(resetMessage);
     broadcastGameEvent({ type: 'roundReset' });
   }, [setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier, broadcastChatMessage, broadcastGameEvent]);
+
+  // Test cashout calculation function for debugging
+  const testCashoutCalculation = useCallback(() => {
+    console.log('🧪 Testing cashout calculation...');
+
+    // Create a test bet
+    const testBet: PlayerBet = {
+      userId: myId || 'test-user',
+      nickname: 'Test Player',
+      walletAddress: '0x1234567890123456789012345678901234567890',
+      betAmount: 100, // Test with 100 tokens
+      selectedToken: 'Farm Coins',
+      timestamp: Date.now(),
+      hasCashed: false
+    };
+
+    const testMultiplier = 3.5; // Test at 3.5x multiplier
+    const expectedWinnings = testBet.betAmount * testMultiplier; // 100 * 3.5 = 350
+    const expectedProfit = expectedWinnings - testBet.betAmount; // 350 - 100 = 250
+
+    console.log('🧪 Test Results:', {
+      betAmount: testBet.betAmount,
+      multiplier: testMultiplier,
+      expectedWinnings: expectedWinnings,
+      expectedProfit: expectedProfit,
+      calculation: `${testBet.betAmount} × ${testMultiplier} = ${expectedWinnings}`
+    });
+
+    // Add test bet to see it in the UI
+    if (myId) {
+      broadcastPlayerBet(testBet);
+
+      // Show test message
+      const testMessage: ChatMessage = {
+        id: `test-${Date.now()}`,
+        userId: 'system',
+        nickname: 'System',
+        text: `🧪 Test bet placed: ${testBet.betAmount} ${testBet.selectedToken}. Try cashing out to test winnings calculation!`,
+        timestamp: Date.now(),
+        type: 'system'
+      };
+
+      broadcastChatMessage(testMessage);
+    }
+  }, [myId, broadcastPlayerBet, broadcastChatMessage]);
 
   // Update walletAddress when the prop changes
   useEffect(() => {
@@ -2422,7 +2492,7 @@ function CrashoutGameContent({
   return (
     <div className="w-full max-w-7xl mx-auto p-4 bg-black border border-[#333]">
       {/* Three-panel layout: Chat (25%) | Game (50%) | Player Bets (25%) */}
-      <div className="grid gap-4 h-screen max-h-[800px] grid-cols-1 lg:grid-cols-4">
+      <div className="grid gap-4 h-[600px] grid-cols-1 lg:grid-cols-4">
 
         {/* Left Panel - Chat System (25% width) */}
         <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
@@ -2581,6 +2651,12 @@ function CrashoutGameContent({
               className="text-xs text-white/60 hover:text-white bg-green-900 px-2 py-1 border border-green-700 hover:border-green-500 transition-colors"
             >
               Start Round
+            </button>
+            <button
+              onClick={testCashoutCalculation}
+              className="text-xs text-white/60 hover:text-white bg-blue-900 px-2 py-1 border border-blue-700 hover:border-blue-500 transition-colors"
+            >
+              Test Cashout
             </button>
             <button
               onClick={() => setShowDebugPanel(prev => !prev)}
@@ -2845,10 +2921,19 @@ function CrashoutGameContent({
                  disabled={playerBets.some(bet => bet.userId === myId && bet.hasCashed)}
                  className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
                    ${playerBets.some(bet => bet.userId === myId && bet.hasCashed) ? 'bg-[#333] text-white/60 cursor-not-allowed' :
-                   'bg-white text-black hover:bg-white/90'}
+                   'bg-green-500 text-white hover:bg-green-600'}
                  `}
                >
-                 {playerBets.some(bet => bet.userId === myId && bet.hasCashed) ? 'Cashed Out ✓' : 'Cashout Now!'}
+                 {playerBets.some(bet => bet.userId === myId && bet.hasCashed) ? 'Cashed Out ✓' :
+                  (() => {
+                    const myBet = playerBets.find(bet => bet.userId === myId && !bet.hasCashed);
+                    if (myBet) {
+                      const potentialWinnings = (myBet.betAmount * multiplier).toFixed(2);
+                      return `Cash Out ${potentialWinnings} ${myBet.selectedToken}`;
+                    }
+                    return 'Cash Out';
+                  })()
+                 }
                </button>
              )}
 
@@ -2994,9 +3079,15 @@ function CrashoutGameContent({
                         <span className="text-green-400 font-medium">{bet.cashoutMultiplier.toFixed(2)}x</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Winnings:</span>
+                        <span>Total Winnings:</span>
                         <span className="text-green-400 font-medium">
-                          {(bet.betAmount * bet.cashoutMultiplier).toFixed(2)} {bet.selectedToken}
+                          {bet.winningAmount ? bet.winningAmount.toFixed(2) : (bet.betAmount * bet.cashoutMultiplier).toFixed(2)} {bet.selectedToken}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Profit:</span>
+                        <span className="text-green-300 font-medium">
+                          +{bet.winningAmount ? (bet.winningAmount - bet.betAmount).toFixed(2) : ((bet.betAmount * bet.cashoutMultiplier) - bet.betAmount).toFixed(2)} {bet.selectedToken}
                         </span>
                       </div>
                     </>
