@@ -602,31 +602,6 @@ function CrashoutGameContent({
 
   // Auto-run system handles bet placement - no test bets needed
 
-  // Start automatic crashout round
-  const startAutoCrashoutRound = useCallback(() => {
-    console.log('🚀 Starting automatic crashout round');
-
-    // Send system message
-    const systemMessage: ChatMessage = {
-      id: `system-${Date.now()}`,
-      userId: 'system',
-      nickname: 'System',
-      text: `🚀 Round started! ${playerBets.length} players joined. Multiplier climbing...`,
-      timestamp: Date.now(),
-      type: 'system'
-    };
-
-    broadcastChatMessage(systemMessage);
-
-    // Set game state to active for all players
-    setMultiplayerGameState('active');
-    setMultiplier(1.0);
-
-    // Start the automatic multiplier climb
-    startAutomaticMultiplierClimb();
-
-  }, [playerBets.length, broadcastChatMessage, setMultiplayerGameState]);
-
   // Automatic multiplier climb simulation
   const startAutomaticMultiplierClimb = useCallback(() => {
     console.log('📈 Starting automatic multiplier climb');
@@ -636,6 +611,12 @@ function CrashoutGameContent({
     // Generate crash point at start (between 1.2x and 8x, weighted toward lower values)
     const crashPoint = 1.2 + Math.random() * Math.random() * 6.8;
     console.log('🎯 Crash point set to:', crashPoint.toFixed(2) + 'x');
+
+    // Clear any existing intervals first
+    if ((window as any).multiplierIntervalId) {
+      console.log('🧹 Clearing existing multiplier interval');
+      clearInterval((window as any).multiplierIntervalId);
+    }
 
     const multiplierInterval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000; // seconds elapsed
@@ -700,13 +681,47 @@ function CrashoutGameContent({
       }
     }, 100); // Update every 100ms for smooth animation
 
+    // Store interval reference globally for cleanup
+    (window as any).multiplierIntervalId = multiplierInterval;
+
     // Store interval reference for cleanup
     return () => {
       console.log('🛑 Cleaning up multiplier interval');
       clearInterval(multiplierInterval);
+      (window as any).multiplierIntervalId = null;
     };
 
   }, [setMultiplier, broadcastGameEvent, broadcastChatMessage, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
+
+  // Start automatic crashout round
+  const startAutoCrashoutRound = useCallback(() => {
+    console.log('🚀 Starting automatic crashout round');
+    console.log('🔍 Current state before starting:', { multiplayerGameState, gameCountdown });
+
+    // Send system message
+    const systemMessage: ChatMessage = {
+      id: `system-${Date.now()}`,
+      userId: 'system',
+      nickname: 'System',
+      text: `🚀 Round started! ${playerBets.length} players joined. Multiplier climbing...`,
+      timestamp: Date.now(),
+      type: 'system'
+    };
+
+    broadcastChatMessage(systemMessage);
+
+    // Set game state to active for all players
+    console.log('🎮 Setting state to active and starting multiplier climb');
+    setMultiplayerGameState('active');
+    setMultiplier(1.0);
+
+    // Start the automatic multiplier climb with a small delay to ensure state is set
+    setTimeout(() => {
+      console.log('🚀 Starting multiplier climb after state change');
+      startAutomaticMultiplierClimb();
+    }, 100);
+
+  }, [playerBets.length, broadcastChatMessage, setMultiplayerGameState, setMultiplier, startAutomaticMultiplierClimb, multiplayerGameState, gameCountdown]);
 
   // Initialize automatic round system and clear old chat messages on component mount
   useEffect(() => {
@@ -2864,6 +2879,20 @@ function CrashoutGameContent({
                    <div className="text-white/60 text-sm">
                      {playerBets.some(bet => bet.userId === myId) ? 'You\'re in this round!' : 'Too late to join this round'}
                    </div>
+                   {multiplier === 1.0 && (
+                     <button
+                       onClick={() => {
+                         console.log('🔧 Manual recovery: Restarting round system');
+                         setMultiplayerGameState('waiting');
+                         setGameCountdown(30);
+                         setPlayerBets([]);
+                         setMultiplier(1.0);
+                       }}
+                       className="mt-2 text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 px-2 py-1 border border-yellow-700 hover:border-yellow-500 transition-colors"
+                     >
+                       🔧 Stuck? Click to restart
+                     </button>
+                   )}
                  </div>
                )}
 
