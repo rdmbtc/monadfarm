@@ -2153,7 +2153,7 @@ export const TokenSwap = () => {
       // Step 1: Check allowance and approve if needed
       try {
         // ADDED: Check if contract has enough Mon liquidity BEFORE approval
-        const contractMonBalanceStr = contractTokenBalances.Mon || "0"; // Use the fetched contract balance
+        const contractMonBalanceStr = contractTokenBalances.MON || "0"; // Use the fetched contract balance
         const contractMonBalance = parseFloat(contractMonBalanceStr);
         const estimatedMonOutputAmount = expectedOutputAmount > 0 ? expectedOutputAmount : swapAmount; // Use calculated or fallback
 
@@ -2314,9 +2314,9 @@ export const TokenSwap = () => {
       
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, ethersProvider);
       
-      // Get all tokens including Mon
+      // Get all tokens including MON
       const allTokens = [
-        "Mon",
+        "MON",
         "ABBY",
         "CHESTER",
         "DOJO3",
@@ -2333,20 +2333,29 @@ export const TokenSwap = () => {
       
       const newBalances: Record<string, string> = {};
       
-      // First check Mon balance
+      // First check MON balance (native token)
       try {
-        const MonContract = new Contract(MonAddress, TOKEN_ABI, ethersProvider);
-        const contractMonBalance = await MonContract.balanceOf(farmSwapAddress);
-        const formattedMonBalance = formatUnits(contractMonBalance, 18);
-        newBalances["Mon"] = formattedMonBalance;
-        console.log(`Contract Mon balance: ${formattedMonBalance}`);
+        if (MonAddress === "0x0000000000000000000000000000000000000000") {
+          // MON is native token - check native balance of contract
+          const contractMonBalance = await ethersProvider.getBalance(farmSwapAddress);
+          const formattedMonBalance = formatUnits(contractMonBalance, 18);
+          newBalances["MON"] = formattedMonBalance;
+          console.log(`Contract native MON balance: ${formattedMonBalance}`);
+        } else {
+          // MON is ERC-20 token - use balanceOf
+          const MonContract = new Contract(MonAddress, TOKEN_ABI, ethersProvider);
+          const contractMonBalance = await MonContract.balanceOf(farmSwapAddress);
+          const formattedMonBalance = formatUnits(contractMonBalance, 18);
+          newBalances["MON"] = formattedMonBalance;
+          console.log(`Contract ERC-20 MON balance: ${formattedMonBalance}`);
+        }
       } catch (error) {
-        console.error("Error checking contract Mon balance:", error);
-        newBalances["Mon"] = "0";
+        console.error("Error checking contract MON balance:", error);
+        newBalances["MON"] = "0";
       }
       
       // Then check all other tokens
-      for (const tokenKey of allTokens.filter(t => t !== "Mon")) {
+      for (const tokenKey of allTokens.filter(t => t !== "MON")) {
         try {
           if (TOKEN_ADDRESSES[tokenKey as keyof typeof TOKEN_ADDRESSES]) {
             const tokenAddress = getChecksumAddress(TOKEN_ADDRESSES[tokenKey as keyof typeof TOKEN_ADDRESSES]);
@@ -2781,8 +2790,8 @@ export const TokenSwap = () => {
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
-      // Get all tokens except Mon
-      const tokensToUpdate = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "Mon");
+      // Get all tokens except MON
+      const tokensToUpdate = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "MON");
       
       // Set exchange rate to 1:1 (1 ether)
       const oneToOneRate = etherUtils.parseUnits("1", 18);
@@ -2929,8 +2938,8 @@ export const TokenSwap = () => {
       const farmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, signer);
       
-      // Get all tokens except Mon
-      const tokensToRegister = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "Mon");
+      // Get all tokens except MON
+      const tokensToRegister = Object.keys(TOKEN_ADDRESSES).filter(key => key !== "MON");
       
       // Set exchange rate to 1:1 (1 ether)
       const oneToOneRate = etherUtils.parseUnits("1", 18);
@@ -3223,7 +3232,7 @@ export const TokenSwap = () => {
         }
         
         // Check contract Mon balance
-        const contractMonBalanceStr = contractTokenBalances.Mon || "0";
+        const contractMonBalanceStr = contractTokenBalances.MON || "0";
         const contractMonBalance = parseFloat(contractMonBalanceStr);
         if (contractMonBalance < swapAmount) {
           toast.error(`Contract has insufficient Mon liquidity. Available: ${contractMonBalance}`);
@@ -4202,7 +4211,7 @@ export const TokenSwap = () => {
               
               {showTokenSelector && (
                 <div className="mt-1 border border-[#333] bg-[#171717] rounded max-h-40 overflow-y-auto">
-                  {Object.keys(TOKEN_ADDRESSES).filter(key => key !== "Mon").map((key) => (
+                  {Object.keys(TOKEN_ADDRESSES).filter(key => key !== "MON").map((key) => (
                     <div 
                       key={key}
                       className={`p-2 hover:bg-[#222] cursor-pointer ${selectedToken === key ? "bg-[#222]" : ""}`}
