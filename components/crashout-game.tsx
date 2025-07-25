@@ -390,6 +390,7 @@ function CrashoutGameContent({
   });
 
   const broadcastGameEvent = useFunctionTogether('broadcastGameEvent', (event: any) => {
+    console.log('📡 Received game event:', event);
     if (event.type === 'roundStart') {
       setCurrentGameRound(event.round);
       setMultiplayerGameState('active');
@@ -398,6 +399,9 @@ function CrashoutGameContent({
       setGameCountdown(30);
     } else if (event.type === 'countdown') {
       setGameCountdown(event.countdown);
+    } else if (event.type === 'multiplierUpdate') {
+      // Update multiplier from other players
+      setMultiplier(event.multiplier);
     }
   });
 
@@ -469,9 +473,12 @@ function CrashoutGameContent({
       myId,
       connectedUsers: connectedUsers.length,
       playerBetsCount: playerBets.length,
-      chatMessagesCount: chatMessages.length
+      chatMessagesCount: chatMessages.length,
+      multiplayerGameState,
+      gameCountdown,
+      multiplier
     });
-  }, [isTogether, myId, connectedUsers.length, playerBets.length, chatMessages.length]);
+  }, [isTogether, myId, connectedUsers.length, playerBets.length, chatMessages.length, multiplayerGameState, gameCountdown, multiplier]);
 
   // Auto-run system handles bet placement - no test bets needed
 
@@ -531,28 +538,33 @@ function CrashoutGameContent({
 
   // Automatic multiplier climb simulation
   const startAutomaticMultiplierClimb = useCallback(() => {
+    console.log('🚀 Starting automatic multiplier climb');
     let currentMultiplier = 1.0;
     const startTime = Date.now();
+
+    // Generate crash point at start (between 1.2x and 8x, weighted toward lower values)
+    const crashPoint = 1.2 + Math.random() * Math.random() * 6.8;
+    console.log('🎯 Crash point set to:', crashPoint.toFixed(2) + 'x');
 
     const multiplierInterval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000; // seconds elapsed
 
       // Calculate multiplier growth (exponential-like curve)
-      currentMultiplier = 1.0 + (elapsed * 0.1) + (elapsed * elapsed * 0.01);
+      currentMultiplier = 1.0 + (elapsed * 0.15) + (elapsed * elapsed * 0.02);
 
+      console.log('📈 Multiplier update:', currentMultiplier.toFixed(2) + 'x', 'elapsed:', elapsed.toFixed(1) + 's');
       setMultiplier(currentMultiplier);
 
-      // Broadcast multiplier update
+      // Broadcast multiplier update to all players
       broadcastGameEvent({
         type: 'multiplierUpdate',
         multiplier: currentMultiplier,
         elapsed: elapsed
       });
 
-      // Random crash between 1.2x and 10x (weighted toward lower values)
-      const crashPoint = 1.2 + Math.random() * Math.random() * 8.8; // Weighted random
-
+      // Check if we should crash
       if (currentMultiplier >= crashPoint || elapsed > 60) { // Max 60 seconds
+        console.log('💥 CRASH! Final multiplier:', currentMultiplier.toFixed(2) + 'x');
         clearInterval(multiplierInterval);
 
         // Crash the game
@@ -570,12 +582,19 @@ function CrashoutGameContent({
 
         // Reset for next round
         setTimeout(() => {
+          console.log('🔄 Resetting for next round');
           setMultiplayerGameState('waiting');
           setGameCountdown(30);
           setPlayerBets([]); // Clear bets for next round
         }, 3000); // 3 second delay to show crash
       }
     }, 100); // Update every 100ms for smooth animation
+
+    // Store interval reference for cleanup
+    return () => {
+      console.log('🛑 Cleaning up multiplier interval');
+      clearInterval(multiplierInterval);
+    };
 
   }, [setMultiplier, broadcastGameEvent, broadcastChatMessage, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
 
@@ -608,6 +627,27 @@ function CrashoutGameContent({
     broadcastChatMessage(cashoutMessage);
 
   }, [myId, multiplayerGameState, playerBets, multiplier, broadcastPlayerBet, userNicknames, broadcastChatMessage]);
+
+  // Manual reset function for debugging
+  const forceResetRound = useCallback(() => {
+    console.log('🔄 Force resetting round');
+    setMultiplayerGameState('waiting');
+    setGameCountdown(30);
+    setPlayerBets([]);
+    setMultiplier(1.0);
+
+    const resetMessage: ChatMessage = {
+      id: `system-${Date.now()}`,
+      userId: 'system',
+      nickname: 'System',
+      text: '🔄 Round manually reset. Next round starting soon...',
+      timestamp: Date.now(),
+      type: 'system'
+    };
+
+    broadcastChatMessage(resetMessage);
+    broadcastGameEvent({ type: 'roundReset' });
+  }, [setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier, broadcastChatMessage, broadcastGameEvent]);
 
   // Update walletAddress when the prop changes
   useEffect(() => {
@@ -2366,13 +2406,30 @@ function CrashoutGameContent({
           </button>
         )}
         
-          {/* Debug Toggle */}
-          <button
-            onClick={() => setShowDebugPanel(prev => !prev)}
-            className="text-xs text-white/60 hover:text-white bg-[#111] px-2 py-1 border border-[#333] hover:border-white/20 transition-colors"
-          >
-            {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
-          </button>
+          {/* Debug Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={forceResetRound}
+              className="text-xs text-white/60 hover:text-white bg-red-900 px-2 py-1 border border-red-700 hover:border-red-500 transition-colors"
+            >
+              Reset Round
+            </button>
+            <button
+              onClick={() => {
+                console.log('🚀 Force starting round');
+                startAutoCrashoutRound();
+              }}
+              className="text-xs text-white/60 hover:text-white bg-green-900 px-2 py-1 border border-green-700 hover:border-green-500 transition-colors"
+            >
+              Start Round
+            </button>
+            <button
+              onClick={() => setShowDebugPanel(prev => !prev)}
+              className="text-xs text-white/60 hover:text-white bg-[#111] px-2 py-1 border border-[#333] hover:border-white/20 transition-colors"
+            >
+              {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
+            </button>
+          </div>
         </div>
       </div>
       
