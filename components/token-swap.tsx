@@ -1345,8 +1345,8 @@ export const TokenSwap = () => {
       
       console.log("Preparing Mon to Farm Coins swap transaction...");
       
-      // Calculate Farm Coins to receive (1 Mon = 10 Farm Coins)
-      const farmCoinsToReceive = swapAmount * 10;
+      // Calculate Farm Coins to receive (1 MON = 10,000 Farm Coins)
+      const farmCoinsToReceive = swapAmount * 10000;
       
       // Store initial farm coins to ensure proper update
       const initialFarmCoins = farmCoins;
@@ -1917,18 +1917,33 @@ export const TokenSwap = () => {
          return "0"; 
       }
       
-      // --- Use Standard Ethers Implementation for ALL wallet types ---
+      // --- Handle native MON vs ERC-20 tokens ---
       console.log(`Fetching ${tokenKey} balance for ${is  ? ' ' : 'standard'} user: ${checksummedWalletAddress}`);
       let balanceWei: bigint;
-      try {
-        // Use the ethersProvider returned by getEthersProvider()
-        const tokenContract = new Contract(checksummedTokenAddress, TOKEN_ABI, ethersProvider);
-        const balanceResult = await tokenContract.balanceOf(checksummedWalletAddress);
-        balanceWei = BigInt(balanceResult?.toString() ?? '0');
-        console.log(`Raw balance for ${tokenKey}: ${balanceWei.toString()}`);
-      } catch (ethersError) {
-        console.error(`Error fetching ${tokenKey} balance with ethers (${is  ? '  provider' : 'Standard provider'}):`, ethersError);
-        return "0";
+
+      if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+        // MON is native token - use getBalance()
+        try {
+          console.log(`${tokenKey} is native token - checking native balance`);
+          const nativeBalance = await ethersProvider.getBalance(checksummedWalletAddress);
+          balanceWei = BigInt(nativeBalance.toString());
+          console.log(`Native ${tokenKey} balance: ${balanceWei.toString()}`);
+        } catch (nativeError) {
+          console.error(`Error fetching native ${tokenKey} balance:`, nativeError);
+          return "0";
+        }
+      } else {
+        // ERC-20 token - use balanceOf()
+        try {
+          console.log(`${tokenKey} is ERC-20 token - checking token balance`);
+          const tokenContract = new Contract(checksummedTokenAddress, TOKEN_ABI, ethersProvider);
+          const balanceResult = await tokenContract.balanceOf(checksummedWalletAddress);
+          balanceWei = BigInt(balanceResult?.toString() ?? '0');
+          console.log(`ERC-20 ${tokenKey} balance: ${balanceWei.toString()}`);
+        } catch (ethersError) {
+          console.error(`Error fetching ${tokenKey} ERC-20 balance:`, ethersError);
+          return "0";
+        }
       }
      
       // Format the balance consistently
@@ -1955,17 +1970,18 @@ export const TokenSwap = () => {
 
     // Corrected loop definition - using Object.keys to get the keys directly
     for (const tokenKey of Object.keys(TOKEN_ADDRESSES)) {
-      // Fetch Mon separately using its dedicated function
-      if (tokenKey === "Mon") {
-        // Assuming fetchMonBalance updates actualMonBalance state directly
-        // We can read it, but don't need to set it in `balances` here
+      // Skip MON since it's handled separately by fetchMonBalance
+      if (tokenKey === "MON") {
+        // MON balance is handled separately by fetchMonBalance
+        // We can read actualMonBalance state, but don't need to set it in `balances` here
+        console.log(`fetchAllTokenBalances: Skipping ${tokenKey} (handled separately)`);
         continue;
       }
 
       console.log(`fetchAllTokenBalances: Fetching balance for ${tokenKey}...`);
       // Use tokenKey consistently when calling fetchTokenBalance
       const balance = await fetchTokenBalance(walletAddress, tokenKey);
-      if (balance === "0" && tokenKey !== "Mon") { // Log if non-Mon balance is 0
+      if (balance === "0" && tokenKey !== "MON") { // Log if non-MON balance is 0
         console.warn(`fetchAllTokenBalances: Fetched balance is 0 for ${tokenKey}.`);
         // Optionally add a check here to see if it *should* be 0
       }
@@ -3752,7 +3768,7 @@ export const TokenSwap = () => {
                 <span className="text-xs text-gray-400">Current: {farmCoins}</span>
               </div>
               <div className="text-white text-lg">
-                {swapAmount * 10}
+                {(swapAmount * 10000).toLocaleString()}
               </div>
             </div>
           </div>
@@ -3774,7 +3790,7 @@ export const TokenSwap = () => {
           ) : null}
           {!isWalletConnected ? "Connect Wallet First" : 
            parseFloat(actualMonBalance) < swapAmount ? "Insufficient MON Balance" :
-           `Swap ${swapAmount} MON for ${swapAmount * 10} Farm Coins`}
+           `Swap ${swapAmount} MON for ${(swapAmount * 10000).toLocaleString()} Farm Coins`}
         </Button>
       </div>
       
