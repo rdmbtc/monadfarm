@@ -530,7 +530,7 @@ export const TokenSwap = () => {
             if (parseFloat(formattedMonBalance) > 0) {
               console.log(`Found ${formattedMonBalance} ERC-20 MON tokens!`);
             } else {
-              console.log("No ERC-20 MON tokens found. Try the 'Find MON Tokens' button.");
+              console.log("No ERC-20 MON tokens found.");
             }
           } catch (error) {
             console.log("Error checking ERC-20 MON token balance:", error);
@@ -1418,105 +1418,33 @@ export const TokenSwap = () => {
       }
       
       // Create contract instances
-      const checksummedMonAddress = getChecksumAddress(TOKEN_ADDRESSES.MON);
       const checksummedFarmSwapAddress = getChecksumAddress(FARM_SWAP_ADDRESS);
-      
-      console.log("Creating contracts with signer:", signer ? "Available" : "Not available");
-      const MonContract = new Contract(checksummedMonAddress, TOKEN_ABI, signer);
+
+      console.log("Creating swap contract with signer:", signer ? "Available" : "Not available");
       const swapContract = new Contract(checksummedFarmSwapAddress, SWAP_ABI, signer);
-      
+
       console.log("Contract instances created");
-      
+
       // Format amount with proper decimals for the blockchain
       const MonAmount = etherUtils.parseUnits(swapAmount.toString(), 18);
-      
+
       console.log("Amount to swap:", MonAmount.toString());
-      
-      // STEP 1: Approve Mon tokens for spending
-      console.log("Approving token spend...");
+
+      // MON is native token - no approval needed, skip to swap
+      console.log("MON is native token - skipping approval step...");
       try {
-        // Check current allowance first
-        const checksummedWalletAddress = getChecksumAddress(walletAddr);
-        const currentAllowance = await MonContract.allowance(checksummedWalletAddress, checksummedFarmSwapAddress);
-        console.log("Current allowance:", currentAllowance.toString());
+        // MON is native token - no approval needed, proceed directly to swap
+        console.log("Proceeding with native MON swap...");
         
-        // Only approve if needed - use a much larger allowance to prevent frequent approvals
-        if (currentAllowance < MonAmount) {
-          console.log("Allowance insufficient, requesting approval...");
-          
-          // Due to limitations with MetaMask, we need to use a large approval amount for tokens
-          const largeApprovalAmount = parseUnits("10000000", 18); // 10 million tokens
-          
-          toast.success(
-            React.createElement("div", { className: "space-y-1 text-sm" },
-              React.createElement("p", { className: "font-semibold" }, "Approval Required"),
-              React.createElement("p", { className: "text-xs" }, "Please approve MON tokens in your wallet"),
-              React.createElement("p", { className: "text-xs" }, "This is required only once")
-            ),
-            {duration: 8000}
-          );
-          
-          // Before sending transaction, show toast that we're preparing approval
-          toast.loading("Preparing approval transaction...", { id: "approval-toast" });
-          
-          try {
-            // Execute approval - using a consistent approach for all wallet types
-            console.log(`Executing approval with wallet type: ${activeWallet}`);
-            
-            let approvalTx: any;
-            let approvalTxHash: string;
-            
-            // Standard wallets use regular ethers.js calls
-            approvalTx = await MonContract.approve(checksummedFarmSwapAddress, largeApprovalAmount);
-            approvalTxHash = approvalTx.hash;
-            
-            console.log("Approval transaction submitted:", approvalTxHash);
-            
-            // Show transaction details
-            setCurrentTx({
-              hash: approvalTxHash,
-              status: "pending"
-            });
-            setShowTxDetails(true);
-
-            // Handle confirmation for standard wallets
-            toast.loading("Waiting for approval confirmation...", { id: "approval-toast" });
-            await approvalTx.wait();
-
-            toast.dismiss("approval-toast");
-            toast.success("Mon spending approved!");
-          } catch (approvalError: any) {
-            toast.dismiss("approval-toast");
-            console.error("Approval error:", approvalError);
-            
-            if (approvalError.code === "ACTION_REJECTED") {
-              setError("You rejected the approval transaction");
-              toast.error("Transaction canceled: You rejected the approval");
-              setIsLoading(false);
-              return;
-            } else {
-              setError(approvalError.reason || approvalError.message || "Approval transaction failed");
-              toast.error("Approval failed: " + (approvalError.reason || approvalError.message || "Unknown error"));
-              setIsLoading(false);
-              return;
-            }
-          }
-        } else {
-          console.log("Sufficient allowance already granted");
-        }
-        
-        // IMPORTANT: Use the correct swap function from the MonerSwap contract
+        // Use the correct native MON swap function
         try {
-          toast.loading("Processing swap via direct transfer...", { id: "swap-toast" });
-          
-          // Instead of direct transfer, use the swapMonForToken function directly
-          // First determine which farm token to swap to (default to aprMON)
-          const farmToken = selectedToken || "aprMON";
-          const farmTokenAddress = getChecksumAddress(TOKEN_ADDRESSES[farmToken as keyof typeof TOKEN_ADDRESSES]);
-          
-          console.log(`Calling swapMonForToken with target token: ${farmToken} (${farmTokenAddress}) and amount: ${MonAmount.toString()}`);
-          
-          const tx = await swapContract.swapMonForToken(farmTokenAddress, MonAmount, {
+          toast.loading("Processing native MON swap for Farm Coins...", { id: "swap-toast" });
+
+          console.log(`Calling swapNativeForFarmCoins with amount: ${MonAmount.toString()}`);
+
+          // Use swapNativeForFarmCoins for native MON token
+          const tx = await swapContract.swapNativeForFarmCoins({
+            value: MonAmount, // Send native MON as value
             gasLimit: 2000000
           });
           
@@ -3562,148 +3490,8 @@ export const TokenSwap = () => {
         {/* Token info and explorer links */}
         {isWalletConnected && (
           <div className="mt-3 text-xs grid grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs border-[#333] flex items-center justify-center gap-1 hover:bg-blue-900/20"
-              onClick={async () => {
-                if (!isWalletConnected || !walletAddress) {
-                  toast.error("Please connect your wallet first");
-                  return;
-                }
 
-                toast.loading("Checking all token balances...");
-                console.log("=== ENHANCED TOKEN BALANCE DEBUG ===");
-                console.log("Wallet Address:", walletAddress);
-                console.log("Current Chain ID:", (window.ethereum as any)?.chainId);
 
-                try {
-                  const { provider: ethersProvider } = await getEthersProvider();
-
-                  // Check network info
-                  const network = await ethersProvider.getNetwork();
-                  console.log("Network Info:", network);
-
-                  // First check native MON balance (this should be your 10 MON!)
-                  console.log("=== CHECKING NATIVE MON BALANCE ===");
-                  try {
-                    const nativeBalance = await ethersProvider.getBalance(walletAddress);
-                    const formattedNative = etherUtils.formatUnits(nativeBalance, 18);
-                    console.log(`🎯 Native MON Balance: ${formattedNative}`);
-
-                    if (parseFloat(formattedNative) > 0) {
-                      toast.success(`🎉 Found ${formattedNative} native MON tokens!`, { duration: 10000 });
-                      console.log("🎉 SUCCESS: This is your MON balance! MON is the native token.");
-                    } else {
-                      toast.error(`Native MON Balance: ${formattedNative}`, { duration: 5000 });
-                    }
-                  } catch (error) {
-                    console.log("Error checking native balance:", error);
-                  }
-
-                  // Check if MON might be an ERC-20 token with a different address
-                  console.log("=== TRYING POSSIBLE MON TOKEN ADDRESSES ===");
-                  const possibleMonAddresses = [
-                    "0xc00000000000000000000000000000000000000000", // Your suggested address
-                    "0x1111111111111111111111111111111111111111", // Common pattern
-                    "0x2222222222222222222222222222222222222222", // Common pattern
-                    "0x3333333333333333333333333333333333333333", // Common pattern
-                    "0x4444444444444444444444444444444444444444", // Common pattern
-                    "0x5555555555555555555555555555555555555555", // Common pattern
-                    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // Common pattern
-                    "0xffffffffffffffffffffffffffffffffffffffff", // Max address
-                    "0x1000000000000000000000000000000000000001", // Monad-like pattern
-                    "0x0000000000000000000000000000000000000001", // Minimal non-zero
-                    "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", // Test pattern
-                    "0xcafebabecafebabecafebabecafebabecafebabe", // Test pattern
-                  ];
-
-                  for (const address of possibleMonAddresses) {
-                    try {
-                      console.log(`Trying MON address: ${address}`);
-                      const tokenContract = new Contract(address, TOKEN_ABI, ethersProvider);
-                      const balance = await tokenContract.balanceOf(walletAddress);
-                      const formattedBalance = etherUtils.formatUnits(balance, 18);
-
-                      if (parseFloat(formattedBalance) > 0) {
-                        console.log(`🎉 FOUND MON TOKENS! Address: ${address}, Balance: ${formattedBalance}`);
-                        toast.success(`🎉 Found ${formattedBalance} MON at ${address}!`, { duration: 10000 });
-
-                        // Try to get token info
-                        try {
-                          const name = await tokenContract.name();
-                          const symbol = await tokenContract.symbol();
-                          console.log(`Token Info: ${name} (${symbol})`);
-                          toast.success(`Token: ${name} (${symbol})`, { duration: 5000 });
-                        } catch (e) {
-                          console.log("Could not get token info");
-                        }
-                      } else {
-                        console.log(`No balance at ${address}`);
-                      }
-                    } catch (error) {
-                      console.log(`Error checking ${address}:`, (error as any)?.message || error);
-                    }
-                  }
-
-                  // Then check all configured ERC-20 tokens
-                  console.log("=== CHECKING CONFIGURED TOKENS ===");
-                  for (const [tokenKey, tokenAddress] of Object.entries(TOKEN_ADDRESSES)) {
-                    if (tokenAddress === "0x0000000000000000000000000000000000000000" ||
-                        tokenAddress === "0x00000000000000000000000000000000000000000") {
-                      console.log(`Skipping ${tokenKey} (zero address)`);
-                      continue;
-                    }
-
-                    try {
-                      const tokenContract = new Contract(tokenAddress, TOKEN_ABI, ethersProvider);
-                      const balance = await tokenContract.balanceOf(walletAddress);
-                      const formattedBalance = etherUtils.formatUnits(balance, 18);
-                      console.log(`${tokenKey}: ${formattedBalance} tokens`);
-
-                      if (parseFloat(formattedBalance) > 0) {
-                        toast.success(`Found ${formattedBalance} ${tokenKey} tokens!`, { duration: 3000 });
-                      }
-                    } catch (error) {
-                      console.log(`Error checking ${tokenKey}:`, (error as any)?.message || error);
-                    }
-                  }
-
-                  toast.dismiss();
-                  toast.success("Balance check complete! Check console for details.");
-                } catch (error) {
-                  toast.dismiss();
-                  toast.error("Error checking balances");
-                  console.error("Balance check error:", error);
-                }
-              }}
-            >
-              <RefreshCw className="h-3 w-3" />
-              Find MON Tokens
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs border-[#333] flex items-center justify-center gap-1 hover:bg-blue-900/20"
-              onClick={async () => {
-                const newAddress = prompt("Enter the correct MON token address:", TOKEN_ADDRESSES.MON);
-                if (newAddress && newAddress.length === 42 && newAddress.startsWith("0x")) {
-                  // Temporarily update the MON address for testing
-                  (TOKEN_ADDRESSES as any).MON = newAddress;
-                  toast.success(`MON address updated to: ${newAddress}`);
-
-                  // Refresh balance with new address
-                  if (walletAddress) {
-                    await fetchMonBalance(walletAddress);
-                  }
-                } else if (newAddress) {
-                  toast.error("Invalid address format. Must be 42 characters starting with 0x");
-                }
-              }}
-            >
-              <ExternalLink className="h-3 w-3" />
-              Set MON Address
-            </Button>
             <Button 
               size="sm" 
               variant="outline" 
