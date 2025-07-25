@@ -471,11 +471,25 @@ export const TokenSwap = () => {
       console.log("Wallet address (checksummed):", checksummedWalletAddress);
 
       // If we're not on Monad Testnet, show placeholder balance
-      if (chainId !== MONAD_TESTNET_CHAIN_ID) {
-        console.log("Not on Monad Testnet, showing placeholder balance");
+      console.log("🔍 Chain ID check:");
+      console.log("  Current chain ID:", chainId, "(type:", typeof chainId, ")");
+      console.log("  Expected chain ID:", MONAD_TESTNET_CHAIN_ID, "(type:", typeof MONAD_TESTNET_CHAIN_ID, ")");
+      console.log("  Chain ID as decimal:", parseInt(chainId, 16));
+      console.log("  Expected as decimal:", parseInt(MONAD_TESTNET_CHAIN_ID, 16));
+
+      // Check both hex and decimal formats
+      const isCorrectChain = chainId === MONAD_TESTNET_CHAIN_ID ||
+                            chainId === "10143" ||
+                            parseInt(chainId, 16) === 10143 ||
+                            parseInt(chainId, 10) === 10143;
+
+      if (!isCorrectChain) {
+        console.log("❌ Not on Monad Testnet, showing placeholder balance");
+        console.log("Current chain:", chainId, "Expected:", MONAD_TESTNET_CHAIN_ID, "or 10143");
         setActualMonBalance("0");
         return;
       }
+      console.log("✅ On Monad Testnet, proceeding with balance check");
 
       try {
         // Check if MON is native token (zero address) or ERC-20
@@ -2314,22 +2328,8 @@ export const TokenSwap = () => {
       
       const swapContract = new Contract(farmSwapAddress, SWAP_ABI, ethersProvider);
       
-      // Get all tokens including MON
-      const allTokens = [
-        "MON",
-        "ABBY",
-        "CHESTER",
-        "DOJO3",
-        "FEATHERS",
-        "MOP",
-        "NUTZ",
-        "PAINGU",
-        "PENGUIN",
-        "PUDGY",
-        "RETSBA",
-        "WOJACT",
-        "YUP"
-      ];
+      // Get all tokens from TOKEN_ADDRESSES
+      const allTokens = Object.keys(TOKEN_ADDRESSES);
       
       const newBalances: Record<string, string> = {};
       
