@@ -691,10 +691,12 @@ function CrashoutGameContent({
 
         // Show crash state for 3 seconds, then start countdown
         setTimeout(() => {
-          console.log('🔄 Starting countdown for next round');
+          console.log('🔄 Crash timeout completed - transitioning to waiting state');
+          console.log('Current state before transition:', multiplayerGameState);
           setMultiplayerGameState('waiting');
           setGameCountdown(30);
           setPlayerBets([]); // Clear bets for next round
+          console.log('✅ Set state to waiting with 30s countdown');
         }, 3000); // 3 second delay to show crash
       }
     }, 100); // Update every 100ms for smooth animation
@@ -747,14 +749,40 @@ function CrashoutGameContent({
 
   // Separate effect to handle round start when countdown reaches 0
   useEffect(() => {
+    console.log('🔍 Round start effect triggered:', { multiplayerGameState, gameCountdown });
     if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
       console.log('🚀 Countdown reached 0! Auto-starting next round...');
-      startAutoCrashoutRound();
+      console.log('🎮 Calling startAutoCrashoutRound function');
+
+      // Add a small delay to ensure state is stable
+      setTimeout(() => {
+        console.log('🎮 Executing delayed startAutoCrashoutRound');
+        startAutoCrashoutRound();
+      }, 500);
     }
   }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
 
+  // Backup auto-start mechanism - runs every 5 seconds to check if we're stuck
+  useEffect(() => {
+    const backupInterval = setInterval(() => {
+      if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
+        console.log('🚨 BACKUP: Detected stuck countdown, force starting round');
+        startAutoCrashoutRound();
+      }
+
+      // Also check if we're stuck in crashed state for too long
+      if (multiplayerGameState === 'crashed') {
+        console.log('⚠️ BACKUP: Still in crashed state, may need manual intervention');
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(backupInterval);
+  }, [multiplayerGameState, gameCountdown, startAutoCrashoutRound]);
+
   // Simple countdown timer (only runs during waiting phase)
   useEffect(() => {
+    console.log('⏰ Countdown timer effect triggered, state:', multiplayerGameState, 'countdown:', gameCountdown);
+
     if (multiplayerGameState !== 'waiting') {
       console.log('⏰ Not in waiting state, current state:', multiplayerGameState);
       return;
@@ -766,12 +794,19 @@ function CrashoutGameContent({
       setGameCountdown(prev => {
         const newCountdown = prev - 1;
         console.log('⏱️ Countdown tick:', newCountdown, 'state:', multiplayerGameState);
+
+        // Additional check to ensure we don't go negative
+        if (newCountdown < 0) {
+          console.log('⚠️ Countdown went negative, resetting to 0');
+          return 0;
+        }
+
         return newCountdown;
       });
     }, 1000);
 
     return () => {
-      console.log('🛑 Cleaning up countdown interval');
+      console.log('🛑 Cleaning up countdown interval for state:', multiplayerGameState);
       clearInterval(countdownInterval);
     };
   }, [multiplayerGameState]);
@@ -2732,6 +2767,17 @@ function CrashoutGameContent({
               className="text-xs text-white/60 hover:text-white bg-purple-900 px-2 py-1 border border-purple-700 hover:border-purple-500 transition-colors"
             >
               Init System
+            </button>
+            <button
+              onClick={() => {
+                console.log('⏰ Force starting countdown');
+                setMultiplayerGameState('waiting');
+                setGameCountdown(30);
+                setPlayerBets([]);
+              }}
+              className="text-xs text-white/60 hover:text-white bg-yellow-900 px-2 py-1 border border-yellow-700 hover:border-yellow-500 transition-colors"
+            >
+              Start Countdown
             </button>
             <button
               onClick={clearChatMessages}
