@@ -4,9 +4,21 @@ import { toast } from 'react-hot-toast';
 import { ethers } from 'ethers';
 import confetti from 'canvas-confetti';
 
-// Blockchain constants
-const ABSTRACT_TESTNET_CHAIN_ID = "0x2b74";
-const ABSTRACT_BLOCK_EXPLORER = "https://explorer.testnet.abs.xyz";
+// Utility function to get checksum address
+const getChecksumAddress = (address: string): string => {
+  try {
+    return ethers.getAddress(address);
+  } catch (error) {
+    console.error('Invalid address:', address, error);
+    return address; // Return original if invalid
+  }
+};
+
+// Monad Testnet configuration
+const MONAD_TESTNET_CHAIN_ID = "0x279F"; // 10143 in hex
+const MONAD_TESTNET_CHAIN_ID_DECIMAL = 10143;
+const MONAD_BLOCK_EXPLORER = "https://testnet.monadexplorer.com";
+const MONAD_RPC_URL = "https://testnet-rpc.monad.xyz";
 
 // Game timing constants
 const WAIT_TIME_SECONDS = 5; // Reduced from 20 to 5 seconds
@@ -14,29 +26,32 @@ const CLAIM_TIME_SECONDS = 5; // Reduced from 20 to 5 seconds
 
 // Wallet options
 const WALLET_OPTIONS = {
-  AGW: "agw",
-  METAMASK: "metamask" 
+  METAMASK: "metamask"
 };
 
-// Central payout address that holds tokens for the game
-const PAYOUT_ADDRESS = "0xc2d997A8d858275260BA97bb182C67CbC8B3CBB0";
+// Farm Swap contract address on Monad Testnet
+const FARM_SWAP_ADDRESS = "0xCF7A306338f67D609932aB3f309A2C8FEa76ea85";
 
-// Token addresses
-const TOKENS = {
-  NOOT: "0x3d8b869eB751B63b7077A0A93D6b87a54e6C8f56",
-  ABSTER: "0xC3f63f74501D225E0CAA6EceA2c8ee73092B3062",
-  ABBY: "0x529aF9EbFD8612077bA6b0B72F2898EF7be337D1",
-  CHESTER: "0x2460a0068A154C7F2673417dA09f6AE81Ce70e56",
-  DOJO3: "0x46BE8d4a214D6ddecE0b3251d76d42E186927781",
-  FEATHERS: "0xb4e815813875366e2b4e65eA857278Ae5bEceDc3",
-  MOP: "0x45955765a7898f707a523CB1B7a6e3A95DDD5CD7",
-  NUTZ: "0x77D29085727405340946919A88B0Ac6c9Ffb80BD",
-  PAINGU: "0x8033d82e1e0f949C0986F9102a01C405831b784A",
-  PENGUIN: "0x8814046950cDA7aee1B249C1689d070C0db6E58D",
-  PUDGY: "0xEcbC4AB2ed8fce5C04dfB1104947Ca4891597336",
-  RETSBA: "0x26707CE367C4758F73EF09fA9D8d730869a38e10",
-  WOJACT: "0x13D6CbB5f602Df7784bbb9612c5314CDC1ba9d3c",
-  YUP: "0xF5048aD4FB452f4E39472d085E29994f6088d96B"
+// New Monad Testnet token addresses
+const TOKEN_ADDRESSES = {
+  aprMON: "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
+  YAKI: "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
+  CHOG: "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
+  DAK: "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
+  gMON: "0xaEef2f6B429Cb59C9B2D7bB2141ADa993E8571c3",
+  shMON: "0x3a98250F98Dd388C211206983453837C8365BDc1",
+  MON: "0x0000000000000000000000000000000000000000" // Native MON token
+};
+
+// Token information with symbols and names
+const TOKEN_INFO = {
+  aprMON: { symbol: "aprMON", name: "April Monad" },
+  YAKI: { symbol: "YAKI", name: "Moyaki" },
+  CHOG: { symbol: "CHOG", name: "Chog" },
+  DAK: { symbol: "DAK", name: "Molandak" },
+  gMON: { symbol: "gMON", name: "gMON" },
+  shMON: { symbol: "shMON", name: "ShMonad" },
+  MON: { symbol: "MON", name: "Monad" }
 };
 
 // Token ABI
@@ -48,13 +63,19 @@ const TOKEN_ABI = [
   "function transferFrom(address from, address to, uint256 value) returns (bool)"
 ];
 
-// ABI for the swap contract that handles token claiming/transfers and swaps
-const SWAP_CONTRACT_ABI = [
-  "function swapTokenForFarmCoins(address tokenAddress, uint256 tokenAmount) external returns (uint256)",
-  "function transferToken(address tokenAddress, address to, uint256 amount) external returns (bool)",
-  "function claimTestTokens(address tokenAddress, uint256 amount) external returns (bool)",
-  "function getContractTokenBalance(address tokenAddress) external view returns (uint256)",
-  "function directTokenTransfer(address tokenAddress, address to, uint256 amount) external returns (bool)"
+// Updated Swap ABI to match the deployed Monad Farm Swap contract
+const SWAP_ABI = [
+  "function swapTokenForFarmCoins(address tokenAddress, uint256 amount) external",
+  "function swapNativeForFarmCoins() external payable",
+  "function addToken(address tokenAddress, string memory symbol, string memory name) external",
+  "function removeToken(address tokenAddress) external",
+  "function fundToken(address tokenAddress, uint256 amount) external",
+  "function getTokenInfo(address tokenAddress) external view returns (bool isSupported, uint256 balance, uint256 actualBalance, string memory symbol, string memory name)",
+  "function getAllSupportedTokens() external view returns (address[])",
+  "function getFarmCoinsBalance(address user) external view returns (uint256)",
+  "function totalFarmCoins() external view returns (uint256)",
+  "function owner() external view returns (address)",
+  "function transferOwnership(address newOwner) external"
 ];
 
 // ABI for ERC20 token - minimal version for balance checking
@@ -90,22 +111,15 @@ interface HistoryEntry {
   cashoutMultiplier?: number | null; // Added: Multiplier user cashed out at
 }
 
-// Token value mapping for conversion when swapTokenForFarmCoins fails
+// Token value mapping for conversion - 1:1 ratio for all Monad testnet tokens
 const TOKEN_FARM_COIN_RATES = {
-  NOOT: 1.0,
-  ABSTER: 10.0,
-  ABBY: 5.0,
-  CHESTER: 7.5,
-  DOJO3: 3.5,
-  FEATHERS: 2.0,
-  MOP: 20.0,
-  NUTZ: 1.5,
-  PAINGU: 4.0,
-  PENGUIN: 3.0,
-  PUDGY: 15.0,
-  RETSBA: 8.0,
-  WOJACT: 6.0,
-  YUP: 2.5
+  aprMON: 1.0,
+  YAKI: 1.0,
+  CHOG: 1.0,
+  DAK: 1.0,
+  gMON: 1.0,
+  shMON: 1.0,
+  MON: 1.0
 };
 
 // Utility to sample crash point from 1× up to 50× with heavy tail
@@ -287,8 +301,8 @@ function CrashoutGame({
         setLocalWalletAddress(accounts[0]);
         setMetamaskProvider(window.ethereum);
         
-        // Switch to Abstract Testnet
-        await switchToAbstractTestnet(window.ethereum);
+        // Switch to Monad Testnet
+        await switchToMonadTestnet(window.ethereum);
         
         // Fetch token balances
         fetchTokenBalances();
@@ -322,33 +336,33 @@ function CrashoutGame({
     }
   };
   
-  // Switch to Abstract Testnet
-  const switchToAbstractTestnet = async (provider: any = null) => {
+  // Switch to Monad Testnet
+  const switchToMonadTestnet = async (provider: any = null) => {
     // Use provided provider or get current provider
     const targetProvider = provider || window.ethereum;
-    
+
     if (!targetProvider) {
       toast.error("No wallet provider detected");
       return false;
     }
-    
+
     try {
       // Check current network
       const chainId = await targetProvider.request({ method: 'eth_chainId' });
       console.log("Current chain ID:", chainId);
-      
-      // Already on Abstract Testnet
-      if (chainId === ABSTRACT_TESTNET_CHAIN_ID) {
+
+      // Already on Monad Testnet
+      if (chainId === MONAD_TESTNET_CHAIN_ID) {
         return true;
       }
-      
-      // Try to switch to Abstract Testnet
+
+      // Try to switch to Monad Testnet
       await targetProvider.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: ABSTRACT_TESTNET_CHAIN_ID }],
+        params: [{ chainId: MONAD_TESTNET_CHAIN_ID }],
       });
-      
-      toast.success("Successfully switched to Abstract Testnet");
+
+      toast.success("Successfully switched to Monad Testnet");
       return true;
     } catch (switchError: any) {
       // This error code indicates the chain has not been added to the wallet
@@ -358,28 +372,28 @@ function CrashoutGame({
           await targetProvider.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: ABSTRACT_TESTNET_CHAIN_ID,
-              chainName: 'Abstract Testnet',
+              chainId: MONAD_TESTNET_CHAIN_ID,
+              chainName: 'Monad Testnet',
               nativeCurrency: {
-                name: 'Abstract ETH',
-                symbol: 'ETH',
+                name: 'Monad',
+                symbol: 'MON',
                 decimals: 18
               },
-              rpcUrls: ['https://api.testnet.abs.xyz', 'https://rpc.testnet.abs.xyz'],
-              blockExplorerUrls: [ABSTRACT_BLOCK_EXPLORER],
+              rpcUrls: [MONAD_RPC_URL],
+              blockExplorerUrls: [MONAD_BLOCK_EXPLORER],
               iconUrls: []
             }]
           });
-          toast.success("Abstract Testnet added to your wallet");
+          toast.success("Monad Testnet added to your wallet");
           return true;
         } catch (addError) {
           console.error("Error adding chain:", addError);
-          toast.error("Could not add Abstract Testnet to your wallet");
+          toast.error("Could not add Monad Testnet to your wallet");
           return false;
         }
       } else {
         console.error("Error switching network:", switchError);
-        toast.error("Failed to switch to Abstract Testnet. Please switch manually in your wallet.");
+        toast.error("Failed to switch to Monad Testnet. Please switch manually in your wallet.");
         return false;
       }
     }
@@ -503,21 +517,36 @@ function CrashoutGame({
       ];
       
       // Use Promise.all to fetch all token balances in parallel
-      const balancePromises = Object.entries(TOKENS).map(async ([symbol, address]) => {
+      const balancePromises = Object.entries(TOKEN_ADDRESSES).map(async ([symbol, address]) => {
         try {
-          // Create token contract
+          // Skip native MON token for now (requires different handling)
+          if (address === "0x0000000000000000000000000000000000000000") {
+            // Handle native MON balance
+            const balance = await provider.getBalance(getChecksumAddress(localWalletAddress));
+            const formattedBalance = parseFloat(ethers.formatUnits(balance, 18));
+
+            logToUI(`✅ Fetched ${symbol} balance: ${formattedBalance.toFixed(2)}`);
+
+            return {
+              symbol,
+              balance: formattedBalance,
+              address
+            };
+          }
+
+          // Create token contract for ERC-20 tokens
           const tokenContract = new ethers.Contract(
-            getChecksumAddress(address), 
-            TOKEN_ABI, 
+            getChecksumAddress(address),
+            TOKEN_ABI,
             provider
           );
-          
+
           // Get balance
           const balance = await tokenContract.balanceOf(getChecksumAddress(localWalletAddress));
           const formattedBalance = parseFloat(ethers.formatUnits(balance, 18));
-          
+
           logToUI(`✅ Fetched ${symbol} balance: ${formattedBalance.toFixed(2)}`);
-          
+
           return {
             symbol,
             balance: formattedBalance,
@@ -654,7 +683,7 @@ function CrashoutGame({
       
       setApprovalPending(true);
       
-      const tokenAddress = Object.entries(TOKENS).find(([symbol]) => symbol === selectedToken)?.[1];
+      const tokenAddress = Object.entries(TOKEN_ADDRESSES).find(([symbol]) => symbol === selectedToken)?.[1];
       
       if (!tokenAddress) {
         showToast(`Token ${selectedToken} not found`, "error");
@@ -692,18 +721,18 @@ function CrashoutGame({
         // Check if we already have approval
         const currentAllowance = await tokenContract.allowance(
           getChecksumAddress(localWalletAddress),
-          getChecksumAddress(PAYOUT_ADDRESS)
+          getChecksumAddress(FARM_SWAP_ADDRESS)
         );
-        
+
         // Only do approval if needed
         if (parseInt(currentAllowance.toString()) < parseInt(betAmountWei.toString())) {
           showToast("Approving token spending...", "loading");
-          
+
           try {
             // Request approval for exact amount needed to speed up
             // (Using ethers.MaxUint256 can be slower for some tokens)
             const approveTx = await tokenContract.approve(
-              getChecksumAddress(PAYOUT_ADDRESS),
+              getChecksumAddress(FARM_SWAP_ADDRESS),
               betAmountWei
             );
             
@@ -732,9 +761,9 @@ function CrashoutGame({
         // Use higher gas limit for faster transactions
         const gasLimit = 500000;
         
-        // Transfer tokens directly to the payout address
+        // Transfer tokens directly to the farm swap contract
         const transferTx = await tokenContract.transfer(
-          getChecksumAddress(PAYOUT_ADDRESS),
+          getChecksumAddress(FARM_SWAP_ADDRESS),
           betAmountWei,
           { gasLimit }
         );
@@ -1326,7 +1355,7 @@ function CrashoutGame({
       }
       
       // Get token address
-      const tokenAddress = Object.entries(TOKENS).find(([symbol]) => symbol === token)?.[1];
+      const tokenAddress = Object.entries(TOKEN_ADDRESSES).find(([symbol]) => symbol === token)?.[1];
       
       if (!tokenAddress) {
         console.error(`Token ${token} not found in available tokens`);
@@ -1338,8 +1367,8 @@ function CrashoutGame({
       
       // Create contract instances
       const swapContract: any = new ethers.Contract(
-        getChecksumAddress(PAYOUT_ADDRESS), 
-        SWAP_CONTRACT_ABI, 
+        getChecksumAddress(FARM_SWAP_ADDRESS),
+        SWAP_ABI,
         signer
       );
       
@@ -1353,12 +1382,12 @@ function CrashoutGame({
       // Calculate token amount with proper decimals (18 decimals assumed)
       const tokenAmount = ethers.parseUnits(amount.toString(), 18);
       
-      console.log(`Processing payout of ${amount.toFixed(2)} ${token} tokens from ${PAYOUT_ADDRESS} to ${localWalletAddress}`);
+      console.log(`Processing payout of ${amount.toFixed(2)} ${token} tokens from ${FARM_SWAP_ADDRESS} to ${localWalletAddress}`);
       showToast(`Claiming ${amount.toFixed(2)} ${token}...`, "loading");
       
       // Calculate gas limit based on token amount - larger transfers need more gas
       let gasLimit = 1500000; // Increased default
-      if (token === 'MOP' || amount >= 10000) {
+      if (amount >= 10000) {
         gasLimit = 3000000; // Increase gas limit for high-value token transfers
         console.log("Using higher gas limit for high-value token transfer");
       }
@@ -1464,7 +1493,7 @@ function CrashoutGame({
     if (!isWalletConnected) return 0;
     
     try {
-      const tokenAddress = Object.entries(TOKENS).find(([symbol]) => symbol === tokenSymbol)?.[1];
+      const tokenAddress = Object.entries(TOKEN_ADDRESSES).find(([symbol]) => symbol === tokenSymbol)?.[1];
       if (!tokenAddress) {
         console.error(`Token ${tokenSymbol} not found in available tokens`);
         return 0;
@@ -1475,8 +1504,8 @@ function CrashoutGame({
       
       // Create contract instances
       const swapContract: any = new ethers.Contract(
-        getChecksumAddress(PAYOUT_ADDRESS), 
-        SWAP_CONTRACT_ABI, 
+        getChecksumAddress(FARM_SWAP_ADDRESS),
+        SWAP_ABI,
         provider
       );
       
@@ -1492,7 +1521,7 @@ function CrashoutGame({
           provider
         );
         
-        const balance = await tokenContract.balanceOf(getChecksumAddress(PAYOUT_ADDRESS));
+        const balance = await tokenContract.balanceOf(getChecksumAddress(FARM_SWAP_ADDRESS));
         return parseFloat(ethers.formatUnits(balance, 18));
       }
     } catch (error) {
@@ -1512,7 +1541,7 @@ function CrashoutGame({
     
     try {
       const balances: Record<string, number> = {};
-      const tokensToCheck = Object.keys(TOKENS);
+      const tokensToCheck = Object.keys(TOKEN_ADDRESSES);
       
       // Check each token balance
       for (const token of tokensToCheck) {
@@ -1640,9 +1669,9 @@ function CrashoutGame({
         {txHash && (
           <div className="mt-6 p-3 bg-black/50 rounded-lg flex items-center justify-between overflow-hidden border border-gray-700">
             <div className="truncate text-sm text-gray-400 font-mono pr-2">{txHash}</div>
-            <a 
-              href={`${ABSTRACT_BLOCK_EXPLORER}/tx/${txHash}`} 
-              target="_blank" 
+            <a
+              href={`${MONAD_BLOCK_EXPLORER}/tx/${txHash}`}
+              target="_blank"
               rel="noopener noreferrer"
               className="flex-shrink-0 flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors text-sm font-medium" // Cyan link
             >
@@ -1819,19 +1848,19 @@ function CrashoutGame({
   // Early exit to show only Connect Wallet when not connected
   if (!isWalletConnected) {
     return (
-      <div className="max-w-xl mx-auto p-2 rounded-xl shadow-xl border border-gray-800 bg-gradient-to-br from-black via-gray-950 to-black"> {/* Adjusted gradient */}
-        <div className="bg-gray-900 p-4 rounded-lg mb-4 text-center">
+      <div className="max-w-xl mx-auto p-4 bg-black border border-[#333]">
+        <div className="bg-[#111] border border-[#333] p-4 text-center">
           <h2 className="text-xl text-white mb-2">Connect Wallet to Play</h2>
-          <p className="text-gray-400 text-sm mb-4">Connect your wallet to see your token balances and place bets</p>
-          <button 
-            onClick={() => connectWallet()} 
-            className={"w-full py-3 text-lg px-4 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:via-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl shadow-cyan-500/30 hover:shadow-cyan-400/40 transform hover:scale-[1.03]"} // Vibrant connect button
+          <p className="text-white/60 text-sm mb-4">Connect your wallet to see your token balances and place bets</p>
+          <button
+            onClick={() => connectWallet()}
+            className="w-full py-3 text-lg px-4 bg-white text-black hover:bg-white/90 transition-all duration-200 font-medium"
           >
             Connect Wallet
           </button>
         </div>
-        {showWalletOptions && <WalletOptionsDialog />} 
-        {showTxDialog && <TransactionDialog />} 
+        {showWalletOptions && <WalletOptionsDialog />}
+        {showTxDialog && <TransactionDialog />}
         {showContractBalances && <ContractBalancesDialog />}
       </div>
     );
@@ -1862,7 +1891,7 @@ function CrashoutGame({
   // --- END COLOR & STYLE DEFINITIONS ---
 
   return (
-    <div className="max-w-2xl mx-auto p-4 rounded-xl bg-gradient-to-b from-gray-950 via-black to-gray-950 shadow-2xl shadow-black/30 border border-gray-800"> {/* Darker gradient */}
+    <div className="max-w-2xl mx-auto p-4 bg-black border border-[#333]">
       {/* Loading overlay - Styled for Dark Theme */} 
       {isLoadingBalances && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60]"> {/* Increased blur */}
@@ -1878,33 +1907,33 @@ function CrashoutGame({
       
       {/* Header Row - Wallet Info, Debug Toggle */} 
       <div className="flex justify-between items-center mb-4">
-        {/* Wallet Info */} 
+        {/* Wallet Info */}
         {isWalletConnected ? (
-          <div className="bg-gray-800/50 rounded-lg p-2 border border-gray-700 flex items-center gap-2 text-sm shadow-inner"> {/* Inner shadow */}
-            <span className="text-lime-400 animate-pulse">●</span> {/* Lime pulsing dot */} 
-            <span className="text-white font-mono"> 
+          <div className="bg-[#111] border border-[#333] p-2 flex items-center gap-2 text-sm">
+            <span className="text-white animate-pulse">●</span>
+            <span className="text-white font-mono">
               {localWalletAddress.substring(0, 6)}...{localWalletAddress.substring(localWalletAddress.length - 4)}
             </span>
-            <button 
+            <button
               onClick={handleDisconnect}
-              className="text-xs bg-red-600/80 text-white px-2 py-0.5 rounded hover:bg-red-500 transition-colors shadow-sm hover:shadow-md shadow-red-900/50" // Subtle shadow
+              className="text-xs bg-white text-black px-2 py-0.5 hover:bg-white/90 transition-colors"
             >
               Disconnect
             </button>
           </div>
         ) : (
-          <button 
-            onClick={() => connectWallet()} 
-            className="px-4 py-2 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:via-cyan-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl shadow-cyan-500/30 hover:shadow-cyan-400/40 transform hover:scale-[1.03]" // Match other connect button
+          <button
+            onClick={() => connectWallet()}
+            className="px-4 py-2 bg-white text-black hover:bg-white/90 transition-all duration-200 font-medium"
           >
             Connect Wallet
           </button>
         )}
         
         {/* Debug Toggle */} 
-        <button 
-          onClick={() => setShowDebugPanel(prev => !prev)} 
-          className="text-xs text-purple-400 hover:text-purple-300 bg-gray-800/50 px-2 py-1 rounded border border-purple-700/50 hover:border-purple-600 transition-colors shadow-sm hover:shadow-md shadow-purple-900/50" // Purple theme for debug toggle
+        <button
+          onClick={() => setShowDebugPanel(prev => !prev)}
+          className="text-xs text-white/60 hover:text-white bg-[#111] px-2 py-1 border border-[#333] hover:border-white/20 transition-colors"
         >
           {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
         </button>
@@ -1941,8 +1970,8 @@ function CrashoutGame({
         </div>
       )}
       
-      {/* --- Multiplier Display Area --- */} 
-      <div className="relative w-full h-64 bg-gradient-to-br from-black via-gray-900 to-black rounded-xl overflow-hidden mb-6 border-2 border-gray-800 shadow-2xl shadow-black/50 flex items-center justify-center"> {/* Centering + Enhanced BG/Border */}
+      {/* --- Multiplier Display Area --- */}
+      <div className="relative w-full h-64 bg-black border border-[#333] mb-6 flex items-center justify-center">
          {/* Optional: Subtle Animated Background */}
          <div className="absolute inset-0 opacity-10 animate-pulse-slow"> 
            {/* Example: Could be a blurred image, or SVG pattern, or just a gradient */}
@@ -1997,16 +2026,16 @@ function CrashoutGame({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Left Column: Bet Amount & Token Select */} 
         <div className="space-y-4">
-          {/* Bet Amount Input */} 
+          {/* Bet Amount Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Bet Amount</label>
+            <label className="block text-sm font-medium text-white mb-1">Bet Amount</label>
             <div className="relative">
               <input
                 type="number"
                 value={betAmount}
                 onChange={e => setBetAmount(e.target.value)}
                 disabled={gameState !== 'inactive' || betPlaced}
-                className="w-full p-3 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-600 placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed pr-10 shadow-inner" // Enhanced focus, bg, shadow
+                className="w-full p-3 bg-[#111] text-white border border-[#333] focus:outline-none focus:border-white placeholder-white/40 disabled:opacity-50 disabled:cursor-not-allowed pr-10"
                 placeholder="0.01"
                 min="0.01"
                 step="0.01"
@@ -2014,14 +2043,14 @@ function CrashoutGame({
             </div>
           </div>
           
-          {/* Token Selection */} 
+          {/* Token Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center justify-between">
+            <label className="block text-sm font-medium text-white mb-1 flex items-center justify-between">
               <span>Select Token</span>
-              <button 
-                onClick={handleRefreshBalances} 
+              <button
+                onClick={handleRefreshBalances}
                 disabled={isLoadingBalances}
-                className="text-xs bg-gray-700/50 hover:bg-gray-600/70 text-gray-300 hover:text-white px-2 py-0.5 rounded border border-gray-600 transition-colors disabled:opacity-50"
+                className="text-xs bg-[#111] hover:bg-[#222] text-white/60 hover:text-white px-2 py-0.5 border border-[#333] transition-colors disabled:opacity-50"
               >
                 {isLoadingBalances ? "Loading..." : "Refresh"}
               </button>
@@ -2031,57 +2060,57 @@ function CrashoutGame({
                 value={selectedToken}
                 onChange={e => setSelectedToken(e.target.value)}
                 disabled={gameState !== 'inactive' || betPlaced || isLoadingBalances}
-                className="w-full p-3 appearance-none bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-inner" // Enhanced focus, bg, shadow
+                className="w-full p-3 appearance-none bg-[#111] text-white border border-[#333] focus:outline-none focus:border-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {availableTokens.map(token => (
-                  <option key={token.symbol} value={token.symbol} className="bg-gray-800 text-white">
+                  <option key={token.symbol} value={token.symbol} className="bg-[#111] text-white">
                     {token.symbol} ({token.balance.toFixed(2)})
                   </option>
                 ))}
               </select>
-              {/* Dropdown Arrow */} 
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+              {/* Dropdown Arrow */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white/60">
                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                </div>
               {isLoadingBalances && (
                 <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin h-5 w-5 border-2 border-cyan-500 border-t-transparent rounded-full"></div> {/* Cyan spinner */}
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
                 </div>
               )}
             </div>
-            <div className="mt-1 text-xs text-gray-400">
-              Balance: <span className="font-medium text-gray-300">{getSelectedTokenBalance().toFixed(2)} {selectedToken}</span>
+            <div className="mt-1 text-xs text-white/60">
+              Balance: <span className="font-medium text-white">{getSelectedTokenBalance().toFixed(2)} {selectedToken}</span>
             </div>
           </div>
         </div>
 
         {/* Right Column: Auto Cashout & Action Button */} 
         <div className="space-y-4 flex flex-col">
-          {/* Auto Cashout Input */} 
+          {/* Auto Cashout Input */}
           <div>
-             <label className="block text-sm font-medium text-gray-300 mb-1">Auto Cashout (Optional)</label>
+             <label className="block text-sm font-medium text-white mb-1">Auto Cashout (Optional)</label>
              <div className="relative">
                <input
                  type="number"
                  value={autoCashout}
                  onChange={e => setAutoCashout(e.target.value)}
                  disabled={gameState !== 'inactive' || betPlaced}
-                 className="w-full p-3 bg-gray-900 text-white rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-600 placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed pr-10 shadow-inner" // Enhanced focus, bg, shadow
-                 placeholder="e.g., 1.5" 
-                 min="1.01" 
+                 className="w-full p-3 bg-[#111] text-white border border-[#333] focus:outline-none focus:border-white placeholder-white/40 disabled:opacity-50 disabled:cursor-not-allowed pr-10"
+                 placeholder="e.g., 1.5"
+                 min="1.01"
                  step="0.01"
                />
-               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">x</span> 
+               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60">x</span>
              </div>
            </div>
 
            {/* --- Main Action Button Area --- */} 
            <div className="flex-grow flex items-end">
-             {/* Connect Wallet Button (only shows if needed) */} 
+             {/* Connect Wallet Button (only shows if needed) */}
              {!isWalletConnected && (
-               <button 
-                 onClick={() => connectWallet()} 
-                 className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 text-white rounded-lg font-semibold text-lg hover:from-blue-600 hover:via-cyan-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl shadow-cyan-500/30 hover:shadow-cyan-400/40 transform hover:scale-[1.03]" // Match other connect button
+               <button
+                 onClick={() => connectWallet()}
+                 className="w-full py-3 px-4 bg-white text-black font-semibold text-lg hover:bg-white/90 transition-all duration-300"
                >
                  Connect Wallet
                </button>
@@ -2092,10 +2121,10 @@ function CrashoutGame({
                <button
                  onClick={startGame}
                  disabled={approvalPending || betPlaced || !betAmount || parseFloat(betAmount) <= 0}
-                 className={`w-full py-3 px-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 
-                   ${betPlaced ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : // Dark gray when bet placed
-                   approvalPending ? 'bg-gradient-to-r from-gray-600 to-gray-700 text-white animate-pulse' : // Gray pulse for approving
-                   'bg-gradient-to-r from-lime-400 via-green-500 to-emerald-600 text-black hover:from-lime-500 hover:via-green-600 hover:to-emerald-700 shadow-green-500/30 hover:shadow-green-400/40'} // Vibrant green gradient for bet
+                 className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
+                   ${betPlaced ? 'bg-[#333] text-white/60 cursor-not-allowed' :
+                   approvalPending ? 'bg-[#333] text-white animate-pulse' :
+                   'bg-white text-black hover:bg-white/90'}
                  `}
                >
                  {approvalPending ? 'Approving...' : betPlaced ? 'Bet Placed ✓' : `Place Bet (${selectedToken})`}
@@ -2107,9 +2136,9 @@ function CrashoutGame({
                <button
                  onClick={handleCashout}
                  disabled={hasCashed || !userJoinedRef.current}
-                 className={`w-full py-3 px-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 
-                   ${hasCashed ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 
-                   'bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 text-white hover:from-pink-600 hover:via-red-600 hover:to-orange-600 shadow-red-500/30 hover:shadow-red-400/40'} // Vibrant red/orange gradient for cashout
+                 className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
+                   ${hasCashed ? 'bg-[#333] text-white/60 cursor-not-allowed' :
+                   'bg-white text-black hover:bg-white/90'}
                  `}
                >
                  {hasCashed ? 'Cashed Out ✓' : 'Cashout Now!'}
@@ -2121,9 +2150,9 @@ function CrashoutGame({
                <button
                  onClick={claimTokens}
                  disabled={!hasWon || winAmount <= 0}
-                 className={`w-full py-3 px-4 rounded-lg font-semibold text-lg transition-all duration-300 shadow-lg transform hover:scale-105 
-                   ${(!hasWon || winAmount <= 0) ? 'bg-gray-600 text-gray-400 cursor-not-allowed' :
-                   'bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-600 text-white hover:from-purple-600 hover:via-fuchsia-600 hover:to-pink-700 shadow-fuchsia-500/30 hover:shadow-fuchsia-400/40 animate-pulse'} // Vibrant purple/pink gradient for claim
+                 className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300
+                   ${(!hasWon || winAmount <= 0) ? 'bg-[#333] text-white/60 cursor-not-allowed' :
+                   'bg-white text-black hover:bg-white/90 animate-pulse'}
                  `}
                >
                  Claim {winAmount.toFixed(2)} {tokenRef.current}
@@ -2133,9 +2162,9 @@ function CrashoutGame({
          </div>
       </div>
       
-      {/* --- History Row --- */} 
+      {/* --- History Row --- */}
       <div className="mt-8">
-        <h3 className="text-lg font-semibold text-gray-300 mb-3 text-center uppercase tracking-wider drop-shadow">Recent Rounds</h3> {/* Added drop shadow */}
+        <h3 className="text-lg font-semibold text-white mb-3 text-center uppercase tracking-wider">Recent Rounds</h3>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {history.map((entry, idx) => {
             const mul = parseFloat(entry.value);
@@ -2192,7 +2221,7 @@ function CrashoutGame({
            <button
              onClick={checkAndDisplayContractBalances}
              disabled={isLoadingContractBalances}
-             className="px-3 py-1.5 bg-gray-700/50 text-gray-300 text-xs rounded-md border border-gray-600 hover:bg-gray-600/70 hover:text-white transition-colors disabled:opacity-50 shadow-sm hover:shadow-md shadow-gray-900/50" // Subtle shadow
+             className="px-3 py-1.5 bg-[#111] text-white/60 text-xs border border-[#333] hover:bg-[#222] hover:text-white transition-colors disabled:opacity-50"
            >
              {isLoadingContractBalances ? 'Loading Balances...' : 'Check Contract Balances'}
            </button>
