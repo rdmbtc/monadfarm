@@ -1,8 +1,22 @@
+/**
+ * Crashout Game Component with Multisynq Real-time Multiplayer Features
+ *
+ * Features:
+ * - Real-time chat system on the left panel
+ * - Automatic game management with 30-second countdown timer
+ * - Player bets display on the right panel
+ * - Single-player and multiplayer mode toggle
+ * - Integration with Monad testnet tokens
+ * - ReactTogether for real-time synchronization
+ */
+
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { ethers } from 'ethers';
 import confetti from 'canvas-confetti';
+import { useStateTogether, useFunctionTogether, useConnectedUsers, useMyId } from 'react-together';
+import { Send, Users, MessageCircle, Clock, TrendingUp } from 'lucide-react';
 
 // Utility function to get checksum address
 const getChecksumAddress = (address: string): string => {
@@ -53,6 +67,43 @@ const TOKEN_INFO = {
   shMON: { symbol: "shMON", name: "ShMonad" },
   MON: { symbol: "MON", name: "Monad" }
 };
+
+// Multiplayer interfaces
+interface ChatMessage {
+  id: string;
+  userId: string;
+  nickname: string;
+  text: string;
+  timestamp: number;
+  type?: 'text' | 'system';
+}
+
+interface PlayerBet {
+  userId: string;
+  nickname: string;
+  walletAddress: string;
+  betAmount: number;
+  selectedToken: string;
+  timestamp: number;
+  hasCashed?: boolean;
+  cashoutMultiplier?: number;
+}
+
+interface GameRound {
+  id: string;
+  startTime: number;
+  endTime?: number;
+  crashMultiplier?: number;
+  playerBets: PlayerBet[];
+  status: 'waiting' | 'countdown' | 'active' | 'crashed' | 'completed';
+}
+
+interface MultiplayerGameState {
+  currentRound: GameRound | null;
+  countdownTime: number;
+  isMultiplayerMode: boolean;
+  connectedPlayers: number;
+}
 
 // Token ABI
 const TOKEN_ABI = [
@@ -242,11 +293,169 @@ function CrashoutGame({
   const [autoClaimReady, setAutoClaimReady] = useState<boolean>(false);
   const backgroundVideoRef = useRef<HTMLVideoElement | null>(null); // Moved here
 
+  // Multiplayer state using ReactTogether hooks
+  const myId = useMyId();
+  const connectedUsers = useConnectedUsers();
+  const [chatMessages, setChatMessages] = useStateTogether<ChatMessage[]>('crashout-chat', []);
+  const [playerBets, setPlayerBets] = useStateTogether<PlayerBet[]>('crashout-bets', []);
+  const [currentGameRound, setCurrentGameRound] = useStateTogether<GameRound | null>('crashout-round', null);
+  const [gameCountdown, setGameCountdown] = useStateTogether<number>('crashout-countdown', 30);
+  const [multiplayerGameState, setMultiplayerGameState] = useStateTogether<string>('crashout-state', 'waiting');
+  const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('crashout-nicknames', {});
+
+  // Local multiplayer state
+  const [messageInput, setMessageInput] = useState<string>('');
+  const [isMultiplayerMode, setIsMultiplayerMode] = useState<boolean>(false);
+  const [showChat, setShowChat] = useState<boolean>(true);
+  const [showPlayerBets, setShowPlayerBets] = useState<boolean>(true);
+
+  // Multiplayer event broadcasting
+  const broadcastChatMessage = useFunctionTogether('broadcastChatMessage', (message: ChatMessage) => {
+    setChatMessages(prev => {
+      const exists = prev.some(m => m.id === message.id);
+      if (exists) return prev;
+      return [...prev, message].slice(-50); // Keep last 50 messages
+    });
+  });
+
+  const broadcastPlayerBet = useFunctionTogether('broadcastPlayerBet', (bet: PlayerBet) => {
+    setPlayerBets(prev => {
+      const exists = prev.some(b => b.userId === bet.userId);
+      if (exists) {
+        return prev.map(b => b.userId === bet.userId ? bet : b);
+      }
+      return [...prev, bet];
+    });
+  });
+
+  const broadcastGameEvent = useFunctionTogether('broadcastGameEvent', (event: any) => {
+    if (event.type === 'roundStart') {
+      setCurrentGameRound(event.round);
+      setMultiplayerGameState('active');
+    } else if (event.type === 'roundEnd') {
+      setMultiplayerGameState('waiting');
+      setGameCountdown(30);
+    } else if (event.type === 'countdown') {
+      setGameCountdown(event.countdown);
+    }
+  });
+
   // Add a custom log function that stores logs in the UI
   const logToUI = (message: string) => {
     console.log(message); // Still log to console
     setDebugLogs(prev => [new Date().toLocaleTimeString() + ': ' + message, ...prev.slice(0, 19)]);
   };
+
+  // Multiplayer helper functions
+  const sendChatMessage = useCallback((text: string) => {
+    if (!text.trim() || !myId) return;
+
+    const message: ChatMessage = {
+      id: `${myId}-${Date.now()}`,
+      userId: myId,
+      nickname: userNicknames[myId] || `Player ${myId.slice(0, 6)}`,
+      text: text.trim(),
+      timestamp: Date.now(),
+      type: 'text'
+    };
+
+    broadcastChatMessage(message);
+    setMessageInput('');
+  }, [myId, userNicknames, broadcastChatMessage]);
+
+  const placeBetInMultiplayer = useCallback((amount: number, token: string) => {
+    if (!myId || !localWalletAddress) return;
+
+    const bet: PlayerBet = {
+      userId: myId,
+      nickname: userNicknames[myId] || `Player ${myId.slice(0, 6)}`,
+      walletAddress: localWalletAddress,
+      betAmount: amount,
+      selectedToken: token,
+      timestamp: Date.now(),
+      hasCashed: false
+    };
+
+    broadcastPlayerBet(bet);
+  }, [myId, localWalletAddress, userNicknames, broadcastPlayerBet]);
+
+  const getCurrentNickname = useCallback(() => {
+    if (!myId) return 'Anonymous';
+    return userNicknames[myId] || `Player ${myId.slice(0, 6)}`;
+  }, [myId, userNicknames]);
+
+  // Initialize user nickname when connected
+  useEffect(() => {
+    if (myId && !userNicknames[myId]) {
+      const storedNickname = localStorage.getItem('player-nickname');
+      const nickname = storedNickname || `Player ${myId.slice(0, 6)}`;
+      setUserNicknames(prev => ({ ...prev, [myId]: nickname }));
+    }
+  }, [myId, userNicknames, setUserNicknames]);
+
+  // Auto-enable multiplayer mode when connected users > 1
+  useEffect(() => {
+    setIsMultiplayerMode(connectedUsers.length > 1);
+  }, [connectedUsers.length]);
+
+  // Automatic game management for multiplayer mode
+  useEffect(() => {
+    if (!isMultiplayerMode || multiplayerGameState !== 'waiting') return;
+
+    const countdownInterval = setInterval(() => {
+      setGameCountdown(prev => {
+        if (prev <= 1) {
+          // Start new round
+          const newRound: GameRound = {
+            id: `round-${Date.now()}`,
+            startTime: Date.now(),
+            playerBets: [...playerBets],
+            status: 'active'
+          };
+
+          broadcastGameEvent({ type: 'roundStart', round: newRound });
+
+          // Auto-start the game if there are bets
+          if (playerBets.length > 0) {
+            setTimeout(() => {
+              setGameState('active');
+              startMultiplayerRound();
+            }, 1000);
+          }
+
+          return 30; // Reset countdown
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [isMultiplayerMode, multiplayerGameState, playerBets, broadcastGameEvent]);
+
+  // Start multiplayer round
+  const startMultiplayerRound = useCallback(() => {
+    if (!isMultiplayerMode) return;
+
+    // Send system message
+    const systemMessage: ChatMessage = {
+      id: `system-${Date.now()}`,
+      userId: 'system',
+      nickname: 'System',
+      text: `🚀 Round started! ${playerBets.length} players joined.`,
+      timestamp: Date.now(),
+      type: 'system'
+    };
+
+    broadcastChatMessage(systemMessage);
+
+    // Start the crash game logic
+    setGameState('active');
+    setMultiplier(1.0);
+    setHasCashed(false);
+    setHasWon(false);
+    setWinAmount(0);
+
+  }, [isMultiplayerMode, playerBets.length, broadcastChatMessage]);
 
   // Update walletAddress when the prop changes
   useEffect(() => {
@@ -1254,7 +1463,19 @@ function CrashoutGame({
   // Start the game (now just triggers bet approval)
   const startGame = () => {
     if (gameState !== 'inactive') return;
-    approveAndPlaceBet();
+
+    // In multiplayer mode, place bet and wait for round to start
+    if (isMultiplayerMode) {
+      approveAndPlaceBet();
+      // Add bet to multiplayer state
+      const amount = parseFloat(betAmount);
+      if (amount > 0) {
+        placeBetInMultiplayer(amount, selectedToken);
+      }
+    } else {
+      // Single player mode - start immediately
+      approveAndPlaceBet();
+    }
   };
 
   // Claim tokens after winning
@@ -1891,8 +2112,73 @@ function CrashoutGame({
   // --- END COLOR & STYLE DEFINITIONS ---
 
   return (
-    <div className="max-w-2xl mx-auto p-4 bg-black border border-[#333]">
-      {/* Loading overlay - Styled for Dark Theme */} 
+    <div className="w-full max-w-7xl mx-auto p-4 bg-black border border-[#333]">
+      {/* Three-panel layout: Chat (25%) | Game (50%) | Player Bets (25%) */}
+      <div className={`grid gap-4 h-screen max-h-[800px] ${
+        isMultiplayerMode
+          ? 'grid-cols-1 lg:grid-cols-4'
+          : 'grid-cols-1 lg:grid-cols-1'
+      }`}>
+
+        {/* Left Panel - Chat System (25% width) - Only in multiplayer mode */}
+        {isMultiplayerMode && (
+        <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
+          <div className="p-3 border-b border-[#333] flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-white" />
+            <h3 className="text-white font-medium">Live Chat</h3>
+            <span className="text-white/60 text-xs">({connectedUsers.length} online)</span>
+          </div>
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+            {chatMessages.map((message) => (
+              <div key={message.id} className="text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-white/60 text-xs">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className="text-white font-medium">{message.nickname}:</span>
+                </div>
+                <p className="text-white/80 ml-2">{message.text}</p>
+              </div>
+            ))}
+            {chatMessages.length === 0 && (
+              <div className="text-white/40 text-center py-8">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No messages yet. Start the conversation!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Chat Input */}
+          <div className="p-3 border-t border-[#333]">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendChatMessage(messageInput)}
+                placeholder="Type a message..."
+                className="flex-1 bg-black border border-[#333] text-white px-3 py-2 text-sm focus:outline-none focus:border-white"
+              />
+              <button
+                onClick={() => sendChatMessage(messageInput)}
+                disabled={!messageInput.trim()}
+                className="bg-white text-black px-3 py-2 hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Center Panel - Game Interface (50% width) */}
+        <div className={`bg-black border border-[#333] flex flex-col ${
+          isMultiplayerMode ? 'lg:col-span-2' : 'lg:col-span-1'
+        }`}>
+
+      {/* Loading overlay - Styled for Dark Theme */}
       {isLoadingBalances && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[60]"> {/* Increased blur */}
           <div className="text-center p-6">
@@ -1905,8 +2191,29 @@ function CrashoutGame({
       
       {showDebugPanel && <DebugPanel />} 
       
-      {/* Header Row - Wallet Info, Debug Toggle */} 
+      {/* Header Row - Wallet Info, Mode Toggle, Debug Toggle */}
       <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          {/* Mode Toggle */}
+          <div className="flex items-center gap-2 bg-[#111] border border-[#333] p-2">
+            <span className="text-white/60 text-xs">Mode:</span>
+            <button
+              onClick={() => setIsMultiplayerMode(!isMultiplayerMode)}
+              className={`px-3 py-1 text-xs transition-colors ${
+                isMultiplayerMode
+                  ? 'bg-white text-black'
+                  : 'bg-black text-white border border-[#333]'
+              }`}
+            >
+              {isMultiplayerMode ? 'Multiplayer' : 'Single Player'}
+            </button>
+            {isMultiplayerMode && (
+              <span className="text-white/60 text-xs">({connectedUsers.length} online)</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
         {/* Wallet Info */}
         {isWalletConnected ? (
           <div className="bg-[#111] border border-[#333] p-2 flex items-center gap-2 text-sm">
@@ -1930,13 +2237,14 @@ function CrashoutGame({
           </button>
         )}
         
-        {/* Debug Toggle */} 
-        <button
-          onClick={() => setShowDebugPanel(prev => !prev)}
-          className="text-xs text-white/60 hover:text-white bg-[#111] px-2 py-1 border border-[#333] hover:border-white/20 transition-colors"
-        >
-          {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
-        </button>
+          {/* Debug Toggle */}
+          <button
+            onClick={() => setShowDebugPanel(prev => !prev)}
+            className="text-xs text-white/60 hover:text-white bg-[#111] px-2 py-1 border border-[#333] hover:border-white/20 transition-colors"
+          >
+            {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
+          </button>
+        </div>
       </div>
       
       {/* Dialogs */} 
@@ -2227,9 +2535,119 @@ function CrashoutGame({
            </button>
          </div>
        )}
+        </div>
+
+        {/* Right Panel - Player Bets Display (25% width) - Only in multiplayer mode */}
+        {isMultiplayerMode && (
+        <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
+          <div className="p-3 border-b border-[#333] flex items-center gap-2">
+            <Users className="w-4 h-4 text-white" />
+            <h3 className="text-white font-medium">Player Bets</h3>
+            <span className="text-white/60 text-xs">({playerBets.length})</span>
+          </div>
+
+          {/* Player Bets List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+            {playerBets.map((bet) => (
+              <div key={bet.userId} className="bg-black border border-[#333] p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium text-sm">{bet.nickname}</span>
+                  {bet.hasCashed && (
+                    <span className="text-green-400 text-xs">Cashed Out</span>
+                  )}
+                </div>
+                <div className="text-white/60 text-xs space-y-1">
+                  <div>Wallet: {bet.walletAddress.substring(0, 6)}...{bet.walletAddress.substring(bet.walletAddress.length - 4)}</div>
+                  <div className="flex justify-between">
+                    <span>Bet: {bet.betAmount} {bet.selectedToken}</span>
+                    {bet.cashoutMultiplier && (
+                      <span className="text-green-400">@{bet.cashoutMultiplier}x</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {playerBets.length === 0 && (
+              <div className="text-white/40 text-center py-8">
+                <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No active bets yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Game Status */}
+          <div className="p-3 border-t border-[#333]">
+            <div className="text-center">
+              {multiplayerGameState === 'waiting' && (
+                <div className="text-white/60">
+                  <Clock className="w-4 h-4 mx-auto mb-1" />
+                  <p className="text-xs">Next round in {gameCountdown}s</p>
+                </div>
+              )}
+              {multiplayerGameState === 'active' && (
+                <div className="text-green-400">
+                  <TrendingUp className="w-4 h-4 mx-auto mb-1" />
+                  <p className="text-xs">Round in progress</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
+
+      </div>
     </div>
   );
 } // <<< Closing brace for the CrashoutGame component function
 
-// --- Export outside the component function ---
-export { CrashoutGame };
+// Wrapper component with ReactTogether integration
+import { ReactTogether } from 'react-together';
+
+interface CrashoutGameWithMultisynqProps extends CrashoutGameProps {
+  enableMultiplayer?: boolean;
+}
+
+function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
+  const { enableMultiplayer = true, ...gameProps } = props;
+
+  // Check for API key
+  const apiKey = process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY;
+
+  if (!enableMultiplayer || !apiKey) {
+    // Fallback to single-player mode
+    return <CrashoutGame {...gameProps} />;
+  }
+
+  return (
+    <ReactTogether
+      sessionParams={{
+        apiKey: apiKey,
+        appId: "monfarm.crashout.game",
+        name: "monfarm-crashout-multiplayer",
+        password: "public"
+      }}
+      rememberUsers={true}
+      deriveNickname={(userId) => {
+        // Custom logic to derive initial nickname from localStorage
+        if (typeof window !== "undefined") {
+          const stored = localStorage.getItem('player-nickname');
+          if (stored && stored.trim() !== '') {
+            return stored;
+          }
+        }
+        // Fallback to a gamer-themed name
+        const adjectives = ["Swift", "Bold", "Lucky", "Sharp", "Brave", "Quick", "Smart", "Cool"];
+        const terms = ["Trader", "Player", "Gamer", "Crasher", "Pilot", "Ace", "Pro", "Star"];
+        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const term = terms[Math.floor(Math.random() * terms.length)];
+        return `${adj} ${term}`;
+      }}
+    >
+      <CrashoutGame {...gameProps} />
+    </ReactTogether>
+  );
+}
+
+// --- Export both components ---
+export { CrashoutGame, CrashoutGameWithMultisynq };
+export default CrashoutGameWithMultisynq;
