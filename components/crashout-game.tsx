@@ -305,6 +305,63 @@ function CrashoutGameContent({
   const [multiplayerGameState, setMultiplayerGameState] = useStateTogether<string>('crashout-state', 'waiting');
   const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('crashout-nicknames', {});
 
+  // Hide Multisynq loading spinner (same approach as social hub)
+  useEffect(() => {
+    // Inject CSS to hide spinner
+    const style = document.createElement('style');
+    style.textContent = `
+      #croquet_spinnerOverlay {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+      .croquet_spinner {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    const hideSpinner = () => {
+      const spinnerOverlay = document.getElementById('croquet_spinnerOverlay');
+      if (spinnerOverlay) {
+        spinnerOverlay.style.display = 'none';
+        spinnerOverlay.style.visibility = 'hidden';
+        spinnerOverlay.style.opacity = '0';
+        console.log('🎮 Hidden multisynq loading spinner in crashout game');
+      }
+
+      // Also hide any spinner elements with class
+      const spinnerElements = document.querySelectorAll('.croquet_spinner');
+      spinnerElements.forEach(element => {
+        (element as HTMLElement).style.display = 'none';
+        (element as HTMLElement).style.visibility = 'hidden';
+        (element as HTMLElement).style.opacity = '0';
+      });
+    };
+
+    // Hide immediately if present
+    hideSpinner();
+
+    // Set up observer to hide spinner when it appears
+    const observer = new MutationObserver(() => {
+      hideSpinner();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
+
   // Local multiplayer state
   const [messageInput, setMessageInput] = useState<string>('');
   const [isMultiplayerMode, setIsMultiplayerMode] = useState<boolean>(false);
