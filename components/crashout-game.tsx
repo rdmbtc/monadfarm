@@ -605,18 +605,20 @@ function CrashoutGameContent({
   // Automatic multiplier climb simulation
   const startAutomaticMultiplierClimb = useCallback(() => {
     console.log('📈 Starting automatic multiplier climb');
+
+    // Clear any existing intervals first to prevent conflicts
+    if ((window as any).multiplierIntervalId) {
+      console.log('🧹 Clearing existing multiplier interval');
+      clearInterval((window as any).multiplierIntervalId);
+      (window as any).multiplierIntervalId = null;
+    }
+
     let currentMultiplier = 1.0;
     const startTime = Date.now();
 
     // Generate crash point at start (between 1.2x and 8x, weighted toward lower values)
     const crashPoint = 1.2 + Math.random() * Math.random() * 6.8;
     console.log('🎯 Crash point set to:', crashPoint.toFixed(2) + 'x');
-
-    // Clear any existing intervals first
-    if ((window as any).multiplierIntervalId) {
-      console.log('🧹 Clearing existing multiplier interval');
-      clearInterval((window as any).multiplierIntervalId);
-    }
 
     const multiplierInterval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000; // seconds elapsed
@@ -698,6 +700,12 @@ function CrashoutGameContent({
     console.log('🚀 Starting automatic crashout round');
     console.log('🔍 Current state before starting:', { multiplayerGameState, gameCountdown });
 
+    // Prevent multiple simultaneous starts
+    if (multiplayerGameState === 'active') {
+      console.log('⚠️ Round already active, skipping start');
+      return;
+    }
+
     // Send system message
     const systemMessage: ChatMessage = {
       id: `system-${Date.now()}`,
@@ -715,11 +723,9 @@ function CrashoutGameContent({
     setMultiplayerGameState('active');
     setMultiplier(1.0);
 
-    // Start the automatic multiplier climb with a small delay to ensure state is set
-    setTimeout(() => {
-      console.log('🚀 Starting multiplier climb after state change');
-      startAutomaticMultiplierClimb();
-    }, 100);
+    // Start the automatic multiplier climb immediately
+    console.log('🚀 Starting multiplier climb immediately');
+    startAutomaticMultiplierClimb();
 
   }, [playerBets.length, broadcastChatMessage, setMultiplayerGameState, setMultiplier, startAutomaticMultiplierClimb, multiplayerGameState, gameCountdown]);
 
@@ -749,48 +755,47 @@ function CrashoutGameContent({
     }
 
     // Start the automatic round system immediately
-    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active')) {
+    if (isTogether && myId && multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && multiplayerGameState !== 'crashed') {
       console.log('🚀 Starting automatic round system');
+      console.log('🔧 Initializing game state: waiting with 30s countdown');
       setMultiplayerGameState('waiting');
       setGameCountdown(30);
       setPlayerBets([]);
+      setMultiplier(1.0);
     }
-  }, [isTogether, myId, multiplayerGameState, setChatMessages, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
+  }, [isTogether, myId, multiplayerGameState, setChatMessages, setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier]);
 
-  // Separate effect to handle round start when countdown reaches 0
+  // Single effect to handle round start when countdown reaches 0
   useEffect(() => {
     console.log('🔍 Round start effect triggered:', { multiplayerGameState, gameCountdown });
-    if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
-      console.log('🚀 Countdown reached 0! Auto-starting next round...');
-      console.log('🎮 Calling startAutoCrashoutRound function');
 
-      // Add a small delay to ensure state is stable
-      setTimeout(() => {
-        console.log('🎮 Executing delayed startAutoCrashoutRound');
-        startAutoCrashoutRound();
-      }, 500);
+    // Only trigger when countdown reaches exactly 0 (not negative)
+    if (multiplayerGameState === 'waiting' && gameCountdown === 0) {
+      console.log('🚀 Countdown reached 0! Auto-starting next round...');
+      console.log('🎯 About to call startAutoCrashoutRound');
+
+      // Start round immediately without delay to prevent race conditions
+      startAutoCrashoutRound();
     }
   }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
 
-  // Gentle state monitoring system - only intervenes when truly stuck
+  // Debug effect to track all state changes
   useEffect(() => {
-    const stateMonitor = setInterval(() => {
-      // Only intervene if countdown is stuck at 0 for too long
-      if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
-        console.log('🔧 Countdown stuck at 0, starting round');
-        startAutoCrashoutRound();
-      }
-    }, 5000); // Check every 5 seconds, less aggressive
+    console.log('🔍 STATE CHANGE:', {
+      multiplayerGameState,
+      gameCountdown,
+      multiplier,
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [multiplayerGameState, gameCountdown, multiplier]);
 
-    return () => clearInterval(stateMonitor);
-  }, [multiplayerGameState, gameCountdown, startAutoCrashoutRound]);
-
-  // Simple countdown timer (only runs during waiting phase)
+  // Countdown timer (only runs during waiting phase)
   useEffect(() => {
     console.log('⏰ Countdown timer effect triggered, state:', multiplayerGameState, 'countdown:', gameCountdown);
 
-    if (multiplayerGameState !== 'waiting') {
-      console.log('⏰ Not in waiting state, current state:', multiplayerGameState);
+    // Only run countdown when in waiting state and countdown > 0
+    if (multiplayerGameState !== 'waiting' || gameCountdown <= 0) {
+      console.log('⏰ Not counting down - state:', multiplayerGameState, 'countdown:', gameCountdown);
       return;
     }
 
@@ -798,24 +803,17 @@ function CrashoutGameContent({
 
     const countdownInterval = setInterval(() => {
       setGameCountdown(prev => {
-        const newCountdown = prev - 1;
-        console.log('⏱️ Countdown tick:', newCountdown, 'state:', multiplayerGameState);
-
-        // Additional check to ensure we don't go negative
-        if (newCountdown < 0) {
-          console.log('⚠️ Countdown went negative, resetting to 0');
-          return 0;
-        }
-
+        const newCountdown = Math.max(0, prev - 1); // Ensure never goes below 0
+        console.log('⏱️ Countdown tick:', prev, '→', newCountdown);
         return newCountdown;
       });
     }, 1000);
 
     return () => {
-      console.log('🛑 Cleaning up countdown interval for state:', multiplayerGameState);
+      console.log('🛑 Cleaning up countdown interval');
       clearInterval(countdownInterval);
     };
-  }, [multiplayerGameState]);
+  }, [multiplayerGameState, gameCountdown]); // Include gameCountdown in dependencies
 
 
 
@@ -2879,20 +2877,6 @@ function CrashoutGameContent({
                    <div className="text-white/60 text-sm">
                      {playerBets.some(bet => bet.userId === myId) ? 'You\'re in this round!' : 'Too late to join this round'}
                    </div>
-                   {multiplier === 1.0 && (
-                     <button
-                       onClick={() => {
-                         console.log('🔧 Manual recovery: Restarting round system');
-                         setMultiplayerGameState('waiting');
-                         setGameCountdown(30);
-                         setPlayerBets([]);
-                         setMultiplier(1.0);
-                       }}
-                       className="mt-2 text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 px-2 py-1 border border-yellow-700 hover:border-yellow-500 transition-colors"
-                     >
-                       🔧 Stuck? Click to restart
-                     </button>
-                   )}
                  </div>
                )}
 
