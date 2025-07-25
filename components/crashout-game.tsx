@@ -432,7 +432,8 @@ function CrashoutGameContent({
       setTimeout(() => {
         setMultiplayerGameState('waiting');
         setGameCountdown(30);
-        // Don't clear bets here - they'll be reset when the next round starts
+        // Clear bets after showing results to allow new bets
+        setPlayerBets([]);
         setMultiplier(1.0); // Reset multiplier
       }, 3000);
     } else if (event.type === 'countdown') {
@@ -486,8 +487,9 @@ function CrashoutGameContent({
     };
 
     console.log('🎰 Placing bet in multiplayer:', bet);
+    console.log('🔍 Current player bets before placing:', playerBets.map(b => ({ userId: b.userId, amount: b.betAmount })));
     broadcastPlayerBet(bet);
-  }, [myId, localWalletAddress, userNicknames, broadcastPlayerBet]);
+  }, [myId, localWalletAddress, userNicknames, broadcastPlayerBet, playerBets]);
 
   const getCurrentNickname = useCallback(() => {
     if (!myId) return 'Anonymous';
@@ -677,7 +679,8 @@ function CrashoutGameContent({
           console.log('🔄 Crash timeout completed - transitioning to waiting state');
           setMultiplayerGameState('waiting');
           setGameCountdown(30);
-          // Don't clear bets here - let players see their results
+          // Clear bets to allow new ones for the next round
+          setPlayerBets([]);
           console.log('✅ Set state to waiting with 30s countdown');
         }, 3000); // 3 second delay to show crash
       }
@@ -706,14 +709,8 @@ function CrashoutGameContent({
       return;
     }
 
-    // Reset all player bets to uncashed status for the new round
-    const resetBets = playerBets.map(bet => ({
-      ...bet,
-      hasCashed: false,
-      cashoutMultiplier: undefined,
-      winningAmount: undefined
-    }));
-    setPlayerBets(resetBets);
+    // Bets should already be cleared when transitioning to waiting state
+    console.log('🔄 Starting round with', playerBets.length, 'players');
 
     // Send system message
     const systemMessage: ChatMessage = {
@@ -769,7 +766,8 @@ function CrashoutGameContent({
       console.log('🔧 Initializing game state: waiting with 30s countdown');
       setMultiplayerGameState('waiting');
       setGameCountdown(30);
-      // Don't clear bets during initialization - preserve existing bets
+      // Clear old bets when starting fresh
+      setPlayerBets([]);
       setMultiplier(1.0);
     }
   }, [isTogether, myId, multiplayerGameState, setChatMessages, setMultiplayerGameState, setGameCountdown, setPlayerBets, setMultiplier]);
@@ -2554,13 +2552,13 @@ function CrashoutGameContent({
   // --- END COLOR & STYLE DEFINITIONS ---
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 bg-black border border-[#333]">
+    <div className="w-full max-w-6xl mx-auto p-3 bg-black border border-[#333]">
       {/* Three-panel layout: Chat (25%) | Game (50%) | Player Bets (25%) */}
-      <div className="grid gap-4 h-[calc(100vh-8rem)] min-h-[500px] grid-cols-1 lg:grid-cols-4">
+      <div className="grid gap-3 h-[600px] grid-cols-1 lg:grid-cols-4">
 
         {/* Left Panel - Chat System (25% width) */}
         <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
-          <div className="p-3 border-b border-[#333] flex items-center gap-2">
+          <div className="p-2 border-b border-[#333] flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-white" />
             <h3 className="text-white font-medium">Live Chat</h3>
             <span className="text-white/60 text-xs">({connectedUsers.length} online)</span>
@@ -2627,7 +2625,7 @@ function CrashoutGameContent({
           </div>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-[#333]">
+          <div className="p-2 border-t border-[#333]">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -2940,20 +2938,19 @@ function CrashoutGameContent({
                  disabled={
                    !betAmount ||
                    parseFloat(betAmount) <= 0 ||
-                   playerBets.some(bet => bet.userId === myId) ||
-                   gameCountdown < 5 || // Prevent late bets
+                   gameCountdown < 3 || // Allow betting until last 3 seconds
                    multiplayerGameState !== 'waiting' // Only allow bets during waiting
                  }
                  className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
-                   ${playerBets.some(bet => bet.userId === myId) ? 'bg-green-600 text-white cursor-not-allowed' :
-                   gameCountdown < 5 ? 'bg-red-600 text-white cursor-not-allowed' :
+                   ${gameCountdown < 3 ? 'bg-red-600 text-white cursor-not-allowed' :
                    multiplayerGameState !== 'waiting' ? 'bg-gray-600 text-white cursor-not-allowed' :
+                   playerBets.some(bet => bet.userId === myId) ? 'bg-green-600 text-white hover:bg-green-700' :
                    'bg-white text-black hover:bg-white/90'}
                  `}
                >
-                 {playerBets.some(bet => bet.userId === myId) ? 'Bet Placed ✓' :
-                  gameCountdown < 5 ? 'Too Late!' :
+                 {gameCountdown < 3 ? 'Too Late!' :
                   multiplayerGameState !== 'waiting' ? 'Round Active' :
+                  playerBets.some(bet => bet.userId === myId) ? 'Update Bet' :
                   `Place Bet (${selectedToken})`}
                </button>
              )}
@@ -3150,19 +3147,24 @@ function CrashoutGameContent({
                   )}
 
                   {!bet.hasCashed && multiplayerGameState === 'active' && (
-                    <div className="flex justify-between">
-                      <span>Current Value:</span>
-                      <span className="text-yellow-400 font-medium">
-                        {(bet.betAmount * multiplier).toFixed(2)} {bet.selectedToken}
-                      </span>
-                    </div>
-                  )}
-
-                  {!bet.hasCashed && multiplayerGameState === 'active' && (
-                    <div className="flex justify-between text-xs text-white/40">
-                      <span>Multiplier:</span>
-                      <span>{multiplier.toFixed(2)}x</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between">
+                        <span>Current Value:</span>
+                        <span className="text-yellow-400 font-medium">
+                          {(bet.betAmount * multiplier).toFixed(2)} {bet.selectedToken}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Potential Profit:</span>
+                        <span className="text-green-400 font-medium">
+                          +{((bet.betAmount * multiplier) - bet.betAmount).toFixed(2)} {bet.selectedToken}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-white/40">
+                        <span>Multiplier:</span>
+                        <span>{multiplier.toFixed(2)}x</span>
+                      </div>
+                    </>
                   )}
 
                   <div className="text-white/40 text-xs pt-1 border-t border-[#333]">
