@@ -2481,19 +2481,7 @@ export function Farm() {
                   <Home className="h-3 w-3 sm:h-4 sm:w-4" />
                   Platformer
                 </button>
-                {/* Noot.io Button */}
-                <button 
-                  onClick={() => {
-                    setActiveTab("noot-io");
-                    setShowNootGamesDropdown(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${ // Apply hover effect here
-                    activeTab === "noot-io" ? "bg-white text-black" : "text-white/80 hover:bg-[#222] hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                  } transition-all duration-200`}
-                >
-                  <CircleDollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
-                  Noot.io
-                </button>
+               
               </div>
             )}
           </div>
