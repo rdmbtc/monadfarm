@@ -2668,8 +2668,11 @@ function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
   // Check for API key
   const apiKey = process.env.NEXT_PUBLIC_REACT_TOGETHER_API_KEY;
 
-  if (!enableMultiplayer || !apiKey) {
-    // Fallback to single-player mode
+  if (!enableMultiplayer) {
+    return <CrashoutGameSinglePlayer {...gameProps} />;
+  }
+
+  if (!apiKey) {
     return <CrashoutGameSinglePlayer {...gameProps} />;
   }
 
@@ -2682,7 +2685,7 @@ function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
         password: "public"
       }}
       rememberUsers={true}
-      deriveNickname={(userId) => {
+      deriveNickname={(_userId) => {
         // Custom logic to derive initial nickname from localStorage
         if (typeof window !== "undefined") {
           const stored = localStorage.getItem('player-nickname');

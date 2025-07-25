@@ -55,8 +55,8 @@ import dynamic from 'next/dynamic'; // Import dynamic
 
 // Import the ClientWrapper instead of FarmGame directly
 import ClientWrapper from './farm-game/ClientWrapper';
-// Import CrashoutGame
-import { CrashoutGame } from './crashout-game'; // Assuming it's in the components folder
+// Import CrashoutGame with Multisynq support
+import CrashoutGameWithMultisynq from './crashout-game'; // Default export with ReactTogether integration
 // Import EnhancedSlotMachine
 import EnhancedSlotMachine from "@/app/slot-machine/components/enhanced-slot-machine";
 // Import SportBettingPage (aliased from Home)
@@ -3826,7 +3826,11 @@ export function Farm() {
             <h2 className="text-xl font-semibold text-white border-b border-white/10 pb-2 mb-4">
               Crashout Game
             </h2>
-            <CrashoutGame farmCoins={farmCoins} addFarmCoins={addFarmCoins} />
+            <CrashoutGameWithMultisynq
+              farmCoins={farmCoins}
+              addFarmCoins={addFarmCoins}
+              enableMultiplayer={true}
+            />
           </div>
         )}
 

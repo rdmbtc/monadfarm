@@ -52,7 +52,7 @@ export const SlotMachine = dynamic(() => import('../app/slot-machine/components/
   loading: () => <LoadingSpinner message="Loading Slot Machine..." />
 })
 
-export const CrashoutGame = dynamic(() => import('./crashout-game').then(mod => ({ default: mod.CrashoutGame })), {
+export const CrashoutGame = dynamic(() => import('./crashout-game'), {
   ssr: false,
   loading: () => <LoadingSpinner message="Loading Crashout Game..." />
 })
