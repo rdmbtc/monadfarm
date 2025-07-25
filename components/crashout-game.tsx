@@ -200,13 +200,14 @@ const showToast = (message: string, type: 'success' | 'error' | 'loading' = 'suc
   }
 };
 
-function CrashoutGame({ 
-  farmCoins, 
-  addFarmCoins, 
-  tokenBalances = {}, 
+// Internal component that uses ReactTogether hooks (must be inside ReactTogether provider)
+function CrashoutGameContent({
+  farmCoins,
+  addFarmCoins,
+  tokenBalances = {},
   updateTokenBalance,
-  walletAddress = "", 
-  provider = null 
+  walletAddress = "",
+  provider = null
 }: CrashoutGameProps) {
   // Persist farmCoins to localStorage whenever it changes
   useEffect(() => {
@@ -293,30 +294,16 @@ function CrashoutGame({
   const [autoClaimReady, setAutoClaimReady] = useState<boolean>(false);
   const backgroundVideoRef = useRef<HTMLVideoElement | null>(null); // Moved here
 
-  // Check if we're in ReactTogether context
+  // ReactTogether hooks (safe to use since we're inside the provider)
   const isTogether = useIsTogether();
-
-  // Multiplayer state using ReactTogether hooks (conditional based on context)
-  const myId = isTogether ? useMyId() : null;
-  const connectedUsers = isTogether ? useConnectedUsers() : [];
-  const [chatMessages, setChatMessages] = isTogether
-    ? useStateTogether<ChatMessage[]>('crashout-chat', [])
-    : useState<ChatMessage[]>([]);
-  const [playerBets, setPlayerBets] = isTogether
-    ? useStateTogether<PlayerBet[]>('crashout-bets', [])
-    : useState<PlayerBet[]>([]);
-  const [currentGameRound, setCurrentGameRound] = isTogether
-    ? useStateTogether<GameRound | null>('crashout-round', null)
-    : useState<GameRound | null>(null);
-  const [gameCountdown, setGameCountdown] = isTogether
-    ? useStateTogether<number>('crashout-countdown', 30)
-    : useState<number>(30);
-  const [multiplayerGameState, setMultiplayerGameState] = isTogether
-    ? useStateTogether<string>('crashout-state', 'waiting')
-    : useState<string>('waiting');
-  const [userNicknames, setUserNicknames] = isTogether
-    ? useStateTogether<Record<string, string>>('crashout-nicknames', {})
-    : useState<Record<string, string>>({});
+  const myId = useMyId();
+  const connectedUsers = useConnectedUsers();
+  const [chatMessages, setChatMessages] = useStateTogether<ChatMessage[]>('crashout-chat', []);
+  const [playerBets, setPlayerBets] = useStateTogether<PlayerBet[]>('crashout-bets', []);
+  const [currentGameRound, setCurrentGameRound] = useStateTogether<GameRound | null>('crashout-round', null);
+  const [gameCountdown, setGameCountdown] = useStateTogether<number>('crashout-countdown', 30);
+  const [multiplayerGameState, setMultiplayerGameState] = useStateTogether<string>('crashout-state', 'waiting');
+  const [userNicknames, setUserNicknames] = useStateTogether<Record<string, string>>('crashout-nicknames', {});
 
   // Local multiplayer state
   const [messageInput, setMessageInput] = useState<string>('');
@@ -324,69 +311,36 @@ function CrashoutGame({
   const [showChat, setShowChat] = useState<boolean>(true);
   const [showPlayerBets, setShowPlayerBets] = useState<boolean>(true);
 
-  // Multiplayer event broadcasting (conditional based on context)
-  const broadcastChatMessage = isTogether
-    ? useFunctionTogether('broadcastChatMessage', (message: ChatMessage) => {
-        setChatMessages(prev => {
-          const exists = prev.some(m => m.id === message.id);
-          if (exists) return prev;
-          return [...prev, message].slice(-50); // Keep last 50 messages
-        });
-      })
-    : (message: ChatMessage) => {
-        // Local fallback - just add to local state
-        setChatMessages(prev => {
-          const exists = prev.some(m => m.id === message.id);
-          if (exists) return prev;
-          return [...prev, message].slice(-50);
-        });
-      };
+  // Multiplayer event broadcasting (using ReactTogether hooks)
+  const broadcastChatMessage = useFunctionTogether('broadcastChatMessage', (message: ChatMessage) => {
+    setChatMessages(prev => {
+      const exists = prev.some(m => m.id === message.id);
+      if (exists) return prev;
+      return [...prev, message].slice(-50); // Keep last 50 messages
+    });
+  });
 
-  const broadcastPlayerBet = isTogether
-    ? useFunctionTogether('broadcastPlayerBet', (bet: PlayerBet) => {
-        setPlayerBets(prev => {
-          const exists = prev.some(b => b.userId === bet.userId);
-          if (exists) {
-            return prev.map(b => b.userId === bet.userId ? bet : b);
-          }
-          return [...prev, bet];
-        });
-      })
-    : (bet: PlayerBet) => {
-        // Local fallback
-        setPlayerBets(prev => {
-          const exists = prev.some(b => b.userId === bet.userId);
-          if (exists) {
-            return prev.map(b => b.userId === bet.userId ? bet : b);
-          }
-          return [...prev, bet];
-        });
-      };
+  const broadcastPlayerBet = useFunctionTogether('broadcastPlayerBet', (bet: PlayerBet) => {
+    setPlayerBets(prev => {
+      const exists = prev.some(b => b.userId === bet.userId);
+      if (exists) {
+        return prev.map(b => b.userId === bet.userId ? bet : b);
+      }
+      return [...prev, bet];
+    });
+  });
 
-  const broadcastGameEvent = isTogether
-    ? useFunctionTogether('broadcastGameEvent', (event: any) => {
-        if (event.type === 'roundStart') {
-          setCurrentGameRound(event.round);
-          setMultiplayerGameState('active');
-        } else if (event.type === 'roundEnd') {
-          setMultiplayerGameState('waiting');
-          setGameCountdown(30);
-        } else if (event.type === 'countdown') {
-          setGameCountdown(event.countdown);
-        }
-      })
-    : (event: any) => {
-        // Local fallback
-        if (event.type === 'roundStart') {
-          setCurrentGameRound(event.round);
-          setMultiplayerGameState('active');
-        } else if (event.type === 'roundEnd') {
-          setMultiplayerGameState('waiting');
-          setGameCountdown(30);
-        } else if (event.type === 'countdown') {
-          setGameCountdown(event.countdown);
-        }
-      };
+  const broadcastGameEvent = useFunctionTogether('broadcastGameEvent', (event: any) => {
+    if (event.type === 'roundStart') {
+      setCurrentGameRound(event.round);
+      setMultiplayerGameState('active');
+    } else if (event.type === 'roundEnd') {
+      setMultiplayerGameState('waiting');
+      setGameCountdown(30);
+    } else if (event.type === 'countdown') {
+      setGameCountdown(event.countdown);
+    }
+  });
 
   // Add a custom log function that stores logs in the UI
   const logToUI = (message: string) => {
@@ -2650,7 +2604,56 @@ function CrashoutGame({
       </div>
     </div>
   );
-} // <<< Closing brace for the CrashoutGame component function
+} // <<< Closing brace for the CrashoutGameContent component function
+
+// Single-player fallback component (no ReactTogether hooks)
+function CrashoutGameSinglePlayer(props: CrashoutGameProps) {
+  // Create a mock ReactTogether context for single-player mode
+  const mockMultiplayerState = {
+    isTogether: false,
+    myId: null,
+    connectedUsers: [],
+    chatMessages: [],
+    setChatMessages: () => {},
+    playerBets: [],
+    setPlayerBets: () => {},
+    currentGameRound: null,
+    setCurrentGameRound: () => {},
+    gameCountdown: 30,
+    setGameCountdown: () => {},
+    multiplayerGameState: 'waiting',
+    setMultiplayerGameState: () => {},
+    userNicknames: {},
+    setUserNicknames: () => {},
+    broadcastChatMessage: () => {},
+    broadcastPlayerBet: () => {},
+    broadcastGameEvent: () => {}
+  };
+
+  // For now, show a simple message. In the future, we could implement
+  // a full single-player version by extracting the core game logic
+  return (
+    <div className="w-full max-w-2xl mx-auto p-4 bg-black border border-[#333]">
+      <div className="bg-[#111] border border-[#333] p-4 text-center">
+        <h2 className="text-xl text-white mb-2">Single Player Mode</h2>
+        <p className="text-white/60 text-sm mb-4">
+          Multiplayer features are not available. Please check your ReactTogether configuration.
+        </p>
+        <p className="text-white/40 text-xs">
+          To enable multiplayer, ensure NEXT_PUBLIC_REACT_TOGETHER_API_KEY is set in your environment.
+        </p>
+        <div className="mt-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white text-black px-4 py-2 hover:bg-white/90 transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Wrapper component with ReactTogether integration
 import { ReactTogether } from 'react-together';
@@ -2667,7 +2670,7 @@ function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
 
   if (!enableMultiplayer || !apiKey) {
     // Fallback to single-player mode
-    return <CrashoutGame {...gameProps} />;
+    return <CrashoutGameSinglePlayer {...gameProps} />;
   }
 
   return (
@@ -2695,11 +2698,16 @@ function CrashoutGameWithMultisynq(props: CrashoutGameWithMultisynqProps) {
         return `${adj} ${term}`;
       }}
     >
-      <CrashoutGame {...gameProps} />
+      <CrashoutGameContent {...gameProps} />
     </ReactTogether>
   );
 }
 
+// Main component that can be used directly (single-player only)
+function CrashoutGame(props: CrashoutGameProps) {
+  return <CrashoutGameSinglePlayer {...props} />;
+}
+
 // --- Export both components ---
-export { CrashoutGame, CrashoutGameWithMultisynq };
+export { CrashoutGame, CrashoutGameContent, CrashoutGameWithMultisynq };
 export default CrashoutGameWithMultisynq;
