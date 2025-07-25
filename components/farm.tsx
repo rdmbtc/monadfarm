@@ -58,9 +58,7 @@ import ClientWrapper from './farm-game/ClientWrapper';
 // Import CrashoutGame with Multisynq support
 import CrashoutGameWithMultisynq from './crashout-game'; // Default export with ReactTogether integration
 // Import EnhancedSlotMachine
-import EnhancedSlotMachine from "@/app/slot-machine/components/enhanced-slot-machine";
 // Import SportBettingPage (aliased from Home)
-import SportBettingPage from "@/app/sport-betting/app/page"; // Assuming this is the correct path now
 // Import SocialHubPage for social tab
 import SocialHubPage from "@/app/social-hub/page"; // Path to the SocialHubPage component
 
@@ -3854,31 +3852,9 @@ export function Farm() {
           </div>
         )}
 
-        {/* Slot Machine Tab */}
-        {activeTab === "slot-machine" && (
-          <div className="animate-fadeIn">
-            <h2 className="text-xl font-semibold text-white border-b border-white/10 pb-2 mb-4 flex items-center">
-              <Gem className="h-5 w-5 mr-2 text-purple-400"/> Slot Machine
-            </h2>
-            <div className="noot-card p-1 overflow-hidden">
-              {/* Render the EnhancedSlotMachine component, passing props */}
-              <EnhancedSlotMachine farmCoins={farmCoins} addFarmCoins={addFarmCoins} />
-            </div>
-          </div>
-        )}
         
-        {/* Sport Betting Tab */}
-        {activeTab === "sport-betting" && (
-          <div className="animate-fadeIn">
-            <h2 className="text-xl font-semibold text-white border-b border-white/10 pb-2 mb-4 flex items-center">
-              <Activity className="h-5 w-5 mr-2 text-blue-400"/> Sport Betting
-            </h2>
-            <div className="noot-card p-1 overflow-hidden">
-              {/* Pass farmCoins and addFarmCoins to SportBettingPage similar to SlotMachine */}
-              <SportBettingPage farmCoins={farmCoins} addFarmCoins={addFarmCoins} /> 
-            </div>
-          </div>
-        )}
+        
+       
 
         {/* Noot.io Game Tab */}
         {activeTab === "noot-io" && (
