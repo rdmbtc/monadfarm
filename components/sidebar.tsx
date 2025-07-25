@@ -346,13 +346,7 @@ export const Sidebar = ({
             )}
           </Button>
           
-          <Link
-            href="/farm-cases"
-            className="flex w-full items-center rounded-none border border-transparent px-3 py-2 text-white/80 hover:bg-[#222] hover:text-white noot-text transition-all duration-200 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-          >
-            <Package className="h-4 w-4 mr-2" />
-            <span className="text-sm">Mon Gamble</span>
-          </Link>
+         
           
           <Link href="/social-hub" passHref legacyBehavior>
             <Button
