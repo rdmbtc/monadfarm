@@ -677,7 +677,7 @@ function CrashoutGameContent({
     console.log('Current state:', { multiplayerGameState, gameCountdown, isTogether, myId });
 
     // Initialize to 'initializing' state first, then start first round automatically
-    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && multiplayerGameState !== 'initializing')) {
+    if (isTogether && myId && (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active' && multiplayerGameState !== 'initializing' && multiplayerGameState !== 'crashed')) {
       console.log('🔧 Setting to initializing state');
       setMultiplayerGameState('initializing');
 
@@ -685,13 +685,22 @@ function CrashoutGameContent({
       setTimeout(() => {
         console.log('🚀 Starting first round automatically');
         startAutoCrashoutRound();
-      }, 2000); // 2 second delay to show initialization
+      }, 3000); // 3 second delay to show initialization
     }
-  }, [isTogether, myId]); // Only run when connection status changes
+  }, [isTogether, myId, startAutoCrashoutRound]); // Added startAutoCrashoutRound to dependencies
 
-  // Countdown timer (only runs during waiting phase after a crash)
+  // Separate effect to handle round start when countdown reaches 0
+  useEffect(() => {
+    if (multiplayerGameState === 'waiting' && gameCountdown <= 0) {
+      console.log('🚀 Countdown reached 0! Auto-starting next round...');
+      startAutoCrashoutRound();
+    }
+  }, [gameCountdown, multiplayerGameState, startAutoCrashoutRound]);
+
+  // Simple countdown timer (only runs during waiting phase)
   useEffect(() => {
     if (multiplayerGameState !== 'waiting') {
+      console.log('⏰ Not in waiting state, current state:', multiplayerGameState);
       return;
     }
 
@@ -700,15 +709,7 @@ function CrashoutGameContent({
     const countdownInterval = setInterval(() => {
       setGameCountdown(prev => {
         const newCountdown = prev - 1;
-        console.log('⏱️ Countdown tick:', newCountdown);
-
-        if (newCountdown <= 0) {
-          console.log('🚀 Countdown reached 0! Auto-starting next round...');
-          // Start next round immediately
-          startAutoCrashoutRound();
-          return 30; // Reset for next cycle
-        }
-
+        console.log('⏱️ Countdown tick:', newCountdown, 'state:', multiplayerGameState);
         return newCountdown;
       });
     }, 1000);
@@ -717,7 +718,7 @@ function CrashoutGameContent({
       console.log('🛑 Cleaning up countdown interval');
       clearInterval(countdownInterval);
     };
-  }, [multiplayerGameState, startAutoCrashoutRound]);
+  }, [multiplayerGameState]);
 
 
 
@@ -2492,7 +2493,7 @@ function CrashoutGameContent({
   return (
     <div className="w-full max-w-7xl mx-auto p-4 bg-black border border-[#333]">
       {/* Three-panel layout: Chat (25%) | Game (50%) | Player Bets (25%) */}
-      <div className="grid gap-4 h-[600px] grid-cols-1 lg:grid-cols-4">
+      <div className="grid gap-4 h-[400px] sm:h-[450px] grid-cols-1 lg:grid-cols-4">
 
         {/* Left Panel - Chat System (25% width) */}
         <div className="lg:col-span-1 bg-[#111] border border-[#333] flex flex-col">
@@ -2637,6 +2638,16 @@ function CrashoutGameContent({
         
           {/* Debug Controls */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                console.log('🔧 Force initializing system');
+                setMultiplayerGameState('initializing');
+                setTimeout(() => startAutoCrashoutRound(), 1000);
+              }}
+              className="text-xs text-white/60 hover:text-white bg-purple-900 px-2 py-1 border border-purple-700 hover:border-purple-500 transition-colors"
+            >
+              Init System
+            </button>
             <button
               onClick={forceResetRound}
               className="text-xs text-white/60 hover:text-white bg-red-900 px-2 py-1 border border-red-700 hover:border-red-500 transition-colors"
@@ -2885,7 +2896,13 @@ function CrashoutGameContent({
 
                {/* Debug info */}
                <div className="text-white/30 text-xs mt-2 border-t border-[#333] pt-2">
-                 State: {multiplayerGameState} | Countdown: {gameCountdown} | Connected: {isTogether ? 'Yes' : 'No'}
+                 State: {multiplayerGameState} | Countdown: {gameCountdown} | Connected: {isTogether ? 'Yes' : 'No'} | Players: {connectedUsers.length}
+                 {multiplayerGameState === 'waiting' && gameCountdown > 0 && (
+                   <div className="text-green-400 mt-1">⚡ Auto-start active</div>
+                 )}
+                 {multiplayerGameState === 'waiting' && gameCountdown <= 0 && (
+                   <div className="text-yellow-400 mt-1">🚀 Starting round...</div>
+                 )}
                </div>
              </div>
 
