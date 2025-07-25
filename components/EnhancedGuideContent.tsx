@@ -195,7 +195,7 @@ const EnhancedGuideContent: React.FC<EnhancedGuideContentProps> = ({ guideType, 
       steps: [
         {
           title: "Defenses",
-          description: "Place Ice Mage Asbter, Fire Mage Noot, Wizard Abster, and Cool Noot with cannon to stop enemies.",
+          description: "Place CHOG Defender, MOLANDAK Guardian, MOYAKI Warrior, and KEON Champion to stop enemies.",
           icon: "alert"
         },
         {
