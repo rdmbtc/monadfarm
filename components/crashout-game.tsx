@@ -392,16 +392,30 @@ function CrashoutGameContent({
   const broadcastGameEvent = useFunctionTogether('broadcastGameEvent', (event: any) => {
     console.log('📡 Received game event:', event);
     if (event.type === 'roundStart') {
+      console.log('🎮 Round start event received');
       setCurrentGameRound(event.round);
       setMultiplayerGameState('active');
+      setMultiplier(1.0); // Reset multiplier for new round
     } else if (event.type === 'roundEnd') {
-      setMultiplayerGameState('waiting');
-      setGameCountdown(30);
+      console.log('🏁 Round end event received');
+      // Don't immediately clear bets - let players see results for a moment
+      setTimeout(() => {
+        setMultiplayerGameState('waiting');
+        setGameCountdown(30);
+        setPlayerBets([]); // Clear bets for next round
+        setMultiplier(1.0); // Reset multiplier
+      }, 3000);
     } else if (event.type === 'countdown') {
       setGameCountdown(event.countdown);
     } else if (event.type === 'multiplierUpdate') {
       // Update multiplier from other players
       setMultiplier(event.multiplier);
+    } else if (event.type === 'roundReset') {
+      console.log('🔄 Round reset event received');
+      setMultiplayerGameState('waiting');
+      setGameCountdown(30);
+      setPlayerBets([]);
+      setMultiplier(1.0);
     }
   });
 
@@ -482,39 +496,10 @@ function CrashoutGameContent({
 
   // Auto-run system handles bet placement - no test bets needed
 
-  // Automatic game management for multiplayer mode
-  useEffect(() => {
-    if (multiplayerGameState !== 'waiting') return;
-
-    const countdownInterval = setInterval(() => {
-      setGameCountdown(prev => {
-        if (prev <= 1) {
-          // Start new round automatically
-          const newRound: GameRound = {
-            id: `round-${Date.now()}`,
-            startTime: Date.now(),
-            playerBets: [...playerBets],
-            status: 'active'
-          };
-
-          broadcastGameEvent({ type: 'roundStart', round: newRound });
-
-          // Auto-start the crashout game
-          setTimeout(() => {
-            startAutoCrashoutRound();
-          }, 1000);
-
-          return 30; // Reset countdown for next round
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(countdownInterval);
-  }, [multiplayerGameState, playerBets, broadcastGameEvent]);
-
   // Start automatic crashout round
   const startAutoCrashoutRound = useCallback(() => {
+    console.log('🚀 Starting automatic crashout round');
+
     // Send system message
     const systemMessage: ChatMessage = {
       id: `system-${Date.now()}`,
@@ -538,7 +523,7 @@ function CrashoutGameContent({
 
   // Automatic multiplier climb simulation
   const startAutomaticMultiplierClimb = useCallback(() => {
-    console.log('🚀 Starting automatic multiplier climb');
+    console.log('📈 Starting automatic multiplier climb');
     let currentMultiplier = 1.0;
     const startTime = Date.now();
 
@@ -580,7 +565,7 @@ function CrashoutGameContent({
         broadcastChatMessage(crashMessage);
         broadcastGameEvent({ type: 'roundEnd', crashMultiplier: currentMultiplier });
 
-        // Reset for next round
+        // Reset for next round after brief pause
         setTimeout(() => {
           console.log('🔄 Resetting for next round');
           setMultiplayerGameState('waiting');
@@ -597,6 +582,59 @@ function CrashoutGameContent({
     };
 
   }, [setMultiplier, broadcastGameEvent, broadcastChatMessage, setMultiplayerGameState, setGameCountdown, setPlayerBets]);
+
+  // Initialize automatic round system on component mount
+  useEffect(() => {
+    console.log('🎮 Initializing automatic round system');
+    // Start with waiting state if not already set
+    if (multiplayerGameState !== 'waiting' && multiplayerGameState !== 'active') {
+      setMultiplayerGameState('waiting');
+      setGameCountdown(30);
+    }
+  }, [multiplayerGameState, setMultiplayerGameState, setGameCountdown]);
+
+  // Automatic countdown and round management
+  useEffect(() => {
+    if (multiplayerGameState !== 'waiting') return;
+
+    console.log('⏰ Starting countdown timer, current countdown:', gameCountdown);
+
+    const countdownInterval = setInterval(() => {
+      setGameCountdown(prev => {
+        const newCountdown = prev - 1;
+        console.log('⏱️ Countdown:', newCountdown);
+
+        if (newCountdown <= 0) {
+          console.log('🚀 Countdown reached 0, starting new round automatically');
+
+          // Create new round
+          const newRound: GameRound = {
+            id: `round-${Date.now()}`,
+            startTime: Date.now(),
+            playerBets: [...playerBets],
+            status: 'active'
+          };
+
+          // Broadcast round start
+          broadcastGameEvent({ type: 'roundStart', round: newRound });
+
+          // Start the automatic crashout round immediately
+          startAutoCrashoutRound();
+
+          return 30; // This will be overridden by the round start, but set for safety
+        }
+
+        return newCountdown;
+      });
+    }, 1000);
+
+    return () => {
+      console.log('🛑 Cleaning up countdown interval');
+      clearInterval(countdownInterval);
+    };
+  }, [multiplayerGameState, gameCountdown, playerBets, broadcastGameEvent, startAutoCrashoutRound]);
+
+
 
   // Cashout in multiplayer round
   const cashoutMultiplayer = useCallback(() => {
@@ -1652,18 +1690,16 @@ function CrashoutGameContent({
     }, 100);
   };
 
-  // Start the game (multiplayer only - place bet and wait for round to start)
-  const startGame = () => {
-    if (gameState !== 'inactive') return;
-
-    // Place bet in multiplayer state immediately
+  // Place bet only (no longer starts the game manually)
+  const placeBet = () => {
+    // Only place bet in multiplayer state - don't trigger round start
     const amount = parseFloat(betAmount);
-    if (amount > 0) {
+    if (amount > 0 && multiplayerGameState === 'waiting') {
       placeBetInMultiplayer(amount, selectedToken);
-    }
 
-    // Then proceed with blockchain approval and bet placement
-    approveAndPlaceBet();
+      // Optional: Also handle blockchain approval for actual token transfer
+      // approveAndPlaceBet();
+    }
   };
 
   // Claim tokens after winning
@@ -2633,24 +2669,24 @@ function CrashoutGameContent({
              {/* Betting Interface */}
              {isWalletConnected && multiplayerGameState === 'waiting' && (
                <button
-                 onClick={startGame}
+                 onClick={placeBet}
                  disabled={
-                   approvalPending ||
                    !betAmount ||
                    parseFloat(betAmount) <= 0 ||
                    playerBets.some(bet => bet.userId === myId) ||
-                   gameCountdown < 5 // Prevent late bets
+                   gameCountdown < 5 || // Prevent late bets
+                   multiplayerGameState !== 'waiting' // Only allow bets during waiting
                  }
                  className={`w-full py-3 px-4 font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed
                    ${playerBets.some(bet => bet.userId === myId) ? 'bg-green-600 text-white cursor-not-allowed' :
-                   approvalPending ? 'bg-[#333] text-white animate-pulse' :
                    gameCountdown < 5 ? 'bg-red-600 text-white cursor-not-allowed' :
+                   multiplayerGameState !== 'waiting' ? 'bg-gray-600 text-white cursor-not-allowed' :
                    'bg-white text-black hover:bg-white/90'}
                  `}
                >
-                 {approvalPending ? 'Approving...' :
-                  playerBets.some(bet => bet.userId === myId) ? 'Bet Placed ✓' :
+                 {playerBets.some(bet => bet.userId === myId) ? 'Bet Placed ✓' :
                   gameCountdown < 5 ? 'Too Late!' :
+                  multiplayerGameState !== 'waiting' ? 'Round Active' :
                   `Place Bet (${selectedToken})`}
                </button>
              )}
@@ -2758,45 +2794,96 @@ function CrashoutGameContent({
           <div className="p-3 border-b border-[#333] flex items-center gap-2">
             <Users className="w-4 h-4 text-white" />
             <h3 className="text-white font-medium">Player Bets</h3>
-            <span className="text-white/60 text-xs">({playerBets.length})</span>
+            <span className="text-white/60 text-xs">
+              ({playerBets.length} {playerBets.length === 1 ? 'player' : 'players'})
+            </span>
+            {multiplayerGameState === 'active' && (
+              <span className="text-green-400 text-xs ml-auto">● LIVE</span>
+            )}
           </div>
 
           {/* Player Bets List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
             {playerBets.map((bet) => (
-              <div key={bet.userId} className="bg-black border border-[#333] p-3">
+              <div key={bet.userId} className={`border p-3 ${
+                bet.userId === myId ? 'bg-[#1a1a1a] border-white/20' : 'bg-black border-[#333]'
+              }`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium text-sm">{bet.nickname}</span>
-                  {bet.hasCashed && (
-                    <span className="text-green-400 text-xs">Cashed Out</span>
-                  )}
-                </div>
-                <div className="text-white/60 text-xs space-y-1">
-                  <div>Wallet: {bet.walletAddress.substring(0, 6)}...{bet.walletAddress.substring(bet.walletAddress.length - 4)}</div>
-                  <div className="flex justify-between">
-                    <span>Bet: {bet.betAmount} {bet.selectedToken}</span>
-                    {bet.hasCashed && bet.cashoutMultiplier && (
-                      <span className="text-green-400">Cashed @{bet.cashoutMultiplier.toFixed(2)}x</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-medium text-sm">
+                      {bet.nickname}
+                      {bet.userId === myId && <span className="text-blue-400 text-xs ml-1">(You)</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {bet.hasCashed && (
+                      <span className="text-green-400 text-xs bg-green-400/10 px-2 py-1 rounded">
+                        💰 Cashed Out
+                      </span>
                     )}
                     {!bet.hasCashed && multiplayerGameState === 'active' && (
-                      <span className="text-yellow-400">In Round</span>
+                      <span className="text-yellow-400 text-xs bg-yellow-400/10 px-2 py-1 rounded">
+                        🎯 In Round
+                      </span>
                     )}
                     {!bet.hasCashed && multiplayerGameState === 'waiting' && (
-                      <span className="text-blue-400">Ready</span>
+                      <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">
+                        ⏳ Ready
+                      </span>
                     )}
                   </div>
+                </div>
+
+                <div className="text-white/60 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span>Bet Amount:</span>
+                    <span className="text-white font-medium">{bet.betAmount} {bet.selectedToken}</span>
+                  </div>
+
                   {bet.hasCashed && bet.cashoutMultiplier && (
-                    <div className="text-green-400 text-xs">
-                      Won: {(bet.betAmount * bet.cashoutMultiplier).toFixed(2)} {bet.selectedToken}
+                    <>
+                      <div className="flex justify-between">
+                        <span>Cashed at:</span>
+                        <span className="text-green-400 font-medium">{bet.cashoutMultiplier.toFixed(2)}x</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Winnings:</span>
+                        <span className="text-green-400 font-medium">
+                          {(bet.betAmount * bet.cashoutMultiplier).toFixed(2)} {bet.selectedToken}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {!bet.hasCashed && multiplayerGameState === 'active' && (
+                    <div className="flex justify-between">
+                      <span>Current Value:</span>
+                      <span className="text-yellow-400 font-medium">
+                        {(bet.betAmount * multiplier).toFixed(2)} {bet.selectedToken}
+                      </span>
                     </div>
                   )}
+
+                  <div className="text-white/40 text-xs pt-1 border-t border-[#333]">
+                    Wallet: {bet.walletAddress.substring(0, 6)}...{bet.walletAddress.substring(bet.walletAddress.length - 4)}
+                  </div>
                 </div>
               </div>
             ))}
             {playerBets.length === 0 && (
               <div className="text-white/40 text-center py-8">
                 <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No active bets yet</p>
+                <p className="text-sm mb-1">No active bets yet</p>
+                {multiplayerGameState === 'waiting' && (
+                  <p className="text-xs text-white/30">
+                    Place a bet to join the next round!
+                  </p>
+                )}
+                {multiplayerGameState === 'active' && (
+                  <p className="text-xs text-white/30">
+                    Round in progress - wait for next round
+                  </p>
+                )}
               </div>
             )}
           </div>
