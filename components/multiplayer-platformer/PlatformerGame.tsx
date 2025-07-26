@@ -24,6 +24,7 @@ export default function PlatformerGame({
   const [isClient, setIsClient] = useState(false)
   const [gameStarted, setGameStarted] = useState(false)
   const [score, setScore] = useState(0)
+  const [starProgress, setStarProgress] = useState({ collected: 0, total: 0 })
 
   // Refs
   const gameInstanceRef = useRef<any>(null)
@@ -43,7 +44,8 @@ export default function PlatformerGame({
   console.log('🎮 Single-player Game State:', {
     isClient,
     gameStarted,
-    score
+    score,
+    starProgress
   })
 
   // Client-side initialization
@@ -88,7 +90,7 @@ export default function PlatformerGame({
     console.log('✅ Full platformer game setup complete')
     return gameInstance
 
-  }, [gameStarted, score])
+  }, [gameStarted, score, starProgress])
 
   // Enhanced start game function that works with the full game
   const enhancedStartGame = useCallback(() => {
