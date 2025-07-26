@@ -121,7 +121,7 @@ export default function Home() {
             <motion.img
               whileHover={{ rotate: 10 }}
               src="/placeholder.svg?height=40&width=40"
-              alt="Nooter's Farm Logo"
+              alt="MonFarm Logo"
               className="h-10 w-10 rounded-full"
             />
             <motion.h1
@@ -129,7 +129,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               className="text-2xl font-bold text-white"
             >
-              Nooter's Farm
+              MonFarm
             </motion.h1>
           </div>
 

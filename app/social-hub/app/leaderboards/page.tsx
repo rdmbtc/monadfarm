@@ -89,10 +89,10 @@ export default function LeaderboardsPage() {
           <div className="flex items-center gap-2">
             <img
               src="/placeholder.svg?height=40&width=40"
-              alt="Nooter's Farm Logo"
+              alt="MonFarm Logo"
               className="h-10 w-10 rounded-full"
             />
-            <h1 className="text-2xl font-bold text-white">Nooter's Farm</h1>
+            <h1 className="text-2xl font-bold text-white">MonFarm</h1>
           </div>
 
           <div className="flex items-center gap-4">

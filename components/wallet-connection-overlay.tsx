@@ -27,7 +27,7 @@ export function WalletConnectionOverlay({ onClose }: WalletConnectionOverlayProp
       await connectWallet();
       toast({
         title: "Wallet Connected",
-        description: "Your wallet has been successfully connected to Nooter's Farm!",
+        description: "Your wallet has been successfully connected to MonFarm!",
       });
       onClose?.();
     } catch (error) {
@@ -84,7 +84,7 @@ export function WalletConnectionOverlay({ onClose }: WalletConnectionOverlayProp
           <CardContent className="space-y-6">
             <div className="text-center">
               <p className="text-white/70 mb-4 noot-text">
-                You need to connect your wallet to access Nooter's Farm and save your progress on the blockchain.
+                You need to connect your wallet to access MonFarm and save your progress on the blockchain.
               </p>
               
               {!isConnected && (
