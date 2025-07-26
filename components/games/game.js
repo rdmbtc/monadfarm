@@ -93,7 +93,6 @@ export default function platformerSketch(p) {
   // Callback system for external components
   let gameCallbacks = {
     onScoreUpdate: null,
-    onStarProgress: null,
     onGameStart: null,
     onGameReset: null,
     onGameOver: null,
@@ -829,9 +828,6 @@ export default function platformerSketch(p) {
               console.log(`⭐ Star collected! Progress: ${collectedStars}/${totalStars} stars`);
               console.log(`⭐ Star details:`, stars.map((s, i) => `Star ${i}: ${s ? (s.isCollected ? 'COLLECTED' : 'available') : 'null'}`));
 
-              // Trigger star progress callback
-              triggerCallback('onStarProgress', collectedStars, totalStars);
-
               // --- Enhanced Star Collection Feedback ---
               emitParticles(star.x, star.y, 35, p.color(255, 235, 50, 240), { speed: 4.5, life: 50, size: 12, gravity: 0.05 }); // Brighter, more particles, slight lift
               emitFloatingScore(`+10 (${collectedStars}/${totalStars})`, star.x, star.y - 20); // Show progress in score pop-up
@@ -1416,6 +1412,22 @@ export default function platformerSketch(p) {
       p.textSize(28);
       p.textAlign(p.LEFT, p.TOP); // Align top-left
       p.text("Score: " + (score || 0), 20, 20); // Display score or 0 if undefined
+
+      // Add star progress display
+      if (stars && stars.length > 0) {
+          const collectedStars = stars.filter(s => s && s.isCollected).length;
+          const totalStars = stars.length;
+          const starText = `Stars: ${collectedStars}/${totalStars}`;
+
+          // Color the star text based on completion
+          if (collectedStars === totalStars) {
+              p.fill(0, 255, 0); // Green when all stars collected
+          } else {
+              p.fill(255, 255, 0); // Yellow when incomplete
+          }
+          p.text(starText, 20, 55); // Position below score
+      }
+
       p.textAlign(p.CENTER, p.CENTER); // Reset alignment
       p.noStroke(); // Reset stroke
   }
@@ -1499,9 +1511,6 @@ export default function platformerSketch(p) {
       }));
       stars = level.stars.map(s => ({ ...s, isCollected: false, color: p.color(255, 223, 0) }));
       console.log(`🌟 Level ${currentLevelIndex + 1} initialized with ${stars.length} stars:`, stars.map((s, i) => `Star ${i}: (${s.x.toFixed(0)}, ${s.y.toFixed(0)})`));
-
-      // Trigger initial star progress callback
-      triggerCallback('onStarProgress', 0, stars.length);
 
       // Notify multiplayer system of total stars in this level
       if (multiplayerCallbacks.onLevelLoaded) {
