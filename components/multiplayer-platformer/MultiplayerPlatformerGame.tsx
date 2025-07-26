@@ -215,6 +215,11 @@ export default function MultiplayerPlatformerGame({
             <div className="text-gray-400 text-sm">
               Score: {score}
             </div>
+            {localGameMode === 'online' && gameSession && (
+              <div className="text-yellow-400 text-sm">
+                Stars: {Object.keys(gameSession.starsCollectedThisLevel || {}).length}/{gameSession.totalStarsInLevel || 0}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button

@@ -457,9 +457,10 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
     setGameSession(prev => {
       if (!prev) return prev
 
+      // Track individual stars collected, not just per player
       const newStarsCollected = {
         ...prev.starsCollectedThisLevel,
-        [playerId]: true
+        [starId]: true // Track by star ID, not player ID
       }
 
       return {
@@ -475,19 +476,21 @@ export function usePlatformerGameModel(userId?: string): UsePlatformerGameModelR
   const checkLevelComplete = useCallback((): boolean => {
     if (!gameSession) return false
 
-    const activePlayerIds = Object.values(players)
-      .filter(p => isPlayerActive(p.id))
-      .map(p => p.id)
+    // Check if we have the total stars count for this level
+    const totalStarsInLevel = gameSession.totalStarsInLevel || 0
+    const starsCollectedCount = Object.keys(gameSession.starsCollectedThisLevel).length
 
-    if (gameSession.levelCompleteRequirement === 'any_player') {
-      // Single player mode: any player collecting a star completes the level
-      return activePlayerIds.some(playerId => gameSession.starsCollectedThisLevel[playerId])
-    } else {
-      // Online mode: all active players must collect stars
-      return activePlayerIds.length > 0 &&
-             activePlayerIds.every(playerId => gameSession.starsCollectedThisLevel[playerId])
-    }
-  }, [gameSession, players, isPlayerActive])
+    // Both single player and multiplayer modes now require ALL stars to be collected
+    // This aligns with user preference that "players should be required to collect ALL stars in a level before advancing"
+    console.log('usePlatformerGameModel: Checking level complete:', {
+      totalStarsInLevel,
+      starsCollectedCount,
+      starsCollected: gameSession.starsCollectedThisLevel,
+      requirement: gameSession.levelCompleteRequirement
+    })
+
+    return totalStarsInLevel > 0 && starsCollectedCount >= totalStarsInLevel
+  }, [gameSession])
 
   const advanceToNextLevel = useCallback(() => {
     console.log('usePlatformerGameModel: Advancing to next level')
