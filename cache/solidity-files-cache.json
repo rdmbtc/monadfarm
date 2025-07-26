@@ -186,6 +186,45 @@
       "artifacts": [
         "Context"
       ]
+    },
+    "C:\\Users\\PC\\Documents\\my projects\\monadfarm\\nooter-s-farm\\contracts\\FarmGame.sol": {
+      "lastModificationDate": 1753539372144,
+      "contentHash": "a66a1f987402b32e852788b29f914c0c",
+      "sourceName": "contracts/FarmGame.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.18"
+      ],
+      "artifacts": [
+        "FarmGame"
+      ]
     }
   }
 }

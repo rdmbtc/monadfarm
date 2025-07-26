@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { useUnifiedNickname } from "@/hooks/useUnifiedNickname";
 import { GameContext } from "@/context/game-context";
+import { WalletAuthProvider, useWalletAuth } from "@/context/wallet-auth-context";
+import { WalletConnectionOverlay } from "@/components/wallet-connection-overlay";
 import { FarmPlot } from "@/components/farm-plot";
 import { SeedSelector } from "@/components/seed-selector";
 import { Button } from "@/components/ui/button";
@@ -177,7 +179,12 @@ import GuideModal from './GuideModal';
 // Import the new EnhancedGuideContent
 import EnhancedGuideContent from './EnhancedGuideContent';
 
-export function Farm() {
+// Internal Farm component that requires wallet authentication
+function FarmInternal() {
+  // --- Wallet Authentication ---
+  const { isConnected, isOnCorrectNetwork } = useWalletAuth();
+  const isWalletReady = isConnected && isOnCorrectNetwork;
+
   // --- Guide State ---
   const { shouldShowGuide, markGuideAsViewed, isMonPro } = useGuideContext();
   const [showFarmGuide, setShowFarmGuide] = useState(false);
@@ -2149,8 +2156,13 @@ export function Farm() {
 
   return (
     <div className="flex flex-col min-h-screen bg-black overflow-x-hidden text-white">
-      {/* Expansion error alert */}
-      {expansionError && expansionError.show && (
+      {/* Wallet Connection Overlay */}
+      {!isWalletReady && <WalletConnectionOverlay />}
+
+      {/* Disable all interactions when wallet is not ready */}
+      <div className={!isWalletReady ? "pointer-events-none opacity-50" : ""}>
+        {/* Expansion error alert */}
+        {expansionError && expansionError.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" 
              onClick={() => setExpansionError(null)}>
           <div className="absolute inset-0 bg-black bg-opacity-70"></div>
@@ -3936,7 +3948,17 @@ export function Farm() {
           isMonPro={isMonPro}
         />
       )}
+      </div> {/* Close the pointer-events-none div */}
     </div>
+  );
+}
+
+// Main Farm component with wallet authentication wrapper
+export function Farm() {
+  return (
+    <WalletAuthProvider>
+      <FarmInternal />
+    </WalletAuthProvider>
   );
 }
 
