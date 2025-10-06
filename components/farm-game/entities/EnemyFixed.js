@@ -141,38 +141,12 @@ export default class Enemy {
   
   endGame() {
     try {
-      // End the game when player runs out of lives
-      if (this.scene.gameState) {
-        this.scene.gameState.isActive = false;
+      console.log("Game over!");
+      
+      // Call the scene's endGame method which has proper cleanup logic
+      if (typeof this.scene.endGame === 'function') {
+        this.scene.endGame(false);
       }
-      
-      // Display game over message
-      const gameOverText = this.scene.add.text(400, 300, 'GAME OVER', {
-        fontFamily: 'Arial',
-        fontSize: '48px',
-        color: '#FF0000'
-      }).setOrigin(0.5);
-      
-      // Show score
-      const scoreText = this.scene.add.text(400, 350, `Final Score: ${this.scene.gameState ? this.scene.gameState.score : 0}`, {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#FFFFFF'
-      }).setOrigin(0.5);
-      
-      // Show restart button
-      const restartButton = this.scene.add.rectangle(400, 420, 200, 50, 0xFFFFFF);
-      const restartText = this.scene.add.text(400, 420, 'Restart Game', {
-        fontFamily: 'Arial',
-        fontSize: '18px',
-        color: '#000000'
-      }).setOrigin(0.5);
-      
-      restartButton.setInteractive();
-      restartButton.on('pointerdown', () => {
-        // Reset game state
-        this.scene.scene.restart();
-      });
     } catch (error) {
       console.error("Error in enemy endGame:", error);
     }
@@ -207,4 +181,4 @@ export default class Enemy {
       console.error("Error destroying enemy:", error);
     }
   }
-} 
+}

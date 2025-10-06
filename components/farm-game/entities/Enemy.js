@@ -23,6 +23,10 @@ export default class Enemy {
     // Generate a unique ID for this enemy
     this.id = `${this.type}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     
+    // Track intervals and timers for proper cleanup
+    this.activeIntervals = new Set();
+    this.activeTimers = new Set();
+    
     // Get current wave for scaling difficulty
     const currentWave = this.scene.gameState?.wave || 1;
     // INCREASED SCALING: Higher multiplier
@@ -33,7 +37,7 @@ export default class Enemy {
       // Base properties
       this.baseSpeed = 1.8;
       this.baseHealth = 7; // Increased from 5
-      this.baseValue = 8; // Increased bird reward
+      this.baseValue = 10; // Increased bird reward
       
       // Scale with wave
       this.speed = this.baseSpeed + (currentWave * 0.12); // Slightly faster scaling
@@ -48,7 +52,7 @@ export default class Enemy {
       // Deer: Tougher, slower, higher value, appears later
       this.baseSpeed = 1.0; 
       this.baseHealth = 18; // Increased from 15
-      this.baseValue = 15; // Increased deer reward
+      this.baseValue = 17; // Increased deer reward
       
       // Scale with wave
       this.speed = this.baseSpeed + (currentWave * 0.07); // Slightly faster scaling
@@ -67,7 +71,7 @@ export default class Enemy {
       // Base properties
       this.baseSpeed = 1.5;
       this.baseHealth = 8; // Increased from 6
-      this.baseValue = 7; // Increased rabbit reward
+      this.baseValue = 9; // Increased rabbit reward
       
       // Scale with wave
       this.speed = this.baseSpeed + (currentWave * 0.09); // Slightly faster scaling
@@ -172,6 +176,12 @@ export default class Enemy {
         this.sprite.setDisplaySize(60, 60); // Larger size for better visibility
         this.sprite.setInteractive({ useHandCursor: true, pixelPerfect: false }); // Make it interactive for clicks with larger hitbox
         this.sprite.flipX = true; // ADDED: Flip the sprite horizontally to face left
+        
+        // Add idle animation to the sprite
+        this.addIdleAnimation();
+        
+        // Add entrance animation
+        this.addEntranceAnimation();
         
         // Make sprite more interactive
         this.sprite.on('pointerdown', () => {
@@ -441,45 +451,170 @@ export default class Enemy {
   reachedEnd() {
     // Enemy reached the farm - call enemyReachedEnd on the scene if available
     try {
-      // ADDED: Log before calling scene method
-      console.log(`Enemy ${this.id} calling scene.enemyReachedEnd`);
+      // Add attack animation before dealing damage
+      this.addFarmAttackAnimation();
       
-      if (this.scene && typeof this.scene.enemyReachedEnd === 'function') {
-        // Call the scene's enemyReachedEnd method to handle damage to player
-        this.scene.enemyReachedEnd(this);
-      } else {
-        // Fallback if the scene doesn't have the method
-        if (this.scene.gameState) {
-          this.scene.gameState.lives--;
-          
-          if (typeof this.scene.updateLivesText === 'function') {
-            this.scene.updateLivesText();
-          }
-          
-          console.log("Enemy reached farm! Lives remaining:", this.scene.gameState.lives);
-          
-          // Show warning text if possible
-          if (typeof this.scene.showFloatingText === 'function') {
-            this.scene.showFloatingText(50, 300, 'Farm Invaded! -1 Life', 0xFF0000);
-          }
-          
-          // Check for game over
-          if (this.scene.gameState.lives <= 0) {
-            console.log("Game over! No lives remaining.");
-            if (typeof this.scene.endGame === 'function') {
-              this.scene.endGame();
-            }
-          }
-          
-          // Remove the enemy
+      // Delay the actual damage to allow animation to play
+      const reachEndTimer = this.scene.time.delayedCall(600, () => {
+        if (this.scene && typeof this.scene.enemyReachedEnd === 'function') {
+          // Call the scene's enemyReachedEnd method to handle damage to player
+          this.scene.enemyReachedEnd(this);
+        } else {
+          // Fallback - just destroy the enemy without affecting lives
+          console.log("Enemy reached end but no enemyReachedEnd method found");
           this.destroy();
         }
+      });
+      if (this.activeTimers) {
+        this.activeTimers.add(reachEndTimer);
       }
     } catch (error) {
       console.error("Error in reachedEnd:", error);
       // Still try to destroy the enemy
       this.destroy();
     }
+  }
+  
+  addFarmAttackAnimation() {
+    if (!this.sprite || !this.scene) return;
+    
+    // Type-specific attack animations
+    if (this.type === 'bird') {
+      // Bird dive attack
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleX: 1.3,
+        scaleY: 0.7,
+        rotation: -0.3,
+        duration: 200,
+        ease: 'Power2.easeOut',
+        yoyo: true,
+        repeat: 2
+      });
+      
+      // Pecking motion
+      this.scene.tweens.add({
+        targets: this.sprite,
+        y: this.sprite.y + 10,
+        duration: 150,
+        ease: 'Power2.easeOut',
+        yoyo: true,
+        repeat: 3
+      });
+    } else if (this.type === 'rabbit') {
+      // Rabbit nibbling attack
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleX: 1.2,
+        scaleY: 0.9,
+        duration: 100,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: 5
+      });
+      
+      // Head bobbing
+      this.scene.tweens.add({
+        targets: this.sprite,
+        rotation: 0.2,
+        duration: 120,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: 4
+      });
+    } else if (this.type === 'deer') {
+      // Deer trampling attack
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleY: 1.3,
+        y: this.sprite.y - 5,
+        duration: 200,
+        ease: 'Power2.easeOut',
+        yoyo: true,
+        repeat: 2
+      });
+      
+      // Antler thrust
+      this.scene.tweens.add({
+        targets: this.sprite,
+        x: this.sprite.x - 15,
+        rotation: -0.2,
+        duration: 250,
+        ease: 'Power2.easeOut',
+        yoyo: true
+      });
+    } else {
+      // Default attack animation for other types
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleX: 1.4,
+        scaleY: 0.8,
+        rotation: 0.3,
+        duration: 200,
+        ease: 'Power2.easeOut',
+        yoyo: true,
+        repeat: 2
+      });
+    }
+    
+    // Create attack impact effect
+    this.createAttackImpactEffect();
+    
+    // Screen shake effect for dramatic impact
+    if (this.scene.cameras && this.scene.cameras.main) {
+      this.scene.cameras.main.shake(400, 0.01);
+    }
+  }
+  
+  createAttackImpactEffect() {
+    if (!this.scene) return;
+    
+    // Create impact particles
+    const impactColor = this.type === 'bird' ? 0xFFFF00 : 
+                       this.type === 'rabbit' ? 0x90EE90 : 
+                       this.type === 'deer' ? 0x8B4513 : 0xFF6B6B;
+    
+    for (let i = 0; i < 12; i++) {
+      const angle = (Math.PI * 2 / 12) * i;
+      const distance = 20 + Math.random() * 15;
+      const impactX = this.x + Math.cos(angle) * distance;
+      const impactY = this.y + Math.sin(angle) * distance;
+      
+      const particle = this.scene.add.circle(this.x, this.y, 4, impactColor, 0.8);
+      particle.setDepth(200);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: impactX,
+        y: impactY,
+        alpha: 0,
+        scale: 0.3,
+        duration: 500,
+        ease: 'Power2.easeOut',
+        onComplete: () => particle.destroy()
+      });
+    }
+    
+    // Create damage text effect
+    const damageText = this.scene.add.text(this.x, this.y - 30, 'FARM DAMAGE!', {
+      fontSize: '16px',
+      fill: '#FF0000',
+      fontWeight: 'bold',
+      stroke: '#FFFFFF',
+      strokeThickness: 2
+    });
+    damageText.setOrigin(0.5);
+    damageText.setDepth(250);
+    
+    this.scene.tweens.add({
+      targets: damageText,
+      y: damageText.y - 40,
+      alpha: 0,
+      scale: 1.5,
+      duration: 800,
+      ease: 'Power2.easeOut',
+      onComplete: () => damageText.destroy()
+    });
   }
   
   takeDamage(amount) {
@@ -518,6 +653,9 @@ export default class Enemy {
        this.health = 0;
       console.log(`Enemy ${this.type} with <1.5 HP force killed`);
     }
+    
+    // Add damage animation
+    this.addDamageAnimation();
     
     // Play hit sound if soundManager is available
     if (this.scene && this.scene.soundManager) {
@@ -577,37 +715,10 @@ export default class Enemy {
     
     console.log("Game over!");
     
-    // Set game to inactive
-    if (this.scene.gameState) {
-      this.scene.gameState.isActive = false;
+    // Call the scene's endGame method which has proper cleanup logic
+    if (typeof this.scene.endGame === 'function') {
+      this.scene.endGame(false);
     }
-    
-    // Show game over text
-    const gameOverText = this.scene.add.text(400, 300, 'GAME OVER', {
-      fontSize: '48px',
-      fontFamily: 'Arial',
-      color: '#FF0000'
-    }).setOrigin(0.5);
-    
-    // Show score
-    const scoreText = this.scene.add.text(400, 350, `Final Score: ${this.scene.gameState.score}`, {
-      fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#FFFFFF'
-    }).setOrigin(0.5);
-    
-    // Show restart button
-    const restartButton = this.scene.add.rectangle(400, 420, 200, 50, 0xFFFFFF);
-    const restartText = this.scene.add.text(400, 420, 'Restart Game', {
-      fontSize: '18px',
-      fontFamily: 'Arial',
-      color: '#000000'
-    }).setOrigin(0.5);
-    
-    restartButton.setInteractive();
-    restartButton.on('pointerdown', () => {
-      this.scene.scene.restart();
-    });
   }
   
   destroy(silent = false) {
@@ -615,51 +726,90 @@ export default class Enemy {
       return;
     }
     
-    // Mark as destroyed
-    this.active = false;
-    this.dead = true;
-    this.destroyed = true; // Add explicit destroyed flag
-    this.health = 0; // Ensure health is zero
-    
-    // Set a flag for pending removal to prevent targeting while animating
-    this._pendingRemoval = true;
-    
-    // Apply death animation or visual effect
-    this.applyDeathEffect();
-    
-    // Log the destruction with position for debugging
-    if (!silent) {
-      // Make sure position values are numbers before calling toFixed
-      const xDisplay = typeof this.x === 'number' ? this.x.toFixed(2) : String(this.x);
-      const yDisplay = typeof this.y === 'number' ? this.y.toFixed(2) : String(this.y);
+    try {
+      // Mark as destroyed
+      this.active = false;
+      this.dead = true;
+      this.destroyed = true; // Add explicit destroyed flag
+      this.health = 0; // Ensure health is zero
       
-      console.log(`Destroying enemy ${this.id} at (${xDisplay}, ${yDisplay})`);
-    }
-    
-    // REMOVED direct splice - Scene will filter destroyed enemies instead
-    // if (this.scene && this.scene.enemies) {
-    //   const index = this.scene.enemies.indexOf(this);
-    //   if (index !== -1) {
-    //     console.log(`Splicing enemy ${this.id} from scene array at index ${index}`);
-    //     this.scene.enemies.splice(index, 1);
-    //   } else {
-    //     console.warn(`Enemy ${this.id} not found in scene array during destroy.`);
-    //   }
-    // }
-    
-    // Cleanup sprites with delay to allow animations to finish
-    if (this.scene && this.scene.time && typeof this.scene.time.delayedCall === 'function') {
-      this.scene.time.delayedCall(300, () => {
+      // Set a flag for pending removal to prevent targeting while animating
+      this._pendingRemoval = true;
+      
+      // Clear all tracked intervals
+      if (this.activeIntervals) {
+        this.activeIntervals.forEach(interval => {
+          try {
+            clearInterval(interval);
+          } catch (error) {
+            console.warn('Error clearing interval:', error);
+          }
+        });
+        this.activeIntervals.clear();
+      }
+      
+      // Clear all tracked timers
+      if (this.activeTimers) {
+        this.activeTimers.forEach(timer => {
+          try {
+            if (timer && typeof timer.remove === 'function') {
+              timer.remove(); // Phaser timer event
+            } else if (typeof timer === 'number') {
+              clearTimeout(timer); // Regular setTimeout
+            }
+          } catch (error) {
+            console.warn('Error clearing timer:', error);
+          }
+        });
+        this.activeTimers.clear();
+      }
+      
+      // Kill tweens before destroying objects
+      if (this.scene && this.scene.tweens) {
+        if (this.sprite) this.scene.tweens.killTweensOf(this.sprite);
+        if (this.healthBar) this.scene.tweens.killTweensOf(this.healthBar);
+        if (this.healthBarBg) this.scene.tweens.killTweensOf(this.healthBarBg);
+        if (this.waveIndicator) this.scene.tweens.killTweensOf(this.waveIndicator);
+      }
+      
+      // Apply death animation or visual effect
+      this.applyDeathEffect();
+      
+      // Log the destruction with position for debugging
+      if (!silent) {
+        // Make sure position values are numbers before calling toFixed
+        const xDisplay = typeof this.x === 'number' ? this.x.toFixed(2) : String(this.x);
+        const yDisplay = typeof this.y === 'number' ? this.y.toFixed(2) : String(this.y);
+        
+        console.log(`Destroying enemy ${this.id} at (${xDisplay}, ${yDisplay})`);
+      }
+      
+      // Cleanup sprites with delay to allow animations to finish
+      if (this.scene && this.scene.time && typeof this.scene.time.delayedCall === 'function') {
+        const cleanupTimer = this.scene.time.delayedCall(300, () => {
+          this.cleanupSprites();
+        });
+        if (this.activeTimers) {
+          this.activeTimers.add(cleanupTimer);
+        }
+      } else {
+        // If delayed call is not available, clean up immediately
         this.cleanupSprites();
-      });
-    } else {
-      // If delayed call is not available, clean up immediately
-      this.cleanupSprites();
-    }
-    
-    // Stop any sounds being played by this enemy
-    if (this.scene && this.scene.sound) {
-      // No specific sounds to stop for now, but adding this for future sounds
+      }
+      
+      // Stop any sounds being played by this enemy
+      if (this.scene && this.scene.sound) {
+        // No specific sounds to stop for now, but adding this for future sounds
+      }
+    } catch (error) {
+      console.error("Error during Enemy destroy:", error, "Type:", this.type);
+    } finally {
+      // Ensure essential references are nullified even if errors occurred
+      this.sprite = null;
+      this.healthBar = null;
+      this.healthBarBg = null;
+      this.waveIndicator = null;
+      this.scene = null; // Break reference to scene LAST
     }
   }
   
@@ -774,9 +924,12 @@ export default class Enemy {
           particles.explode(particleQuantity);
 
           // Destroy particle emitter after lifespan
-          this.scene.time.delayedCall(particleLifespan + 100, () => {
+          const particleTimer = this.scene.time.delayedCall(particleLifespan + 100, () => {
              if (particles) particles.destroy(); 
           });
+          if (this.activeTimers) {
+            this.activeTimers.add(particleTimer);
+          }
         } catch (particleError) {
           console.warn("Particle system error:", particleError);
         }
@@ -921,13 +1074,40 @@ export default class Enemy {
     this.healthBar.fill.setOrigin(0, 0.5); // Center vertically, left align horizontally  
     this.healthBar.fill.setX(this.x - (barWidth / 2)); // Align left side with background
   }
+
+  // Hide health bar without destroying the enemy (for game restart)
+  hideHealthBar() {
+    if (this.healthBar) {
+      if (this.healthBar.background) {
+        this.healthBar.background.setVisible(false);
+      }
+      if (this.healthBar.fill) {
+        this.healthBar.fill.setVisible(false);
+      }
+    }
+  }
+
+  // Show health bar (for when game resumes)
+  showHealthBar() {
+    if (this.healthBar) {
+      if (this.healthBar.background) {
+        this.healthBar.background.setVisible(true);
+      }
+      if (this.healthBar.fill) {
+        this.healthBar.fill.setVisible(true);
+      }
+    }
+  }
   
   // Add a method to show damage text
   showDamageText(amount) {
     if (!this.scene || !this.active) return;
     
     try {
-      const text = this.scene.add.text(this.x, this.y - 20, `-${amount}`, {
+      // Convert damage to integer for display
+      const displayAmount = Math.round(amount);
+      
+      const text = this.scene.add.text(this.x, this.y - 20, `-${displayAmount}`, {
         fontSize: '20px',
         fontFamily: 'Arial',
         color: '#FF0000',
@@ -978,12 +1158,28 @@ export default class Enemy {
         }
       }
       
-      // Update score
-      if (typeof this.scene.gameState.score === 'number') {
-        this.scene.gameState.score += this.value * 10;
-        if (typeof this.scene.updateScoreText === 'function') {
-          this.scene.updateScoreText();
+      // Update score - 10 points per enemy kill
+        if (typeof this.scene.gameState.score === 'number') {
+          this.scene.gameState.score += 10;
+          if (typeof this.scene.updateScoreText === 'function') {
+            this.scene.updateScoreText();
+          }
+          // Send score update to React component
+          const onGameEvent = this.scene.registry.get('onGameEvent');
+          if (typeof onGameEvent === 'function') {
+            onGameEvent('scoreUpdate', this.scene.gameState.score);
+          }
         }
+
+      // Update skill tree progress when enemy is defeated
+      if (this.scene.skillTreeManager) {
+        this.scene.skillTreeManager.onEnemyDefeated(this.type, this.scene.gameState.score);
+      }
+
+      // Emit enemyDefeated event
+      const onGameEvent = this.scene.registry.get('onGameEvent');
+      if (typeof onGameEvent === 'function') {
+        onGameEvent('enemyDefeated', this.value * 10);
       }
       
       // Show floating text for COINS earned
@@ -1057,6 +1253,311 @@ export default class Enemy {
     }
   }
   
+  // Animation Methods
+  addIdleAnimation() {
+    if (!this.sprite || !this.scene) return;
+    
+    // Create subtle floating animation with type-specific variations
+    const baseY = this.sprite.y;
+    const floatAmount = this.type === 'bird' ? 5 : 3;
+    const duration = this.type === 'bird' ? 600 : 1000 + Math.random() * 500;
+    
+    this.scene.tweens.add({
+      targets: this.sprite,
+      y: baseY - floatAmount,
+      duration: duration,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+    
+    // Type-specific animations
+    if (this.type === 'bird') {
+      // Wing flapping rotation
+      this.scene.tweens.add({
+        targets: this.sprite,
+        rotation: 0.15,
+        duration: 400,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
+      });
+      
+      // Slight horizontal sway for flying motion
+      this.scene.tweens.add({
+        targets: this.sprite,
+        x: this.sprite.x + 2,
+        duration: 800,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
+      });
+    } else if (this.type === 'rabbit') {
+      // Ear twitch effect
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleX: 1.1,
+        duration: 200,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: 2000 + Math.random() * 3000
+      });
+    } else if (this.type === 'deer') {
+      // Graceful head movement
+      this.scene.tweens.add({
+        targets: this.sprite,
+        rotation: 0.05,
+        duration: 1500,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+  
+  addEntranceAnimation() {
+    if (!this.container || !this.scene) return;
+    
+    // Type-specific entrance animations
+    if (this.type === 'bird') {
+      // Birds fly in from above
+      const originalY = this.container.y;
+      this.container.y = originalY - 100;
+      this.container.setAlpha(0.3);
+      this.container.setScale(0.5);
+      
+      this.scene.tweens.add({
+        targets: this.container,
+        y: originalY,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 600,
+        ease: 'Power2.easeOut'
+      });
+      
+      // Add wing flap effect during entrance
+      this.scene.tweens.add({
+        targets: this.container,
+        rotation: 0.2,
+        duration: 100,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: 3
+      });
+    } else if (this.type === 'rabbit') {
+      // Rabbits hop in
+      this.container.setAlpha(0);
+      this.container.setScale(0.3);
+      
+      this.scene.tweens.add({
+        targets: this.container,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 400,
+        ease: 'Bounce.easeOut'
+      });
+      
+      // Add hop effect
+      const originalY = this.container.y;
+      this.scene.tweens.add({
+        targets: this.container,
+        y: originalY - 20,
+        duration: 200,
+        ease: 'Power2.easeOut',
+        yoyo: true
+      });
+    } else {
+      // Default dramatic entrance for other types
+      this.container.setAlpha(0);
+      this.container.setScale(0);
+      
+      this.scene.tweens.add({
+        targets: this.container,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 500,
+        ease: 'Back.easeOut'
+      });
+    }
+    
+    // Add entrance particle effect
+    this.createEntranceParticleEffect();
+  }
+  
+  createEntranceParticleEffect() {
+    if (!this.scene) return;
+    
+    // Create entrance particles based on enemy type
+    const particleColor = this.type === 'bird' ? 0x87CEEB : 
+                         this.type === 'rabbit' ? 0xDEB887 : 0xFFFFFF;
+    
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 / 8) * i;
+      const startX = this.x + Math.cos(angle) * 30;
+      const startY = this.y + Math.sin(angle) * 30;
+      
+      const particle = this.scene.add.circle(startX, startY, 3, particleColor, 0.7);
+      particle.setDepth(150);
+      
+      this.scene.tweens.add({
+        targets: particle,
+        x: this.x,
+        y: this.y,
+        alpha: 0,
+        scale: 0.2,
+        duration: 400,
+        ease: 'Power2.easeIn',
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+  
+  addMovementAnimation() {
+    if (!this.sprite || !this.scene) return;
+    
+    // Type-specific movement animations
+    if (this.type === 'bird') {
+      // Flying motion with wing beats
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleY: 0.85,
+        scaleX: 1.1,
+        duration: 150,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: -1
+      });
+      
+      // Altitude variation for flying
+      this.scene.tweens.add({
+        targets: this.sprite,
+        y: this.sprite.y + 8,
+        duration: 300,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
+      });
+    } else if (this.type === 'rabbit') {
+      // Hopping motion
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleY: 0.8,
+        duration: 250,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: -1
+      });
+      
+      // Slight forward lean while hopping
+      this.scene.tweens.add({
+        targets: this.sprite,
+        rotation: -0.1,
+        duration: 250,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: -1
+      });
+    } else {
+      // Default walking bounce for other types
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleY: 0.9,
+        duration: 200,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+  
+  addDamageAnimation() {
+    if (!this.sprite || !this.scene) return;
+    
+    // Enhanced damage animation with multiple effects
+    const originalTint = this.sprite.tint;
+    const originalScale = { x: this.sprite.scaleX, y: this.sprite.scaleY };
+    
+    // Flash red with intensity based on damage
+    this.sprite.setTint(0xff0000);
+    
+    // Recoil effect - enemy gets pushed back slightly
+    this.scene.tweens.add({
+      targets: this.sprite,
+      x: this.sprite.x + 8,
+      scaleX: originalScale.x * 1.2,
+      scaleY: originalScale.y * 0.8,
+      duration: 80,
+      ease: 'Power2.easeOut',
+      yoyo: true,
+      onComplete: () => {
+        if (this.sprite) {
+          this.sprite.x = 0; // Reset to container center
+          this.sprite.setScale(originalScale.x, originalScale.y);
+        }
+      }
+    });
+    
+    // Shake effect with decreasing intensity
+    for (let i = 0; i < 4; i++) {
+      const shakeTimer = this.scene.time.delayedCall(i * 40, () => {
+        if (this.sprite) {
+          const intensity = (4 - i) * 2;
+          this.scene.tweens.add({
+            targets: this.sprite,
+            x: this.sprite.x + (Math.random() - 0.5) * intensity,
+            y: this.sprite.y + (Math.random() - 0.5) * intensity,
+            duration: 30,
+            ease: 'Power2'
+          });
+        }
+      });
+      if (this.activeTimers) {
+        this.activeTimers.add(shakeTimer);
+      }
+    }
+    
+    // Create damage spark effect
+    this.createDamageSparkEffect();
+    
+    // Remove red tint with fade
+    this.scene.tweens.add({
+      targets: this.sprite,
+      tint: originalTint,
+      duration: 300,
+      ease: 'Power2.easeOut'
+    });
+  }
+  
+  createDamageSparkEffect() {
+    if (!this.scene) return;
+    
+    // Create small spark particles at impact point
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 / 6) * i;
+      const distance = 15 + Math.random() * 10;
+      const sparkX = this.x + Math.cos(angle) * distance;
+      const sparkY = this.y + Math.sin(angle) * distance;
+      
+      const spark = this.scene.add.circle(sparkX, sparkY, 2, 0xFFFF00, 0.8);
+      spark.setDepth(200);
+      
+      this.scene.tweens.add({
+        targets: spark,
+        x: sparkX + Math.cos(angle) * 20,
+        y: sparkY + Math.sin(angle) * 20,
+        alpha: 0,
+        scale: 0.2,
+        duration: 400,
+        ease: 'Power2.easeOut',
+        onComplete: () => spark.destroy()
+      });
+    }
+  }
+  
   // ADDED: Method to set initial velocity
   setInitialVelocity() {
     if (!this.container || !this.container.body) {
@@ -1092,4 +1593,4 @@ export default class Enemy {
       }
     }
   }
-} 
+}

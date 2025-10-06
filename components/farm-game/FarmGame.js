@@ -11,7 +11,7 @@ let CropClass = null;
 let GameSceneClass = null;
 
 // Create a dynamic component with SSR disabled
-const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
+const FarmGameInner = ({ farmCoins, addFarmCoins, gameMode = 'farm', onGameEvent }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const isClient = useRef(false);
@@ -51,7 +51,7 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
     isClient.current = true;
     
     // Trigger initialization once after mount
-    initializeGame(farmCoins, addFarmCoins); 
+    initializeGame(farmCoins, addFarmCoins, gameMode); 
 
     // Cleanup function remains the same
     return () => {
@@ -61,6 +61,20 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
           console.log("Destroying game instance");
           gameInstanceRef.current.destroy(true);
           gameInstanceRef.current = null;
+          
+          // Clean up global references to prevent session persistence issues
+          if (typeof window !== 'undefined') {
+            window.game = null;
+            if (window.gameFunctions) {
+              window.gameFunctions = {};
+            }
+          }
+          
+          // Reset global module cache to prevent third game session issues
+          PhaserLoaded = false;
+          EnemyClass = null;
+          CropClass = null;
+          GameSceneClass = null;
         } catch (error) {
           console.error("Error destroying game on unmount:", error);
         }
@@ -153,7 +167,7 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
   };
 
   // Initialize game - Now takes dependencies as arguments
-  const initializeGame = useCallback(async (initialFarmCoins, addFarmCoinsCallback) => {
+  const initializeGame = useCallback(async (initialFarmCoins, addFarmCoinsCallback, gameMode = 'farm') => {
     if (!isClient.current || !gameContainerRef.current || isInitializing || gameInstanceRef.current) {
       console.log("Skipping game initialization (guard check):", {
         isClient: isClient.current,
@@ -293,6 +307,7 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
       game.registry.set('DefenseClass', DefenseClass);
       game.registry.set('UpgradeClass', UpgradeClass);
       game.registry.set('farmCoins', safeFarmCoins);
+      game.registry.set('gameMode', gameMode);
 
       // Store the addFarmCoins callback correctly
       if (typeof addFarmCoinsCallback === 'function') {
@@ -306,6 +321,20 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
         });
       } else {
         console.error("addFarmCoins callback was not provided to initializeGame");
+      }
+
+      // Store the onGameEvent callback
+      if (typeof onGameEvent === 'function') {
+        game.registry.set('onGameEvent', (event, data) => {
+          try {
+            console.log(`[Phaser Registry] Calling onGameEvent with: ${event}, data:`, data);
+            onGameEvent(event, data); 
+          } catch (error) {
+            console.error("Error in registry onGameEvent callback:", error);
+          }
+        });
+      } else {
+        console.log("onGameEvent callback was not provided to initializeGame");
       }
 
       // Wait for the game to be ready
@@ -528,25 +557,7 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
             </div>
             
             <div className="mt-6">
-              <button 
-                className="py-2 px-4 bg-gradient-to-r from-red-600 to-red-800 text-white font-bold rounded hover:from-red-500 hover:to-red-700 transition-all shadow-md"
-                onClick={() => {
-                  if (gameInstanceRef.current) {
-                    try {
-                      const scene = gameInstanceRef.current.scene.getScene('GameScene');
-                      if (scene && scene.forceNextWave) {
-                        scene.forceNextWave();
-                      } else {
-                        console.log("Scene or forceNextWave method not found");
-                      }
-                    } catch (error) {
-                      console.error("Error forcing next wave:", error);
-                    }
-                  }
-                }}
-              >
-                Force Next Wave
-              </button>
+              {/* Force Next Wave button removed - waves now progress automatically */}
             </div>
           </div>
         </div>
@@ -555,23 +566,7 @@ const FarmGameInner = ({ farmCoins, addFarmCoins }) => {
       {/* Mobile controls footer - only shown on mobile */}
       {isMobile && (
         <div className="w-full mt-2 p-2 bg-black/30 text-white text-sm flex justify-between items-center">
-          <button 
-            className="py-1 px-2 bg-blue-600 text-white text-xs rounded"
-            onClick={() => {
-              if (gameInstanceRef.current) {
-                try {
-                  const scene = gameInstanceRef.current.scene.getScene('GameScene');
-                  if (scene && scene.forceNextWave) {
-                    scene.forceNextWave();
-                  }
-                } catch (error) {
-                  console.error("Error forcing next wave:", error);
-                }
-              }
-            }}
-          >
-            Force Next Wave
-          </button>
+          {/* Force Next Wave button removed - waves now progress automatically */}
           <div className="flex space-x-2">
             <button className="py-1 px-2 bg-green-600 text-white text-xs rounded">P</button>
             <button className="py-1 px-2 bg-amber-600 text-white text-xs rounded">1</button>
@@ -604,4 +599,4 @@ const FarmGame = (props) => {
 };
 
 // Export as default
-export default FarmGame; 
+export default FarmGame;

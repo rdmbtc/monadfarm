@@ -507,9 +507,16 @@ function fixGameOverZIndex() {
 }
 
 // Client-side wrapper component
-export default function ClientWrapper({ farmCoins, addFarmCoins }: { 
+export default function ClientWrapper({ 
+  farmCoins, 
+  addFarmCoins, 
+  gameMode = 'farm', 
+  onGameEvent 
+}: { 
   farmCoins: number, 
-  addFarmCoins: (amount: number) => void 
+  addFarmCoins: (amount: number) => void,
+  gameMode?: string,
+  onGameEvent?: (event: string, data: any) => void
 }) {
   const [isMounted, setIsMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -542,10 +549,15 @@ export default function ClientWrapper({ farmCoins, addFarmCoins }: {
     return <LoadingPlaceholder />;
   }
   
-  console.log("Rendering FarmGame with coins:", farmCoins, "Mobile:", isMobile);
+  console.log("Rendering FarmGame with coins:", farmCoins, "Mobile:", isMobile, "GameMode:", gameMode);
   return (
     <div className={`farm-game-container w-full ${isMobile ? 'mobile-view' : ''}`}>
-      <FarmGame farmCoins={farmCoins} addFarmCoins={addFarmCoins} />
+      <FarmGame 
+        farmCoins={farmCoins} 
+        addFarmCoins={addFarmCoins} 
+        gameMode={gameMode}
+        onGameEvent={onGameEvent}
+      />
     </div>
   );
-} 
+}

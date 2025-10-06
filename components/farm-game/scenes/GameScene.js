@@ -6,6 +6,10 @@ import SoundManager from '../utils/SoundManager';
 import VolumeControls from '../utils/volume-controls.js';
 // Import the Defense class
 import Defense from '../entities/Defense.js';
+// Import the SkillDefender class
+import SkillDefender from '../entities/SkillDefender.js';
+// Import the SkinCustomization class
+import SkinCustomization from '../ui/SkinCustomization.js';
 
 // Set up a global flag to prevent recursive/overlapping updates
 let isUpdating = false;
@@ -42,8 +46,9 @@ class GameSceneImpl {
     this.allowPlanting = false;
     this.upgradeSystem = null;
     this.pendingDefensePlacement = false; // New flag to track if we're waiting for placement click
-    this.lastEnemyCleanupTime = 0; // Add this property to track cleanup timing
-    this.volumeControls = null; // Add property for volume controls
+          this.lastEnemyCleanupTime = 0; // Add this property to track cleanup timing
+          this.volumeControls = null; // Add property for volume controls
+          this.skinCustomization = null; // Add property for skin customization
   }
   
   // Add stub methods for safety
@@ -64,12 +69,9 @@ let GameScene = PlaceholderScene;
 
 if (isBrowser) {
   // We're on the client side, so we can safely use Phaser
-  console.log("Browser detected, loading Phaser...");
   import('phaser').then(module => {
     try {
-      console.log("Phaser module loaded:", !!module);
       const Phaser = module.default;
-      console.log("Phaser loaded:", !!Phaser);
       
       // Now define the real GameScene that extends Phaser.Scene
       class GameSceneClient extends Phaser.Scene {
@@ -96,18 +98,28 @@ if (isBrowser) {
             clickDamage: 0.5,
             canPlant: true,
             autoWave: true // Add auto-wave functionality by default
-          };
-          this.enemiesSpawned = 0;
-          this.totalEnemiesInWave = 0;
+        };
+        this.enemiesSpawned = 0;
+           this.totalEnemiesInWave = 0;
           this.upgradeSystem = null;
           this.pendingDefensePlacement = false; // New flag to track if we're waiting for placement click
           this.soundManager = null; // Will be initialized in create()
           this.lastEnemyCleanupTime = 0; // Add this property to track cleanup timing
           this.volumeControls = null; // Add property for volume controls
+          this.isSubmittingScore = false; // Flag to prevent multiple score submissions
+          
+          // Weather System Properties
+          this.weatherSystem = {
+            currentWeather: 'sunny', // sunny, rainy, snow, cloudy
+            weatherParticles: null,
+            weatherBackground: null,
+            weatherText: null,
+            lastWeatherChange: 1 // Track last wave when weather changed
+          };
         }
         
         init(data) {
-          console.log("GameScene init started");
+          // GameScene init started
           try {
             // Initialize game state with safe values
             this.gameState = {
@@ -121,13 +133,25 @@ if (isBrowser) {
               canPlant: true
             };
             
+            // Initialize skill tree manager
+            if (typeof window !== 'undefined' && window.skillTreeManager) {
+              this.skillTreeManager = window.skillTreeManager;
+            }
+            
             // Store callbacks
             this.addFarmCoins = this.registry.get('addFarmCoins');
             this.EnemyClass = this.registry.get('EnemyClass');
             this.CropClass = this.registry.get('CropClass');
             this.UpgradeClass = this.registry.get('UpgradeClass');
+            this.gameMode = this.registry.get('gameMode') || 'farm';
             
-            console.log("GameScene initialized with state:", this.gameState);
+            // If gameMode is defense, automatically start defense mode
+            if (this.gameMode === 'defense') {
+              this.gameState.isActive = true;
+              this.gameState.canPlant = false;
+            }
+            
+            // GameScene initialized
           } catch (error) {
             console.error("Error in GameScene init:", error);
             throw error;
@@ -136,7 +160,7 @@ if (isBrowser) {
         
         preload() {
           try {
-            console.log("GameScene preload started");
+            // GameScene preload started
             
             // Initialize the sound manager AND PRELOAD ITS ASSETS
             this.soundManager = new SoundManager(this);
@@ -233,6 +257,16 @@ if (isBrowser) {
             this.load.image('keon_idle', '/defense/keon_idle.png');
             this.load.image('keon_attack', '/defense/keon_idle.png'); // Use idle for attack for now
 
+            // Load additional skin textures
+            this.load.image('jumapel_idle', '/defense/jumapel_idle.png');
+            this.load.image('jumapel_attack', '/defense/jumapel_attack.png');
+            this.load.image('skrumpet_idle', '/defense/skrumpet_idle.png');
+            this.load.image('skrumpet_attack', '/defense/skrumpet_attack.png');
+            this.load.image('erkin_idle', '/defense/erkin_idle.png');
+            this.load.image('erkin_attack', '/defense/erkin_attack.png');
+            this.load.image('realnads_idle', '/defense/realnads_idle.png');
+            this.load.image('realnads_attack', '/defense/realnads_attack.png');
+
             // Load legacy ABS and MON defense textures (still used in some places)
             this.load.image('ABS_idle', '/defense/abster idle.png');
             this.load.image('ABS_attack', '/defense/abster attacks.png');
@@ -261,9 +295,10 @@ if (isBrowser) {
             // Use the fireball particles as fallbacks
             this.load.image('magic_particle', '/fireball.png');
             this.load.image('fireball_red', '/fireball.png');
+            
             this.load.image('fireball_blue', '/iceball.png');
             
-            // Load essential pixel for effects
+            // Load essential pixel texture for weather effects (rain, snow particles)
             this.load.image('pixel', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==');
             
             // Add load error handling
@@ -279,7 +314,7 @@ if (isBrowser) {
                   graphics.fillStyle(color, 1);
                   graphics.fillCircle(16, 16, 16);
                   graphics.generateTexture(fileObj.key, 32, 32);
-                  console.log(`Created fallback texture for ${fileObj.key}`);
+                  // Created fallback texture
                 }
                 
                 // Create placeholders for missing defense character assets
@@ -287,9 +322,13 @@ if (isBrowser) {
                     fileObj.key === 'molandak_idle' || fileObj.key === 'molandak_attack' ||
                     fileObj.key === 'moyaki_idle' || fileObj.key === 'moyaki_attack' ||
                     fileObj.key === 'keon_idle' || fileObj.key === 'keon_attack' ||
+                    fileObj.key === 'jumapel_idle' || fileObj.key === 'jumapel_attack' ||
+                    fileObj.key === 'skrumpet_idle' || fileObj.key === 'skrumpet_attack' ||
+                    fileObj.key === 'erkin_idle' || fileObj.key === 'erkin_attack' ||
+                    fileObj.key === 'realnads_idle' || fileObj.key === 'realnads_attack' ||
                     fileObj.key === 'ABS_idle' || fileObj.key === 'ABS_attack' ||
                     fileObj.key === 'MON_idle' || fileObj.key === 'MON_attack') {
-                  console.log(`Creating placeholder for missing asset: ${fileObj.key}`);
+                  // Creating placeholder for missing asset
 
                   // We'll create the fallbacks in the complete handler
                 }
@@ -313,7 +352,7 @@ if (isBrowser) {
                 blueGraphics.fillStyle(0x66BBFF, 0.4);
                 blueGraphics.fillCircle(16, 16, 20);
                 blueGraphics.generateTexture('fireball_blue', 40, 40);
-                console.log('Created fallback texture for fireball_blue on load complete');
+                // Created fallback texture for fireball_blue
               }
               
               if (!this.textures.exists('fireball_red')) {
@@ -324,7 +363,7 @@ if (isBrowser) {
                 redGraphics.fillStyle(0xFF8866, 0.4);
                 redGraphics.fillCircle(16, 16, 20);
                 redGraphics.generateTexture('fireball_red', 40, 40);
-                console.log('Created fallback texture for fireball_red on load complete');
+                // Created fallback texture for fireball_red
               }
               
               // Create fallback textures for defense characters if they fail to load
@@ -335,7 +374,7 @@ if (isBrowser) {
                 chogGraphics.fillStyle(0x006600, 1);
                 chogGraphics.fillRect(15, 10, 10, 8); // Shield
                 chogGraphics.generateTexture('chog_idle', 40, 40);
-                console.log('Created fallback texture for chog_idle');
+                // Created fallback texture for chog_idle
               }
 
               if (!this.textures.exists('molandak_idle')) {
@@ -347,7 +386,7 @@ if (isBrowser) {
                 molandakGraphics.fillTriangle(20, 10, 15, 20, 25, 20); // Top triangle
                 molandakGraphics.fillTriangle(20, 30, 15, 20, 25, 20); // Bottom triangle
                 molandakGraphics.generateTexture('molandak_idle', 40, 40);
-                console.log('Created fallback texture for molandak_idle');
+                // Created fallback texture for molandak_idle
               }
 
               if (!this.textures.exists('moyaki_idle')) {
@@ -357,7 +396,7 @@ if (isBrowser) {
                 moyakiGraphics.fillStyle(0xFF8844, 1);
                 moyakiGraphics.fillTriangle(15, 25, 25, 25, 20, 15); // Fire
                 moyakiGraphics.generateTexture('moyaki_idle', 40, 40);
-                console.log('Created fallback texture for moyaki_idle');
+                // Created fallback texture for moyaki_idle
               }
 
               if (!this.textures.exists('keon_idle')) {
@@ -367,7 +406,7 @@ if (isBrowser) {
                 keonGraphics.fillStyle(0xFFFF00, 1);
                 keonGraphics.fillRect(15, 8, 10, 6); // Crown
                 keonGraphics.generateTexture('keon_idle', 40, 40);
-                console.log('Created fallback texture for keon_idle');
+                // Created fallback texture for keon_idle
               }
 
               // Create attack textures by copying idle textures
@@ -396,7 +435,7 @@ if (isBrowser) {
                 absGraphics.fillStyle(0x66CCFF, 1);
                 absGraphics.fillTriangle(20, 10, 15, 20, 25, 20); // Ice crystal
                 absGraphics.generateTexture('ABS_idle', 40, 40);
-                console.log('Created fallback texture for ABS_idle');
+                // Created fallback texture for ABS_idle
               }
 
               if (!this.textures.exists('MON_idle')) {
@@ -406,7 +445,7 @@ if (isBrowser) {
                 monGraphics.fillStyle(0xFF8844, 1);
                 monGraphics.fillTriangle(15, 25, 25, 25, 20, 15); // Fire
                 monGraphics.generateTexture('MON_idle', 40, 40);
-                console.log('Created fallback texture for MON_idle');
+                // Created fallback texture for MON_idle
               }
 
             });
@@ -419,24 +458,15 @@ if (isBrowser) {
         create() {
           try {
             // --- Force unlock Web Audio context ---
-            console.log("Audio context state:", this.sound?.context?.state);
+            // Initialize audio context
             if (this.sound && this.sound.unlock) {
               this.sound.unlock();
-              console.log("Attempted to unlock Web Audio context.");
-            } else {
-              console.warn("this.sound.unlock not available at start of create.");
-            }
-
-            // Additional audio context debugging
-            if (this.sound && this.sound.context) {
-              console.log("Audio context after unlock:", this.sound.context.state);
-              console.log("Audio context sample rate:", this.sound.context.sampleRate);
             }
             // --- End unlock attempt ---
             
             // Initialize SoundManager FIRST (Instance already created in preload, but confirm it exists)
             if (!this.soundManager) {
-              console.warn("SoundManager not initialized in preload, creating now.");
+              // SoundManager not initialized in preload, creating now
               this.soundManager = new SoundManager(this);
               // Note: Preload should have happened already, but can add safety preload call if needed
             }
@@ -447,10 +477,16 @@ if (isBrowser) {
             // Initialize Volume Controls AFTER SoundManager
             this.volumeControls = new VolumeControls(this, this.soundManager);
             this.volumeControls.createUI(); // Create the UI but keep it hidden
+            
+            // Initialize Skin Customization System
+            this.skinCustomization = new SkinCustomization(this);
+            this.skinCustomization.init();
 
             // Register the Defense class in the scene registry
             this.registry.set('DefenseClass', Defense);
-            console.log("Defense class registered in scene registry");
+            // Register the SkillDefender class in the scene registry
+            this.registry.set('SkillDefenderClass', SkillDefender);
+            // Defense class registered in scene registry
 
             // console.log("GameScene create start"); // Removed duplicate log
             
@@ -517,7 +553,7 @@ if (isBrowser) {
               ]
             };
             
-            console.log("Created enemy path with", this.gameState.path.points.length, "waypoints");
+            // Created enemy path
             
             // Visualize the path for debugging
             this.visualizePath();
@@ -525,7 +561,7 @@ if (isBrowser) {
             // Create dynamic textures for fireballs if they don't exist
             if (!this.textures.exists('fireball_red')) {
               try {
-                console.log('Using loaded red fireball texture');
+                // Using loaded red fireball texture
                 // Skipping dynamic creation since we're loading the texture directly
               } catch (error) {
                 console.error("Error creating red fireball texture:", error);
@@ -534,7 +570,7 @@ if (isBrowser) {
             
             if (!this.textures.exists('fireball_blue')) {
               try {
-                console.log('Using loaded blue fireball texture');
+                // Using loaded blue fireball texture
                 // Skipping dynamic creation since we're loading the texture directly
               } catch (error) {
                 console.error("Error creating blue fireball texture:", error);
@@ -544,7 +580,7 @@ if (isBrowser) {
             // Initialize global flag for update loop
             isUpdating = false;
             
-            console.log("GameScene create started");
+            // GameScene create started
             
             // Setup particle animations
             this.createParticleAnimations();
@@ -588,6 +624,9 @@ if (isBrowser) {
             // Create UI elements
             this.createUI();
             
+            // Initialize weather system
+            this.initializeWeatherSystem();
+            
             // Set up defenses array
             this.defenses = [];
             
@@ -626,7 +665,7 @@ if (isBrowser) {
               // Skip if game not active
               if (!this.gameState.isActive) return;
               
-              console.log("Game area clicked at", pointer.x, pointer.y, "tool mode:", this.toolMode);
+              // Game area clicked
               
               // ATTACK MODE - Check for enemies
               if (this.toolMode === 'attack') {
@@ -659,7 +698,7 @@ if (isBrowser) {
                 return;
               }
               
-              // DEFENSE PLACEMENT MODE - For both chog and molandak
+              // DEFENSE PLACEMENT MODE - For all defense types
               if (this.pendingDefensePlacement && this.pendingDefenseType) {
                 // Check valid placement area
                 if (pointer.x < 200) {
@@ -667,8 +706,11 @@ if (isBrowser) {
                   return;
                 }
                 
-                // Calculate cost
-                const cost = this.pendingDefenseType === 'chog' ? 35 : 50;
+                // Calculate cost based on defense type
+                const cost = this.pendingDefenseType === 'chog' ? 25 : 
+                           this.pendingDefenseType === 'molandak' ? 50 : 
+                           this.pendingDefenseType === 'moyaki' ? 80 : 
+                           this.pendingDefenseType === 'keon' ? 150 : 50;
                 
                 // Check if enough coins
                 if (this.gameState.farmCoins < cost) {
@@ -683,12 +725,21 @@ if (isBrowser) {
                   
                   // Show success message and range indicator
                   if (defense) {
-                    const defenseName = this.pendingDefenseType === 'chog' ? 'Ice Mage' : 'Fire Mage';
-                    const color = this.pendingDefenseType === 'chog' ? 0x0088FF : 0xFF4400;
+                    const defenseName = this.pendingDefenseType === 'chog' ? 'CHOG Defender' : 
+                                      this.pendingDefenseType === 'molandak' ? 'MOLANDAK Guardian' : 
+                                      this.pendingDefenseType === 'moyaki' ? 'MOYAKI Warrior' : 
+                                      this.pendingDefenseType === 'keon' ? 'KEON Champion' : 'Defense';
+                    const color = this.pendingDefenseType === 'chog' ? 0x0088FF : 
+                                this.pendingDefenseType === 'molandak' ? 0xFF4400 : 
+                                this.pendingDefenseType === 'moyaki' ? 0xFF0000 : 
+                                this.pendingDefenseType === 'keon' ? 0xFF00FF : 0x00FFFF;
                     this.showFloatingText(pointer.x, pointer.y - 30, `${defenseName} placed!`, color);
                     
                     // Create range visual effect
-                    const range = this.pendingDefenseType === 'chog' ? 250 : 200;
+                    const range = this.pendingDefenseType === 'chog' ? 250 : 
+                                this.pendingDefenseType === 'molandak' ? 200 : 
+                                this.pendingDefenseType === 'moyaki' ? 180 : 
+                                this.pendingDefenseType === 'keon' ? 300 : 200;
                     const rangeEffect = this.add.circle(pointer.x, pointer.y, range, color, 0.2);
                     rangeEffect.setStrokeStyle(2, color);
                     this.tweens.add({
@@ -703,12 +754,10 @@ if (isBrowser) {
                     this.updateFarmCoins(-cost);
                   }
                   
-                  // Reset flags
-                  this.pendingDefensePlacement = false;
-                  this.pendingDefenseType = null;
-                  
-                  // Return to attack mode
-                  this.setToolMode('attack');
+                  // Keep defense placement mode active until explicitly changed by user
+                  // this.pendingDefensePlacement = false;
+                  // this.pendingDefenseType = null;
+                  // this.setToolMode('attack');
                   
                   // Hide placement indicator
                   this.plantingIndicator.visible = false;
@@ -799,7 +848,7 @@ if (isBrowser) {
             // });
             // console.log("Redundant wave check interval REMOVED.");
 
-            console.log("GameScene created successfully");
+            // GameScene created successfully
           } catch (error) {
             console.error("Error in GameScene create:", error);
             throw error;
@@ -808,7 +857,7 @@ if (isBrowser) {
         
         createBackground() {
           try {
-            console.log("Creating background...");
+            // Creating background
             
             // Define grid cell size for the game
             this.gridCellSize = 32;
@@ -944,17 +993,9 @@ if (isBrowser) {
             border.setStrokeStyle(4, 0x2d572d);
             
             // Add game title with pixel art style - moved to top of screen and made smaller
-            this.add.text(400, 10, "MONER'S FARM DEFENSE", {
-              fontFamily: 'monospace',
-              fontSize: '20px',
-              color: '#4a8f4a',
-              fontWeight: 'bold',
-              stroke: '#2d572d',
-              strokeThickness: 3,
-              shadow: { color: '#000000', blur: 5, stroke: true, fill: true }
-            }).setOrigin(0.5, 0);
+          
             
-            console.log("Background created successfully");
+            // Background created successfully
           } catch (error) {
             console.error("Error creating background:", error);
             throw error;
@@ -963,18 +1004,21 @@ if (isBrowser) {
         
         createUI() {
           try {
+            // Set UI depth to ensure it appears above all game elements
+            const UI_DEPTH = 6000; // High depth to ensure UI stays above all game elements
+            
             // Create text displays
             this.scoreText = this.add.text(10, 10, "Score: 0", {
               fontFamily: 'Arial',
               fontSize: '18px',
               color: '#FFFFFF'
-            });
+            }).setDepth(UI_DEPTH);
             
             this.farmCoinsText = this.add.text(10, 30, "Farm Coins: 0", {
               fontFamily: 'Arial',
               fontSize: '18px',
               color: '#FFFF00'
-            });
+            }).setDepth(UI_DEPTH);
             // Store target position for coin animation
             this.farmCoinsTargetPos = { x: this.farmCoinsText.x + 70, y: this.farmCoinsText.y + 10 }; // Adjust offset as needed
             
@@ -982,83 +1026,377 @@ if (isBrowser) {
               fontFamily: 'Arial',
               fontSize: '18px',
               color: '#FFFFFF'
-            });
+            }).setDepth(UI_DEPTH);
             
+            // Lives text
             this.livesText = this.add.text(10, 70, "Lives: 3", {
               fontFamily: 'Arial',
               fontSize: '18px',
-              color: '#FF0000'
-            });
+              color: '#FF6B6B'
+            }).setDepth(UI_DEPTH);
             
-            // Add Next Wave button with a delay before it appears
-            const nextWaveButton = this.add.rectangle(750, 30, 120, 40, 0x00AA00);
-            nextWaveButton.setInteractive({ useHandCursor: true });
-            nextWaveButton.on('pointerdown', () => {
-              this.forceNextWave();
-            });
+            // Weather UI
+            this.weatherSystem.weatherText = this.add.text(10, 90, "Weather: Sunny", {
+              fontFamily: 'Arial',
+              fontSize: '18px',
+              color: '#FFD700'
+            }).setDepth(UI_DEPTH);
             
-            const nextWaveText = this.add.text(750, 30, "Next Wave", {
+            // Skill Tree Button - Positioned with proper spacing from settings
+            this.skillTreeButton = this.add.text(580, 30, '🌟 Skills', {
               fontFamily: 'Arial',
               fontSize: '16px',
-              color: '#FFFFFF'
-            }).setOrigin(0.5);
+              color: '#FFFFFF',
+              backgroundColor: '#6B46C1',
+              padding: { x: 12, y: 8 }
+            }).setDepth(UI_DEPTH).setInteractive({ useHandCursor: true });
             
-            // Store reference to button for enabling/disabling
-            this.nextWaveButton = { button: nextWaveButton, text: nextWaveText };
+            this.skillTreeButton.on('pointerdown', () => {
+              this.toggleSkillTree();
+              if (this.soundManager) {
+                this.soundManager.play('click');
+              }
+            });
             
-            // Hide initially until game starts
-            this.nextWaveButton.button.visible = false;
-            this.nextWaveButton.text.visible = false;
+            // Initialize skill tree overlay as hidden
+            this.skillTreeVisible = false;
             
-            console.log("UI created");
+            // Next Wave button removed - waves now progress automatically
+            
+            // UI created with proper depth layering
           } catch (error) {
             console.error("Error creating UI:", error);
           }
         }
         
-        // Show Next Wave button after a delay
-        showNextWaveButton() {
-          // Don't show button if auto-wave is enabled
-          if (this.gameState?.autoWave) {
-            return;
+        // UI Animation Methods
+        addUIAnimations(element, options = {}) {
+          if (!element) return;
+          
+          const config = {
+            hoverScale: options.hoverScale || 1.1,
+            clickScale: options.clickScale || 0.95,
+            duration: options.duration || 150,
+            useHandCursor: options.useHandCursor !== false, // Default to true
+            hitArea: options.hitArea || { x: -40, y: -30, width: 80, height: 60 },
+            ...options
+          };
+          
+          // Make element interactive with proper configuration
+          element.setInteractive({ useHandCursor: config.useHandCursor });
+          
+          // Set custom hit area if provided
+          if (config.hitArea && element.input) {
+            element.input.hitArea.setTo(config.hitArea.x, config.hitArea.y, config.hitArea.width, config.hitArea.height);
           }
-        
-          // Show button if it was hidden
-          if (this.nextWaveButton) {
-            this.nextWaveButton.button.visible = true;
-            this.nextWaveButton.text.visible = true;
-            
-            // Make the button more noticeable with animation
+          
+          // Hover animations
+          element.on('pointerover', () => {
             this.tweens.add({
-              targets: [this.nextWaveButton.button, this.nextWaveButton.text],
-              scale: { from: 0.8, to: 1 },
-              duration: 500,
-              yoyo: true,
-              repeat: 2
+              targets: element,
+              scaleX: config.hoverScale,
+              scaleY: config.hoverScale,
+              duration: config.duration,
+              ease: 'Back.easeOut'
             });
-            
-            // Change color to make it more noticeable
-            this.nextWaveButton.button.fillColor = 0xFF8800;
+          });
+          
+          element.on('pointerout', () => {
+            this.tweens.add({
+              targets: element,
+              scaleX: 1,
+              scaleY: 1,
+              duration: config.duration,
+              ease: 'Back.easeOut'
+            });
+          });
+          
+          // Click animations
+          element.on('pointerdown', () => {
+            this.tweens.add({
+              targets: element,
+              scaleX: config.clickScale,
+              scaleY: config.clickScale,
+              duration: config.duration / 2,
+              ease: 'Power2'
+            });
+          });
+          
+          element.on('pointerup', () => {
+            this.tweens.add({
+              targets: element,
+              scaleX: config.hoverScale,
+              scaleY: config.hoverScale,
+              duration: config.duration / 2,
+              ease: 'Power2'
+            });
+          });
+        }
+        
+        // Weather System Methods
+        initializeWeatherSystem() {
+          // Initialize weather background overlay
+          this.weatherSystem.weatherBackground = this.add.rectangle(400, 300, 800, 600, 0x000000, 0);
+          this.weatherSystem.weatherBackground.setDepth(-1);
+          
+          // Set initial weather
+          this.updateWeather('sunny');
+        }
+        
+        updateWeather(newWeather) {
+           if (this.weatherSystem.currentWeather === newWeather) return;
+           
+           // Weather changing
+           
+           // Clean up ColorMatrix effects
+           if (this.weatherSystem.colorMatrix && this.cameras.main.postFX) {
+             this.cameras.main.postFX.clear();
+             this.weatherSystem.colorMatrix = null;
+           }
+           
+           // Fade out current weather effects
+           if (this.weatherSystem.weatherParticles) {
+             this.tweens.add({
+               targets: this.weatherSystem.weatherParticles,
+               alpha: 0,
+               duration: 1000,
+               onComplete: () => {
+                 if (this.weatherSystem.weatherParticles) {
+                   this.weatherSystem.weatherParticles.destroy();
+                   this.weatherSystem.weatherParticles = null;
+                 }
+               }
+             });
+           }
+           
+           // Fade out current background overlay
+           if (this.weatherSystem.weatherBackground) {
+             this.tweens.add({
+               targets: this.weatherSystem.weatherBackground,
+               alpha: 0,
+               duration: 800
+             });
+           }
+           
+           this.weatherSystem.currentWeather = newWeather;
+           
+           // Animate weather text change
+           if (this.weatherSystem.weatherText) {
+             const weatherName = newWeather.charAt(0).toUpperCase() + newWeather.slice(1);
+             
+             // Scale and fade animation for text
+             this.tweens.add({
+               targets: this.weatherSystem.weatherText,
+               scale: 1.3,
+               alpha: 0.5,
+               duration: 300,
+               yoyo: true,
+               onStart: () => {
+                 this.weatherSystem.weatherText.setText(`Weather: ${weatherName}`);
+               },
+               onComplete: () => {
+                 this.weatherSystem.weatherText.setScale(1);
+                 this.weatherSystem.weatherText.setAlpha(1);
+               }
+             });
+           }
+           
+           // Delay applying new weather effects for smooth transition
+           this.time.delayedCall(1200, () => {
+             this.applyWeatherEffects(newWeather);
+           });
+         }
+        
+        applyWeatherEffects(weather) {
+          // Reset background overlay
+          this.weatherSystem.weatherBackground.setAlpha(0);
+          this.weatherSystem.weatherBackground.setFillStyle(0x000000, 0);
+          
+          switch (weather) {
+            case 'sunny':
+              // Bright and clear
+              this.weatherSystem.weatherText.setColor('#FFD700');
+              break;
+              
+            case 'rainy':
+              // Dark blue overlay and rain particles
+              this.weatherSystem.weatherBackground.setFillStyle(0x4A90E2, 0.2);
+              this.weatherSystem.weatherText.setColor('#4A90E2');
+              this.createRainParticles();
+              // Fade in overlay
+              this.tweens.add({
+                targets: this.weatherSystem.weatherBackground,
+                alpha: 1,
+                duration: 1000
+              });
+              break;
+              
+            case 'snow':
+              // Light blue overlay and snow particles
+              this.weatherSystem.weatherBackground.setFillStyle(0xE6F3FF, 0.3);
+              this.weatherSystem.weatherText.setColor('#87CEEB');
+              this.createSnowParticles();
+              // Fade in overlay
+              this.tweens.add({
+                targets: this.weatherSystem.weatherBackground,
+                alpha: 1,
+                duration: 1000
+              });
+              break;
+              
+            case 'cloudy':
+              // Gray overlay and moving clouds
+              this.weatherSystem.weatherBackground.setFillStyle(0x808080, 0.15);
+              this.weatherSystem.weatherText.setColor('#808080');
+              this.createCloudParticles();
+              // Fade in overlay
+              this.tweens.add({
+                targets: this.weatherSystem.weatherBackground,
+                alpha: 1,
+                duration: 1000
+              });
+              break;
           }
         }
+        
+        createRainParticles() {
+          this.weatherSystem.weatherParticles = this.add.particles(0, 0, 'pixel', {
+            x: { min: -50, max: 850 }, // Wider spawn area for better coverage
+            y: -20,
+            speedY: { min: 800, max: 1200 }, // Much faster falling speed for fast raindrops
+            speedX: { min: -80, max: -30 }, // More diagonal rain effect
+            scale: { min: 3, max: 8 }, // Larger, more visible raindrops
+            alpha: { min: 0.9, max: 1.0 }, // More opaque for better visibility
+            tint: 0xFFFFFF, // White raindrops for visibility
+            lifespan: 1200, // Shorter lifespan for faster refresh
+            frequency: 10, // Much denser rain (lower frequency = more particles)
+            gravityY: 300 // Stronger gravity for realistic fast fall
+          });
+          
+          // Set higher depth to ensure visibility
+          this.weatherSystem.weatherParticles.setDepth(1000);
+          
+          // Apply black and white LUT ColorMatrix effects to the camera
+          if (this.cameras.main.postFX) {
+            // Clear any existing color matrix effects
+            this.cameras.main.postFX.clear();
+            
+            // Add ColorMatrix for black and white rainy mood
+            const colorMatrix = this.cameras.main.postFX.addColorMatrix();
+            colorMatrix.brightness(-0.3);    // Darker for dramatic effect
+            colorMatrix.contrast(0.4);       // High contrast for black and white
+            colorMatrix.saturate(-1.0);      // Complete desaturation for black and white
+            colorMatrix.hue(0);              // Reset hue
+            
+            // Store reference for cleanup
+            this.weatherSystem.colorMatrix = colorMatrix;
+          }
+        }
+        
+        createSnowParticles() {
+          this.weatherSystem.weatherParticles = this.add.particles(0, 0, 'pixel', {
+            x: { min: -50, max: 850 }, // Wider spawn area
+            y: -20,
+            speedY: { min: 80, max: 200 }, // Slightly faster falling
+            speedX: { min: -40, max: 40 }, // More wind effect
+            scale: { min: 2, max: 6 }, // Larger snowflakes
+            alpha: { min: 0.8, max: 1 }, // More visible
+            tint: 0xFFFFFF,
+            lifespan: 8000, // Longer lifespan for gentle drift
+            frequency: 25, // Much denser snowfall (was 60, now 25)
+            gravityY: 30 // Slightly stronger gravity
+          });
+          
+          // Set higher depth to ensure visibility
+          this.weatherSystem.weatherParticles.setDepth(1000);
+          
+          // Apply snow mood ColorMatrix effects to the camera
+          if (this.cameras.main.postFX) {
+            // Clear any existing color matrix effects
+            this.cameras.main.postFX.clear();
+            
+            // Add ColorMatrix for snow mood - cooler, brighter, more contrast
+            const colorMatrix = this.cameras.main.postFX.addColorMatrix();
+            colorMatrix.brightness(0.1);     // Slightly brighter
+            colorMatrix.contrast(0.2);       // More contrast
+            colorMatrix.saturate(-0.3);      // Less saturated (more grey/white)
+            colorMatrix.hue(200);            // Shift towards blue hues
+            
+            // Store reference for cleanup
+            this.weatherSystem.colorMatrix = colorMatrix;
+          }
+        }
+        
+        createCloudParticles() {
+          this.weatherSystem.weatherParticles = this.add.particles(0, 0, 'pixel', {
+            x: { min: -50, max: 850 },
+            y: { min: 50, max: 150 },
+            speedX: { min: 20, max: 60 },
+            speedY: 0,
+            scale: { min: 10, max: 20 },
+            alpha: { min: 0.3, max: 0.6 },
+            tint: 0xC0C0C0,
+            lifespan: 10000,
+            frequency: 150
+          });
+          
+          // Set higher depth to ensure visibility
+          this.weatherSystem.weatherParticles.setDepth(1000);
+          
+          // Apply cloudy mood ColorMatrix effects to the camera
+          if (this.cameras.main.postFX) {
+            // Clear any existing color matrix effects
+            this.cameras.main.postFX.clear();
+            
+            // Add ColorMatrix for cloudy mood - desaturated, slightly darker
+            const colorMatrix = this.cameras.main.postFX.addColorMatrix();
+            colorMatrix.brightness(-0.1);    // Slightly darker
+            colorMatrix.saturate(-0.2);      // Less saturated (more grey)
+            colorMatrix.contrast(-0.1);      // Less contrast
+            
+            // Store reference for cleanup
+            this.weatherSystem.colorMatrix = colorMatrix;
+          }
+        }
+        
+        checkWeatherChange() {
+          // Change weather every 5 waves
+          if (this.gameState.wave % 5 === 1 && this.gameState.wave !== this.weatherSystem.lastWeatherChange) {
+            const weatherTypes = ['sunny', 'rainy', 'snow', 'cloudy'];
+            const currentIndex = weatherTypes.indexOf(this.weatherSystem.currentWeather);
+            const nextIndex = (currentIndex + 1) % weatherTypes.length;
+            
+            this.updateWeather(weatherTypes[nextIndex]);
+            this.weatherSystem.lastWeatherChange = this.gameState.wave;
+            
+            // Show weather change notification
+            const weatherName = weatherTypes[nextIndex].charAt(0).toUpperCase() + weatherTypes[nextIndex].slice(1);
+            this.showFloatingText(400, 200, `Weather: ${weatherName}!`, 0xFFD700);
+          }
+        }
+        
+        // showNextWaveButton method removed - no longer needed
         
         // Start the game
         startGame() {
           try {
+            // Reset submission flag for new game
+            this.isSubmittingScore = false;
+            
             // --- Add log ---
-            console.log("startGame: Initiated. Preparing to clean up previous game...");
+            // Starting game
             // --- End log ---
 
             // --- Force unlock Web Audio context on user interaction ---
             if (this.sound && this.sound.unlock) {
               this.sound.unlock();
-              console.log("Attempted to unlock Web Audio context on startGame.");
+              // Attempted to unlock Web Audio context
             } else {
               console.warn("this.sound.unlock not available at start of startGame.");
             }
             // --- End unlock attempt ---
             
-            console.log("Start button clicked - starting game");
+            // Start button clicked
             
             // Remove start button if it exists
             if (this.startButton) {
@@ -1070,12 +1408,12 @@ if (isBrowser) {
               this.startText = null; // Clear reference
             }
             
-            // --- Call cleanup FIRST to ensure a clean slate ---
-            this.cleanupCurrentGame();
+            // --- Call cleanup FIRST to ensure a clean slate (full cleanup on restart) ---
+            this.cleanupCurrentGame(true);
             // --- End cleanup ---
 
             // --- Add log ---
-            console.log(`startGame: Cleanup complete. Defenses array length: ${this.defenses?.length || 0}`);
+            // Cleanup complete
             // --- End log ---
 
             // Re-initialize game state (partially redundant with cleanup, but ensures defaults)
@@ -1094,7 +1432,19 @@ if (isBrowser) {
             this.registry.set('farmCoins', this.gameState.farmCoins);
             
             // Re-initialize arrays and flags
-            this.enemies = [];
+            // Don't reset enemies array - preserve existing enemies and show their health bars
+            if (this.enemies && this.enemies.length) {
+              this.enemies.forEach(enemy => {
+                if (enemy && typeof enemy.showHealthBar === 'function') {
+                  try {
+                    enemy.showHealthBar();
+                  } catch (e) { console.error("Error showing enemy health bar:", e); }
+                }
+              });
+              // Enemy health bars restored
+            } else {
+              this.enemies = []; // Initialize if not exists
+            }
             this.crops = {};
             this.defenses = []; // Ensure defenses array is empty
             this.isSpawningEnemies = false;
@@ -1130,23 +1480,9 @@ if (isBrowser) {
             this.setToolMode('attack');
             
             // Start first wave - IMPORTANT: must be after setting gameState and resetting flags
-            this.startWave();
+            this.startWave(false); // Don't clear existing enemies during game restart
             
-            // Handle Next Wave button visibility based on autoWave
-            if (!this.gameState.autoWave) {
-              // Ensure button exists before showing
-              if (!this.nextWaveButton || !this.nextWaveButton.button) {
-                // Recreate if necessary (though ideally it persists)
-                // this.createUI(); // Or a more specific function
-              }
-              this.showNextWaveButton();
-            } else {
-              // Hide next wave button if it exists when auto-wave is enabled
-              if (this.nextWaveButton && this.nextWaveButton.button) {
-                this.nextWaveButton.button.visible = false;
-                this.nextWaveButton.text.visible = false;
-              }
-            }
+            // Next Wave button handling removed - waves progress automatically
             
             // Start background music if sound manager exists and isn't already playing
             if (this.soundManager && (!this.soundManager.currentMusic || !this.soundManager.currentMusic.isPlaying)) {
@@ -1157,7 +1493,7 @@ if (isBrowser) {
               this.soundManager.play('click');
             }
             
-            console.log("Game started successfully");
+            // Game started successfully
           } catch (error) {
             console.error("Error starting game:", error);
             // Attempt to recover or show error message
@@ -1168,7 +1504,7 @@ if (isBrowser) {
         
         setupInputHandlers() {
           try {
-            console.log("Setting up input handlers");
+            // Setting up input handlers
             
             // Create a global click handler for the main game area with expanded hit area
             const gameArea = this.add.rectangle(400, 300, 800, 500, 0, 0);
@@ -1182,7 +1518,7 @@ if (isBrowser) {
               // Skip if game not active
               if (!this.gameState.isActive) return;
               
-              console.log("Game area clicked at", pointer.x, pointer.y, "tool mode:", this.toolMode);
+              // Game area clicked
               
               // ATTACK MODE - Check for enemies with expanded hit area
               if (this.toolMode === 'attack') {
@@ -1207,7 +1543,7 @@ if (isBrowser) {
                 
                 if (closestEnemy) {
                   // Apply damage to the enemy
-                  clickedEnemy.takeDamage(this.gameState.clickDamage || 1);
+                  closestEnemy.takeDamage(this.gameState.clickDamage || 1);
                   
                   // Show attack effect
                   this.showFloatingText(closestEnemy.x, closestEnemy.y - 20, 
@@ -1257,11 +1593,11 @@ if (isBrowser) {
                 // Calculate cost based on defense type
                 let cost = 0;
                 switch (defenseType) {
-                  case 'chog': cost = 35; break;
-                  case 'molandak': cost = 50; break;
-                  case 'keon': cost = 100; break;
-                  case 'moyaki': cost = 150; break;
-                  default: cost = 50; break;
+                  case 'chog': cost = 25; break;
+        case 'molandak': cost = 50; break;
+        case 'keon': cost = 150; break;
+        case 'moyaki': cost = 80; break;
+        default: cost = 50; break;
                 }
                 
                 // Check if enough coins
@@ -1276,15 +1612,15 @@ if (isBrowser) {
                 const snappedY = Math.floor(pointer.y / gridSize) * gridSize + (gridSize / 2);
                 
                 // Place the defense at the snapped position
-                const success = this.placeDefense(snappedX, snappedY, defenseType);
+                const success = this.placeDefense(defenseType, snappedX, snappedY);
                 
                 if (success) {
                   // Reset flags
                   this.pendingDefensePlacement = false;
                   this.pendingDefenseType = null;
                   
-                  // Return to attack mode automatically for better user experience
-                  this.setToolMode('attack');
+                  // Don't automatically return to attack mode - let player continue placing defenses
+                  // this.setToolMode('attack');
                   
                   // Hide any indicators that might be visible
                   if (this.plantingIndicator) this.plantingIndicator.visible = false;
@@ -1327,6 +1663,29 @@ if (isBrowser) {
             
             // Add pointer move handler
             this.input.on('pointermove', this.pointerMoveListener);
+            
+            // Add keyboard event handlers for game controls
+            this.input.keyboard.on('keydown-P', () => {
+              if (this.gameState.isActive) {
+                this.setToolMode('plant');
+                this.showFloatingText(400, 50, "Plant Crops Mode Activated!", 0x00FF00);
+              }
+            });
+            
+            this.input.keyboard.on('keydown-ONE', () => {
+              if (this.gameState.isActive) {
+                this.setToolMode('chog');
+                this.showFloatingText(400, 50, "CHOG Defender Selected (25 coins)", 0x0088FF);
+              }
+            });
+            
+            this.input.keyboard.on('keydown-TWO', () => {
+              if (this.gameState.isActive) {
+                this.setToolMode('molandak');
+                this.showFloatingText(400, 50, "MOLANDAK Guardian Selected (50 coins)", 0xFF4400);
+              }
+            });
+            
           } catch (error) {
             console.error("Error setting up input handlers:", error);
           }
@@ -1547,10 +1906,8 @@ if (isBrowser) {
             
             if (CropClass) {
               try {
-                console.log("Creating new crop instance at", gridX, gridY);
                 const crop = new CropClass(this, gridX, gridY, cropType);
                 this.crops[gridKey] = crop;
-                console.log("Crop planted at:", gridX, gridY);
                 this.showFloatingText(gridX, gridY, "+", 0x00FF00);
               } catch (cropError) {
                 console.error("Error creating crop instance:", cropError);
@@ -1563,11 +1920,9 @@ if (isBrowser) {
               // Try to load the Crop class directly as a fallback
               import('../entities/Crop').then(module => {
                 if (module && module.default) {
-                  console.log("Loaded Crop class directly");
                   try {
                     const crop = new module.default(this, gridX, gridY, cropType);
                     this.crops[gridKey] = crop;
-                    console.log("Crop planted using direct import");
                   } catch (directError) {
                     console.error("Error creating crop with direct import:", directError);
                   }
@@ -1691,6 +2046,72 @@ if (isBrowser) {
           return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
         }
         
+        // Show wave completion message with dramatic animation
+        showWaveCompletionMessage() {
+          try {
+            // Create wave completion text
+            const completionText = this.add.text(400, 200, `Wave ${this.gameState.wave} Complete!`, {
+              fontFamily: 'Arial Black, Impact, sans-serif',
+              fontSize: '48px',
+              color: '#00FF00',
+              stroke: '#000000',
+              strokeThickness: 4,
+              shadow: {
+                offsetX: 3,
+                offsetY: 3,
+                color: '#000000',
+                blur: 5
+              }
+            }).setOrigin(0.5);
+            completionText.setDepth(2000);
+            
+            // Initial state for dramatic entrance
+            completionText.setScale(0);
+            completionText.setAlpha(0);
+            completionText.setRotation(-0.2);
+            
+            // Dramatic entrance animation
+            this.tweens.add({
+              targets: completionText,
+              scale: { from: 0, to: 1.3 },
+              alpha: { from: 0, to: 1 },
+              rotation: { from: -0.2, to: 0 },
+              duration: 600,
+              ease: 'Back.easeOut',
+              onComplete: () => {
+                // Settle animation
+                this.tweens.add({
+                  targets: completionText,
+                  scale: 1,
+                  duration: 200,
+                  ease: 'Power2',
+                  onComplete: () => {
+                    // Hold for a moment, then fade out
+                    this.tweens.add({
+                      targets: completionText,
+                      alpha: 0,
+                      scale: 0.8,
+                      duration: 400,
+                      ease: 'Power2',
+                      delay: 600,
+                      onComplete: () => {
+                        completionText.destroy();
+                      }
+                    });
+                  }
+                });
+              }
+            });
+            
+            // Play wave complete sound if available
+            if (this.soundManager && this.soundManager.play) {
+              this.soundManager.play('wave_complete');
+            }
+          } catch (error) {
+            console.error("Error showing wave completion message:", error);
+          }
+        }
+        
         showStartButton() {
           try {
             console.log("Showing start button");
@@ -1770,8 +2191,8 @@ if (isBrowser) {
               this.startText = null; // Clear reference
             }
             
-            // --- Call cleanup FIRST to ensure a clean slate ---
-            this.cleanupCurrentGame();
+            // --- Call cleanup FIRST to ensure a clean slate (full cleanup on restart) ---
+            this.cleanupCurrentGame(true);
             // --- End cleanup ---
 
             // --- Add log ---
@@ -1830,23 +2251,9 @@ if (isBrowser) {
             this.setToolMode('attack');
             
             // Start first wave - IMPORTANT: must be after setting gameState and resetting flags
-            this.startWave();
+            this.startWave(false); // Don't clear existing enemies during game restart
             
-            // Handle Next Wave button visibility based on autoWave
-            if (!this.gameState.autoWave) {
-              // Ensure button exists before showing
-              if (!this.nextWaveButton || !this.nextWaveButton.button) {
-                // Recreate if necessary (though ideally it persists)
-                // this.createUI(); // Or a more specific function
-              }
-              this.showNextWaveButton();
-            } else {
-              // Hide next wave button if it exists when auto-wave is enabled
-              if (this.nextWaveButton && this.nextWaveButton.button) {
-                this.nextWaveButton.button.visible = false;
-                this.nextWaveButton.text.visible = false;
-              }
-            }
+            // Next Wave button handling removed - waves progress automatically
             
             // Start background music if sound manager exists and isn't already playing
             if (this.soundManager && (!this.soundManager.currentMusic || !this.soundManager.currentMusic.isPlaying)) {
@@ -1872,6 +2279,7 @@ if (isBrowser) {
             const currentCoins = this.gameState.farmCoins || 0;
             const newCoins = Math.max(0, currentCoins + amount); // Ensure coins don't go below 0
             const oldCoins = this.gameState.farmCoins; // Store old value for comparison
+            
             this.gameState.farmCoins = newCoins;
 
             // Update registry
@@ -1911,11 +2319,18 @@ if (isBrowser) {
 
             // Call the callback if it exists
             const addFarmCoins = this.registry.get('addFarmCoins');
+            
             if (typeof addFarmCoins === 'function') {
               addFarmCoins(amount);
             }
-
-            console.log("Farm coins updated:", newCoins);
+            
+            // Emit coinsEarned event for React component when coins are gained
+            if (amount > 0) {
+              const onGameEvent = this.registry.get('onGameEvent');
+              if (typeof onGameEvent === 'function') {
+                onGameEvent('coinsEarned', { amount: amount, total: newCoins });
+              }
+            }
 
             // Play coin sound if gaining coins - maybe a different sound for spending?
             if (amount > 0 && this.soundManager) {
@@ -1969,13 +2384,13 @@ if (isBrowser) {
         
         // Update lives text
         updateLivesText() {
-          if (this.livesText) {
+          if (this.livesText && this.gameState) {
             this.livesText.setText(`Lives: ${this.gameState.lives}`);
           }
         }
         
         // Start a new wave of enemies - make waves more difficult over time
-        startWave() {
+        startWave(clearExistingEnemies = true) {
           try {
             console.log(`Starting wave ${this.gameState.wave}`);
             
@@ -2004,18 +2419,38 @@ if (isBrowser) {
               return;
             }
     
+            // Check for expired defenses at wave start
+            this.checkDefenseExpirations(this.gameState.wave);
+            
             // Reset wave-specific state
             this.waveInProgress = true;
             this.isSpawningEnemies = true;
             this.enemiesSpawned = 0;
             this.enemies = this.enemies || [];
     
-            // Reset enemy target counts and clear existing enemies if any remain (shouldn't happen ideally)
-            if (this.enemies.length > 0) {
+            // Reset enemy target counts and clear existing enemies if requested
+            if (clearExistingEnemies && this.enemies.length > 0) {
               console.warn(`Starting wave ${this.gameState.wave} with ${this.enemies.length} enemies still present. Clearing them.`);
-              this.enemies.forEach(enemy => enemy?.destroy());
+              this.enemies.forEach(enemy => {
+                if (enemy) {
+                  // Explicitly destroy wave indicator first
+                  if (enemy.waveIndicator) {
+                    enemy.waveIndicator.destroy();
+                    enemy.waveIndicator = null;
+                  }
+                  if (typeof enemy.hideHealthBar === 'function') {
+                    enemy.hideHealthBar();
+                  }
+                  enemy.destroy();
+                }
+              });
               this.enemies = [];
+            } else if (this.enemies.length > 0) {
+              console.log(`Starting wave ${this.gameState.wave} with ${this.enemies.length} enemies preserved from previous game.`);
             }
+            
+            // Clear any orphaned wave indicators from previous waves
+            this.clearOrphanedWaveIndicators();
     
             // Determine enemy composition and count for the wave
             const currentWave = this.gameState.wave;
@@ -2034,6 +2469,10 @@ if (isBrowser) {
             // Update UI
             this.updateWaveText();
             this.showWaveStartText(this.gameState.wave); // <-- ADD THIS LINE
+            
+            // Check for weather changes every 5 waves
+            this.checkWeatherChange();
+            
             this.soundManager?.play('wave_start');
     
             // Short delay before first spawn
@@ -2418,9 +2857,7 @@ if (isBrowser) {
             reachedEnd: function() {
               if (this.scene.gameState) {
                 this.scene.gameState.lives--;
-                if (this.scene.updateLivesText) {
-                  this.scene.updateLivesText();
-                }
+                // Lives text update removed - no longer needed
                 
                 if (this.scene.showFloatingText) {
                   this.scene.showFloatingText(50, 300, 'Farm Invaded! -1 Life', 0xFF0000);
@@ -2550,14 +2987,24 @@ if (isBrowser) {
               console.log("Cleared wave completion timer during force next wave");
             }
             
-            // Clear any remaining enemies
+            // Clear any remaining enemies and their wave indicators
             if (this.enemies && this.enemies.length > 0) {
               console.log(`Clearing ${this.enemies.length} remaining enemies`);
               
-              // Destroy all remaining enemies
+              // Destroy all remaining enemies and their wave indicators
               this.enemies.forEach(enemy => {
-                if (enemy && typeof enemy.destroy === 'function') {
-                  enemy.destroy();
+                if (enemy) {
+                  // Explicitly destroy wave indicator first
+                  if (enemy.waveIndicator) {
+                    enemy.waveIndicator.destroy();
+                    enemy.waveIndicator = null;
+                  }
+                  if (typeof enemy.hideHealthBar === 'function') {
+                    enemy.hideHealthBar();
+                  }
+                  if (typeof enemy.destroy === 'function') {
+                    enemy.destroy();
+                  }
                 }
               });
               
@@ -2565,12 +3012,28 @@ if (isBrowser) {
               this.enemies = [];
             }
             
+            // Additional cleanup: Find and destroy any orphaned wave indicator texts
+            this.clearOrphanedWaveIndicators();
+            
             // End current wave
             this.waveInProgress = false;
             
             // Increase wave counter - NO MAXIMUM WAVE LIMIT!
             this.gameState.wave++;
             this.updateWaveText();
+            
+            // Add 1 point for wave completion
+            if (typeof this.gameState.score === 'number') {
+              this.gameState.score += 1;
+              if (typeof this.updateScoreText === 'function') {
+                this.updateScoreText();
+              }
+              // Send score update to React component
+              const onGameEvent = this.registry.get('onGameEvent');
+              if (typeof onGameEvent === 'function') {
+                onGameEvent('scoreUpdate', this.gameState.score);
+              }
+            }
             
             // Debug log the wave change
             console.log(`Wave increased to ${this.gameState.wave}`);
@@ -2612,8 +3075,8 @@ if (isBrowser) {
         
         createToolbar() {
           try {
-            // Create a larger background for the toolbar to accommodate all buttons
-            const toolbarBg = this.add.rectangle(200, 550, 420, 65, 0x333333, 0.8).setDepth(1999); // Ensure toolbar BG is below buttons
+            // Create a larger background for the toolbar to accommodate all buttons with better spacing
+            const toolbarBg = this.add.rectangle(200, 570, 520, 65, 0x333333, 0.8).setDepth(1999); // Moved down for better spacing
 
             // Store buttons for reference - Initialize object first
             this.toolbarButtons = {};
@@ -2644,18 +3107,17 @@ if (isBrowser) {
             const costFontSize = '12px';
             const labelFontSize = '12px';
 
-            // Add attack button
-            const attackButton = this.add.rectangle(40, 550, buttonWidth, buttonHeight, 0xFF4400).setDepth(2000);
-            attackButton.setInteractive({ useHandCursor: true });
-            attackButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // Add attack button - moved down for better spacing
+            const attackButton = this.add.rectangle(40, 570, buttonWidth, buttonHeight, 0xFF4400).setDepth(2000);
             attackButton.on('pointerdown', () => {
               this.pendingDefensePlacement = false; // Reset placement flag
               this.setToolMode('attack');
             });
             addBounceEffect(attackButton); // Add bounce effect
+            this.addUIAnimations(attackButton); // Add UI animations - this will handle setInteractive
             this.toolbarButtons.attack = attackButton; // Store reference
 
-            const attackText = this.add.text(40, 550, '👆', {
+            const attackText = this.add.text(40, 570, '👆', {
               fontFamily: 'Arial',
               fontSize: '32px' // Increased from 24px
             }).setOrigin(0.5).setDepth(2001);
@@ -2663,27 +3125,26 @@ if (isBrowser) {
             attackText.on('pointerdown', () => attackButton.emit('pointerdown')); // Trigger button's event
 
 
-            // Add crop button
-            const cropButton = this.add.rectangle(110, 550, buttonWidth, buttonHeight, 0x006600).setDepth(2000);
-            cropButton.setInteractive({ useHandCursor: true });
-            cropButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // Add crop button - moved down for better spacing
+            const cropButton = this.add.rectangle(110, 570, buttonWidth, buttonHeight, 0x006600).setDepth(2000);
             cropButton.on('pointerdown', () => {
               this.pendingDefensePlacement = false; // Reset placement flag
               this.setToolMode('plant');
             });
             addBounceEffect(cropButton); // Add bounce effect
+            this.addUIAnimations(cropButton); // Add UI animations - this will handle setInteractive
             this.toolbarButtons.plant = cropButton; // Store reference
 
             // IMPORTANT: Always use tree images for crops - NEVER change this!
             let cropImage;
             if (this.textures.exists('Fruit_tree3')) {
-              cropImage = this.add.image(110, 550, 'Fruit_tree3').setDepth(2001);
+              cropImage = this.add.image(110, 570, 'Fruit_tree3').setDepth(2001);
               cropImage.setDisplaySize(iconSize, iconSize); // Use variable size
               cropImage.setInteractive({ useHandCursor: true });
               cropImage.on('pointerdown', () => { cropButton.emit('pointerdown'); });
             } else {
               // Fallback to emoji if image doesn't exist
-              cropImage = this.add.text(110, 550, '🌳', {
+              cropImage = this.add.text(110, 570, '🌳', {
                 fontFamily: 'Arial', fontSize: '32px'
               }).setOrigin(0.5).setDepth(2001);
               cropImage.setInteractive({ useHandCursor: true });
@@ -2691,10 +3152,8 @@ if (isBrowser) {
             }
 
 
-            // Add chog button (ABS mage)
-            const chogButton = this.add.rectangle(180, 550, buttonWidth, buttonHeight, 0x000066).setDepth(2000);
-            chogButton.setInteractive({ useHandCursor: true });
-            chogButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // Add chog button (ABS mage) - moved down for better spacing
+            const chogButton = this.add.rectangle(180, 570, buttonWidth, buttonHeight, 0x000066).setDepth(2000);
             chogButton.on('pointerdown', () => {
               this.pendingDefenseType = 'chog';
               this.pendingDefensePlacement = true;
@@ -2702,29 +3161,35 @@ if (isBrowser) {
               this.showFloatingText(400, 300, "ABS Ice Mage selected - Click map to place", 0x0088FF);
             });
              addBounceEffect(chogButton); // Add bounce effect
+             this.addUIAnimations(chogButton); // Add UI animations - this will handle setInteractive
              this.toolbarButtons.chog = chogButton; // Store reference
+
+            // Create larger invisible hover area for better tooltip interaction
+            const chogHoverArea = this.add.rectangle(180, 570, buttonWidth + 20, buttonHeight + 20, 0x000000, 0).setDepth(1998);
+            chogHoverArea.setInteractive({ useHandCursor: true });
+            chogHoverArea.on('pointerdown', () => { chogButton.emit('pointerdown'); });
+            this.toolbarButtons.chogHover = chogHoverArea;
 
             // Use ABS image instead of emoji
             const absImageKey = 'ABS_idle';
             let absImage;
             if (this.textures.exists(absImageKey)) {
-              absImage = this.add.image(180, 550, absImageKey).setDepth(2001);
+              absImage = this.add.image(180, 570, absImageKey).setDepth(2001);
               absImage.setDisplaySize(iconSize, iconSize); // Use variable size
               absImage.setInteractive({ useHandCursor: true });
               absImage.on('pointerdown', () => { chogButton.emit('pointerdown'); });
             } else {
-              absImage = this.add.text(180, 550, '🧙‍♂️', {
+              absImage = this.add.text(180, 570, '🧙‍♂️', {
                 fontFamily: 'Arial', fontSize: '32px'
               }).setOrigin(0.5).setDepth(2001);
               absImage.setInteractive({ useHandCursor: true });
               absImage.on('pointerdown', () => { chogButton.emit('pointerdown'); });
             }
+            this.toolbarButtons.chogImage = absImage; // Store reference
 
 
-            // Add molandak button (MON mage)
-            const molandakButton = this.add.rectangle(250, 550, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
-            molandakButton.setInteractive({ useHandCursor: true });
-            molandakButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // Add molandak button (MON mage) - moved down for better spacing
+            const molandakButton = this.add.rectangle(250, 570, buttonWidth, buttonHeight, 0x660000).setDepth(2000);
             molandakButton.on('pointerdown', () => {
               this.pendingDefenseType = 'molandak';
               this.pendingDefensePlacement = true;
@@ -2732,24 +3197,31 @@ if (isBrowser) {
               this.showFloatingText(400, 300, "MON Fire Mage selected - Click map to place", 0xFF4400);
             });
             addBounceEffect(molandakButton); // Add bounce effect
+            this.addUIAnimations(molandakButton); // Add UI animations - this will handle setInteractive
             this.toolbarButtons.molandak = molandakButton; // Store reference
 
+            // Create larger invisible hover area for better tooltip interaction
+            const molandakHoverArea = this.add.rectangle(250, 570, buttonWidth + 20, buttonHeight + 20, 0x000000, 0).setDepth(1998);
+            molandakHoverArea.setInteractive({ useHandCursor: true });
+            molandakHoverArea.on('pointerdown', () => { molandakButton.emit('pointerdown'); });
+            this.toolbarButtons.molandakHover = molandakHoverArea;
 
             // Use MON image instead of emoji
             const monImageKey = 'MON_idle';
             let monImage;
             if (this.textures.exists(monImageKey)) {
-              monImage = this.add.image(250, 550, monImageKey).setDepth(2001);
+              monImage = this.add.image(250, 570, monImageKey).setDepth(2001);
               monImage.setDisplaySize(iconSize, iconSize); // Use variable size
               monImage.setInteractive({ useHandCursor: true });
               monImage.on('pointerdown', () => { molandakButton.emit('pointerdown'); });
             } else {
-              monImage = this.add.text(250, 550, '🧙‍♀️', {
+              monImage = this.add.text(250, 570, '🧙‍♀️', {
                 fontFamily: 'Arial', fontSize: '32px'
               }).setOrigin(0.5).setDepth(2001);
               monImage.setInteractive({ useHandCursor: true });
               monImage.on('pointerdown', () => { molandakButton.emit('pointerdown'); });
             }
+            this.toolbarButtons.molandakImage = monImage; // Store reference
 
 
             // --- Advanced defenses ---
@@ -2757,10 +3229,8 @@ if (isBrowser) {
             let keonImage, moyakiImage;
             let keonCostText, moyakiCostText;
 
-            // keon Button
-            keonButton = this.add.rectangle(320, 550, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
-            keonButton.setInteractive({ useHandCursor: true });
-            keonButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // keon Button - moved down for better spacing
+            keonButton = this.add.rectangle(320, 570, buttonWidth, buttonHeight, 0x990099).setDepth(2000);
             keonButton.on('pointerdown', () => {
               this.pendingDefenseType = 'keon';
               this.pendingDefensePlacement = true;
@@ -2768,26 +3238,31 @@ if (isBrowser) {
               this.showFloatingText(400, 300, "keon selected - Click map to place", 0xFF00FF);
             });
             addBounceEffect(keonButton); // Add bounce effect
+            this.addUIAnimations(keonButton); // Add UI animations - this will handle setInteractive
             this.toolbarButtons.keon = keonButton; // Store reference
 
+            // Create larger invisible hover area for better tooltip interaction
+            const keonHoverArea = this.add.rectangle(320, 570, buttonWidth + 20, buttonHeight + 20, 0x000000, 0).setDepth(1998);
+            keonHoverArea.setInteractive({ useHandCursor: true });
+            keonHoverArea.on('pointerdown', () => { keonButton.emit('pointerdown'); });
+            this.toolbarButtons.keonHover = keonHoverArea;
+
             if (this.textures.exists('keon_idle')) {
-              keonImage = this.add.image(320, 550, 'keon_idle').setDepth(2001);
+              keonImage = this.add.image(320, 570, 'keon_idle').setDepth(2001);
               keonImage.setDisplaySize(iconSize, iconSize);
               keonImage.setInteractive({ useHandCursor: true });
               keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
             } else {
-              keonImage = this.add.text(320, 550, '🧙', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
+              keonImage = this.add.text(320, 570, '🧙', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
               keonImage.setInteractive({ useHandCursor: true });
               keonImage.on('pointerdown', () => { keonButton.emit('pointerdown'); });
             }
-            keonCostText = this.add.text(320, 570, '125', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            keonCostText = this.add.text(320, 590, '150', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
             this.toolbarButtons.keonImage = keonImage; // Store reference
             this.toolbarButtons.keonCostText = keonCostText; // Store reference
 
-            // moyaki Button
-            moyakiButton = this.add.rectangle(390, 550, buttonWidth, buttonHeight, 0x990000).setDepth(2000);
-            moyakiButton.setInteractive({ useHandCursor: true });
-            moyakiButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // moyaki Button - moved down for better spacing
+            moyakiButton = this.add.rectangle(390, 570, buttonWidth, buttonHeight, 0x990000).setDepth(2000);
             moyakiButton.on('pointerdown', () => {
               this.pendingDefenseType = 'moyaki';
               this.pendingDefensePlacement = true;
@@ -2795,20 +3270,27 @@ if (isBrowser) {
               this.showFloatingText(400, 300, "moyaki selected - Click map to place", 0xFF0000);
             });
             addBounceEffect(moyakiButton); // Add bounce effect
+            this.addUIAnimations(moyakiButton); // Add UI animations - this will handle setInteractive
             this.toolbarButtons.moyaki = moyakiButton; // Store reference
+
+            // Create larger invisible hover area for better tooltip interaction
+            const moyakiHoverArea = this.add.rectangle(390, 570, buttonWidth + 20, buttonHeight + 20, 0x000000, 0).setDepth(1998);
+            moyakiHoverArea.setInteractive({ useHandCursor: true });
+            moyakiHoverArea.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
+            this.toolbarButtons.moyakiHover = moyakiHoverArea;
 
 
             if (this.textures.exists('moyaki_idle')) {
-              moyakiImage = this.add.image(390, 550, 'moyaki_idle').setDepth(2001);
+              moyakiImage = this.add.image(390, 570, 'moyaki_idle').setDepth(2001);
               moyakiImage.setDisplaySize(iconSize, iconSize);
               moyakiImage.setInteractive({ useHandCursor: true });
                moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
             } else {
-              moyakiImage = this.add.text(390, 550, '💣', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
+              moyakiImage = this.add.text(390, 570, '💣', { fontFamily: 'Arial', fontSize: '32px' }).setOrigin(0.5).setDepth(2001);
               moyakiImage.setInteractive({ useHandCursor: true });
                moyakiImage.on('pointerdown', () => { moyakiButton.emit('pointerdown'); });
             }
-            moyakiCostText = this.add.text(390, 570, '200', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            moyakiCostText = this.add.text(390, 590, '80', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
              this.toolbarButtons.moyakiImage = moyakiImage; // Store reference
              this.toolbarButtons.moyakiCostText = moyakiCostText; // Store reference
 
@@ -2817,38 +3299,236 @@ if (isBrowser) {
             moyakiButton.visible = false; moyakiImage.visible = false; moyakiCostText.visible = false;
 
 
-            // Add upgrade button
-            const upgradeButton = this.add.rectangle(460, 550, buttonWidth, buttonHeight, 0x555500).setDepth(2000);
-            upgradeButton.setInteractive({ useHandCursor: true });
-            upgradeButton.input.hitArea.setTo(-40, -30, 80, 60);
+            // Add upgrade button - moved down for better spacing
+            const upgradeButton = this.add.rectangle(460, 570, buttonWidth, buttonHeight, 0x555500).setDepth(2000);
             upgradeButton.on('pointerdown', () => this.toggleUpgradePanel());
             addBounceEffect(upgradeButton); // Add bounce effect
+            this.addUIAnimations(upgradeButton); // Add UI animations - this will handle setInteractive
             this.toolbarButtons.upgrade = upgradeButton; // Store reference
 
-            const upgradeText = this.add.text(460, 550, '⚙️', {
+            const upgradeText = this.add.text(460, 570, '⚙️', {
               fontFamily: 'Arial', fontSize: '32px'
             }).setOrigin(0.5).setDepth(2001);
             upgradeText.setInteractive({ useHandCursor: true });
             upgradeText.on('pointerdown', () => upgradeButton.emit('pointerdown'));
 
+            // Add skin customization button - moved down for better spacing
+            const skinButton = this.add.rectangle(530, 570, buttonWidth, buttonHeight, 0x8B4513).setDepth(2000);
+            skinButton.on('pointerdown', () => this.toggleSkinCustomization());
+            addBounceEffect(skinButton); // Add bounce effect
+            this.addUIAnimations(skinButton); // Add UI animations - this will handle setInteractive
+            this.toolbarButtons.skin = skinButton; // Store reference
 
-            // Add costs/labels underneath
-            this.add.text(40, 570, 'Attack', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
-            this.add.text(110, 570, '5', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-            this.add.text(180, 570, '45', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-            this.add.text(250, 570, '65', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
-            this.add.text(460, 570, 'Upgrade', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
+            const skinText = this.add.text(530, 570, '👤', {
+              fontFamily: 'Arial', fontSize: '32px'
+            }).setOrigin(0.5).setDepth(2001);
+            skinText.setInteractive({ useHandCursor: true });
+            skinText.on('pointerdown', () => skinButton.emit('pointerdown'));
+
+
+            // Add costs/labels underneath - adjusted for new spacing
+            this.add.text(40, 590, 'Attack', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
+            this.add.text(110, 590, '5', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            this.add.text(180, 590, '25', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            this.add.text(250, 590, '50', { fontFamily: 'Arial', fontSize: costFontSize, color: '#FFFF00' }).setOrigin(0.5).setDepth(2001);
+            this.add.text(460, 590, 'Upgrade', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
+            this.add.text(530, 590, 'Skins', { fontFamily: 'Arial', fontSize: labelFontSize, color: '#FFFFFF' }).setOrigin(0.5).setDepth(2001);
 
 
             // Set initial tool to attack mode
-            this.setToolMode('attack');
+        this.setToolMode('attack');
 
-            // Initialize advanced defense button visibility
-            this.updateAdvancedDefenseButtons();
-          } catch (error) {
-            console.error("Error creating toolbar:", error);
-          }
+        // Initialize advanced defense button visibility
+        this.updateAdvancedDefenseButtons();
+        
+        // Initialize tooltip system
+        this.initializeTooltipSystem();
+        
+        // Add hover handlers to defense buttons
+        this.addDefenseTooltipHandlers();
+      } catch (error) {
+        console.error("Error creating toolbar:", error);
+      }
+    }
+
+    // Initialize the tooltip system
+    initializeTooltipSystem() {
+      // Create tooltip container
+      this.tooltip = {
+        background: null,
+        nameText: null,
+        lifetimeText: null,
+        damageText: null,
+        abilityText: null,
+        visible: false
+      };
+      
+      // Create tooltip background
+      this.tooltip.background = this.add.rectangle(0, 0, 200, 120, 0x000000, 0.9)
+        .setDepth(3000)
+        .setVisible(false)
+        .setStrokeStyle(2, 0x444444);
+      
+      // Create tooltip texts
+      this.tooltip.nameText = this.add.text(0, 0, '', {
+        fontFamily: 'Arial',
+        fontSize: '14px',
+        color: '#FFFFFF',
+        fontStyle: 'bold'
+      }).setDepth(3001).setVisible(false);
+      
+      this.tooltip.lifetimeText = this.add.text(0, 0, '', {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#FFFF00'
+      }).setDepth(3001).setVisible(false);
+      
+      this.tooltip.damageText = this.add.text(0, 0, '', {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#FF6666'
+      }).setDepth(3001).setVisible(false);
+      
+      this.tooltip.abilityText = this.add.text(0, 0, '', {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#66CCFF',
+        wordWrap: { width: 180 }
+      }).setDepth(3001).setVisible(false);
+    }
+    
+    // Show tooltip for defense type
+    showDefenseTooltip(x, y, defenseType) {
+      if (!this.tooltip || this.tooltip.visible) return;
+      
+      const stats = this.getDefenseStats(defenseType);
+      if (!stats) return;
+      
+      // Update tooltip content
+      this.tooltip.nameText.setText(stats.name);
+      this.tooltip.lifetimeText.setText(`Lifetime: ${stats.lifetime} waves`);
+      this.tooltip.damageText.setText(`Damage: ${stats.damage}`);
+      this.tooltip.abilityText.setText(`Ability: ${stats.ability}`);
+      
+      // Position tooltip elements - adjusted for better visibility above toolbar
+      const tooltipX = Math.min(x + 10, this.cameras.main.width - 210);
+      const tooltipY = Math.max(y - 120, 10);
+      
+      this.tooltip.background.setPosition(tooltipX + 100, tooltipY + 60);
+      this.tooltip.nameText.setPosition(tooltipX + 10, tooltipY + 20);
+      this.tooltip.lifetimeText.setPosition(tooltipX + 10, tooltipY + 40);
+      this.tooltip.damageText.setPosition(tooltipX + 10, tooltipY + 60);
+      this.tooltip.abilityText.setPosition(tooltipX + 10, tooltipY + 80);
+      
+      // Show tooltip with smooth fade-in
+      this.tooltip.background.setVisible(true).setAlpha(0);
+      this.tooltip.nameText.setVisible(true).setAlpha(0);
+      this.tooltip.lifetimeText.setVisible(true).setAlpha(0);
+      this.tooltip.damageText.setVisible(true).setAlpha(0);
+      this.tooltip.abilityText.setVisible(true).setAlpha(0);
+      
+      this.tweens.add({
+        targets: [this.tooltip.background, this.tooltip.nameText, this.tooltip.lifetimeText, this.tooltip.damageText, this.tooltip.abilityText],
+        alpha: 1,
+        duration: 150,
+        ease: 'Power2'
+      });
+      
+      this.tooltip.visible = true;
+    }
+    
+    // Hide tooltip with smooth fade-out
+    hideDefenseTooltip() {
+      if (!this.tooltip || !this.tooltip.visible) return;
+      
+      this.tweens.add({
+        targets: [this.tooltip.background, this.tooltip.nameText, this.tooltip.lifetimeText, this.tooltip.damageText, this.tooltip.abilityText],
+        alpha: 0,
+        duration: 100,
+        ease: 'Power2',
+        onComplete: () => {
+          this.tooltip.background.setVisible(false);
+          this.tooltip.nameText.setVisible(false);
+          this.tooltip.lifetimeText.setVisible(false);
+          this.tooltip.damageText.setVisible(false);
+          this.tooltip.abilityText.setVisible(false);
+          this.tooltip.visible = false;
         }
+      });
+    }
+    
+    // Get defense stats for tooltip
+    getDefenseStats(defenseType) {
+      const baseStats = {
+        chog: {
+          name: 'CHOG Defender',
+          lifetime: 2,
+          damage: 0.4,
+          ability: 'Nature magic with healing aura'
+        },
+        molandak: {
+          name: 'MOLANDAK Guardian', 
+          lifetime: 3,
+          damage: 0.8,
+          ability: 'Ice magic with freeze effects'
+        },
+        moyaki: {
+          name: 'MOYAKI Warrior',
+          lifetime: 3,
+          damage: 0.9,
+          ability: 'Fire magic with area damage'
+        },
+        keon: {
+          name: 'KEON Champion',
+          lifetime: 4,
+          damage: 2.5,
+          ability: 'Divine magic with special attacks'
+        }
+      };
+      
+      let stats = baseStats[defenseType];
+      if (!stats) return null;
+      
+      // Apply upgrade multipliers if available
+      if (this.upgradeSystem) {
+        try {
+          const powerMultiplier = this.upgradeSystem.getUpgradeValue(`${defenseType}Power`) || 1;
+          stats = {
+            ...stats,
+            damage: Math.round(stats.damage * powerMultiplier)
+          };
+        } catch (error) {
+          console.warn('Could not apply upgrade multipliers to tooltip:', error);
+        }
+      }
+      
+      return stats;
+    }
+    
+    // Add hover handlers to defense buttons
+    addDefenseTooltipHandlers() {
+      const defenseButtons = [
+        { button: this.toolbarButtons.chog, image: this.toolbarButtons.chogImage, hover: this.toolbarButtons.chogHover, type: 'chog' },
+        { button: this.toolbarButtons.molandak, image: this.toolbarButtons.molandakImage, hover: this.toolbarButtons.molandakHover, type: 'molandak' },
+        { button: this.toolbarButtons.keon, image: this.toolbarButtons.keonImage, hover: this.toolbarButtons.keonHover, type: 'keon' },
+        { button: this.toolbarButtons.moyaki, image: this.toolbarButtons.moyakiImage, hover: this.toolbarButtons.moyakiHover, type: 'moyaki' }
+      ];
+      
+      defenseButtons.forEach(({ button, image, hover, type }) => {
+        if (button && image && hover) {
+          // Add hover handlers to button, image, and larger hover area for better usability
+          [button, image, hover].forEach(element => {
+            element.on('pointerover', () => {
+              this.showDefenseTooltip(element.x, element.y, type);
+            });
+            
+            element.on('pointerout', () => {
+              this.hideDefenseTooltip();
+            });
+          });
+        }
+      });
+    }
 
         addHelperFunctions() {
           // Add the missing isPointInFarmArea function
@@ -2957,16 +3637,16 @@ if (isBrowser) {
             // Check if position is valid (right side of screen)
             if (x < 200) {
               this.showFloatingText(x, y, "Place on RIGHT side only!", 0xFF0000);
-              return;
+              return false;
             }
             
             // Calculate cost based on defense type
-            const cost = defenseType === 'chog' ? 30 : defenseType === 'molandak' ? 65 : defenseType === 'moyaki' ? 75 : defenseType === 'keon' ? 200 : 50;
+            const cost = defenseType === 'chog' ? 25 : defenseType === 'molandak' ? 50 : defenseType === 'moyaki' ? 80 : defenseType === 'keon' ? 150 : 50;
             
             // Check if player has enough coins
             if (this.gameState.farmCoins < cost) {
               this.showFloatingText(x, y, `Need ${cost} coins!`, 0xFF0000);
-              return;
+              return false;
             }
             
             // Add Defense class from registry
@@ -2974,11 +3654,23 @@ if (isBrowser) {
             
             if (!DefenseClass) {
               console.error("Defense class not available");
-              return;
+              return false;
             }
             
             // Create defense - handle upgrades in the Defense constructor
-            const defense = new DefenseClass(this, defenseType, x, y);
+            // Use SkillDefender if skillTreeManager is available, otherwise use regular Defense
+            let defense;
+            
+            // Get the appropriate skin for this defender type
+            const skinKey = this.skinCustomization ? this.skinCustomization.getSkinForDefender(defenseType) : `${defenseType}_idle`;
+            console.log(`[DEFENSE DEBUG] Creating defense ${defenseType} with skin:`, skinKey);
+            console.log(`[DEFENSE DEBUG] SkinCustomization available:`, !!this.skinCustomization);
+            
+            if (window.skillTreeManager) {
+              defense = new SkillDefender(this, defenseType, x, y, window.skillTreeManager, skinKey);
+            } else {
+              defense = new DefenseClass(this, defenseType, x, y, skinKey);
+            }
             
             // Add to defenses array
             if (!this.defenses) {
@@ -3001,7 +3693,9 @@ if (isBrowser) {
             }
             
             // Reset tool mode to attack after placing
-            this.setToolMode('attack');
+            // this.setToolMode('attack');
+            
+            return true;
           };
         }
 
@@ -3220,12 +3914,21 @@ if (isBrowser) {
             if (shouldAdvance) {
               console.log(`Wave ${this.gameState.wave} complete. Conditions met. Triggering next wave.`);
               
+              // Show wave completion notification with animation
+              this.showWaveCompletionMessage();
+              
+              // Emit waveComplete event for React component
+              const onGameEvent = this.registry.get('onGameEvent');
+              if (typeof onGameEvent === 'function') {
+                onGameEvent('waveComplete', { wave: this.gameState.wave, score: this.gameState.score });
+              }
+              
               // Prevent calling forceNextWave multiple times rapidly
               this.waveChangeInProgress = true;
               this._lastWaveChangeTime = time; // Track when the change started
               
               // Add a brief delay before actually forcing the next wave
-              this.time.delayedCall(500, () => {
+              this.time.delayedCall(1500, () => {
                 if (this.gameState?.isActive) {
                   this.forceNextWave();
                 } else {
@@ -3436,16 +4139,45 @@ if (isBrowser) {
           }
         }
 
-        // Toggle the upgrade panel visibility
+        // Toggle the upgrade panel visibility with smooth animations
         toggleUpgradePanel() {
           try {
             if (!this.upgradeSystem) return;
             
             // Get current state
             const isVisible = this.upgradeSystem.uiElements?.panel?.visible || false;
+            const panel = this.upgradeSystem.uiElements?.panel;
             
-            // Toggle visibility
-            this.upgradeSystem.setUIVisible(!isVisible);
+            if (!panel) return;
+            
+            if (isVisible) {
+              // Animate panel sliding out and fading
+              this.tweens.add({
+                targets: panel,
+                x: panel.x + 300, // Slide to the right
+                alpha: 0,
+                duration: 250,
+                ease: 'Power2',
+                onComplete: () => {
+                  this.upgradeSystem.setUIVisible(false);
+                  panel.x -= 300; // Reset position for next show
+                  panel.alpha = 1; // Reset alpha for next show
+                }
+              });
+            } else {
+              // Show panel first, then animate it sliding in
+              this.upgradeSystem.setUIVisible(true);
+              panel.x += 300; // Start position (off-screen)
+              panel.alpha = 0; // Start transparent
+              
+              this.tweens.add({
+                targets: panel,
+                x: panel.x - 300, // Slide to original position
+                alpha: 1,
+                duration: 250,
+                ease: 'Power2'
+              });
+            }
             
             // Update defense buttons
             this.updateAdvancedDefenseButtons();
@@ -3453,6 +4185,149 @@ if (isBrowser) {
             console.log(`Upgrade panel ${isVisible ? 'hidden' : 'shown'}`);
           } catch (error) {
             console.error("Error toggling upgrade panel:", error);
+          }
+        }
+
+        // Toggle skin customization panel
+        toggleSkinCustomization(defenderType = null) {
+          try {
+            if (!this.skinCustomization) return;
+            
+            // Get current state
+            const isVisible = this.skinCustomization.isVisible || false;
+            
+            if (isVisible) {
+              // Hide the skin customization panel
+              this.skinCustomization.hide();
+            } else {
+              // Show the skin customization panel with defender selection
+              if (defenderType) {
+                this.skinCustomization.show(defenderType);
+              } else {
+                // Show defender selection menu first
+                this.showDefenderSelectionMenu();
+              }
+            }
+            
+            console.log(`Skin customization panel ${isVisible ? 'hidden' : 'shown'}`);
+          } catch (error) {
+            console.error('Error toggling skin customization:', error);
+          }
+        }
+        
+        showDefenderSelectionMenu() {
+          const centerX = this.cameras.main.width / 2;
+          const centerY = this.cameras.main.height / 2;
+          
+          // Create container for defender selection
+          this.defenderSelectionContainer = this.add.container(0, 0);
+          this.defenderSelectionContainer.setDepth(9999);
+          
+          // Background overlay
+          const overlay = this.add.rectangle(0, 0, 
+            this.cameras.main.width, 
+            this.cameras.main.height, 
+            0x000000, 0.7);
+          overlay.setOrigin(0, 0);
+          this.defenderSelectionContainer.add(overlay);
+          
+          // Main panel
+          const panelWidth = 500;
+          const panelHeight = 350;
+          const mainPanel = this.add.rectangle(centerX, centerY, panelWidth, panelHeight, 0x2a2a2a);
+          mainPanel.setStrokeStyle(3, 0x4a4a4a);
+          this.defenderSelectionContainer.add(mainPanel);
+          
+          // Title
+          const title = this.add.text(centerX, centerY - 140, 'SELECT DEFENDER TO CUSTOMIZE', {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold'
+          });
+          title.setOrigin(0.5);
+          this.defenderSelectionContainer.add(title);
+          
+          // Close button
+          const closeButton = this.add.rectangle(centerX + 230, centerY - 140, 40, 40, 0xff4444);
+          closeButton.setStrokeStyle(2, 0xffffff);
+          const closeText = this.add.text(centerX + 230, centerY - 140, 'X', {
+            fontSize: '20px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            fontStyle: 'bold'
+          });
+          closeText.setOrigin(0.5);
+          closeButton.setInteractive({ useHandCursor: true });
+          closeButton.on('pointerdown', () => this.hideDefenderSelectionMenu());
+          this.defenderSelectionContainer.add([closeButton, closeText]);
+          
+          // Defender buttons
+          const defenders = [
+            { type: 'chog', name: 'CHOG Defender', color: 0x0088FF, icon: '🧙‍♂️' },
+            { type: 'molandak', name: 'MOLANDAK Guardian', color: 0xFF4400, icon: '🧙‍♀️' },
+            { type: 'moyaki', name: 'MOYAKI Warrior', color: 0xFF0000, icon: '⚔️' },
+            { type: 'keon', name: 'KEON Champion', color: 0xFF00FF, icon: '🛡️' }
+          ];
+          
+          const buttonWidth = 100;
+          const buttonHeight = 80;
+          const startX = centerX - (defenders.length * 110) / 2 + 55;
+          
+          defenders.forEach((defender, index) => {
+            const x = startX + (index * 110);
+            const y = centerY - 20;
+            
+            // Defender button
+            const button = this.add.rectangle(x, y, buttonWidth, buttonHeight, defender.color);
+            button.setStrokeStyle(2, 0xffffff);
+            button.setInteractive({ useHandCursor: true });
+            
+            // Defender icon/image
+            let defenderImage;
+            const imageKey = `${defender.type}_idle`;
+            if (this.textures.exists(imageKey)) {
+              defenderImage = this.add.image(x, y - 10, imageKey);
+              defenderImage.setDisplaySize(50, 50);
+            } else {
+              defenderImage = this.add.text(x, y - 10, defender.icon, {
+                fontSize: '32px'
+              });
+              defenderImage.setOrigin(0.5);
+            }
+            
+            // Defender name
+            const nameText = this.add.text(x, y + 25, defender.name, {
+              fontSize: '10px',
+              fontFamily: 'Arial',
+              color: '#ffffff',
+              align: 'center',
+              wordWrap: { width: 90 }
+            });
+            nameText.setOrigin(0.5);
+            
+            // Button interaction
+            button.on('pointerdown', () => {
+              this.hideDefenderSelectionMenu();
+              this.skinCustomization.show(defender.type);
+            });
+            
+            button.on('pointerover', () => {
+              button.setStrokeStyle(3, 0xffffff);
+            });
+            
+            button.on('pointerout', () => {
+              button.setStrokeStyle(2, 0xffffff);
+            });
+            
+            this.defenderSelectionContainer.add([button, defenderImage, nameText]);
+          });
+        }
+        
+        hideDefenderSelectionMenu() {
+          if (this.defenderSelectionContainer) {
+            this.defenderSelectionContainer.destroy();
+            this.defenderSelectionContainer = null;
           }
         }
 
@@ -3963,10 +4838,10 @@ if (isBrowser) {
             }
             
             // Check defense costs
-            const cost = type === 'chog' ? 45 : 
-                         type === 'molandak' ? 65 : 
-                         type === 'keon' ? 125 : // Add keon cost
-                         type === 'moyaki' ? 200 : 0; // Add moyaki cost
+            const cost = type === 'chog' ? 25 : 
+                         type === 'molandak' ? 50 : 
+                         type === 'keon' ? 150 : // Add keon cost
+                         type === 'moyaki' ? 80 : 0; // Add moyaki cost
             
             // Check if player has enough coins
             if (this.gameState.farmCoins < cost) {
@@ -3986,7 +4861,17 @@ if (isBrowser) {
             let defense;
             
             if (DefenseClass) {
-              defense = new DefenseClass(this, type, x, y);
+              // Get the appropriate skin for this defender type
+              const skinKey = this.skinCustomization ? this.skinCustomization.getSkinForDefender(type) : `${type}_idle`;
+              console.log(`[DEFENSE DEBUG 2] Creating defense ${type} with skin:`, skinKey);
+              console.log(`[DEFENSE DEBUG 2] SkinCustomization available:`, !!this.skinCustomization);
+              
+              // Use SkillDefender if skillTreeManager is available, otherwise use regular Defense
+              if (window.skillTreeManager) {
+                defense = new SkillDefender(this, type, x, y, window.skillTreeManager, skinKey);
+              } else {
+                defense = new DefenseClass(this, type, x, y, skinKey);
+              }
             } else {
               // Fallback if DefenseClass isn't available
               defense = {
@@ -4002,7 +4887,16 @@ if (isBrowser) {
                   type === 'chog' ? 0x0088FF : 
                   type === 'molandak' ? 0xFF4400 : 
                   type === 'keon' ? 0xFF00FF : 
-                  type === 'moyaki' ? 0xFF0000 : 0x666666)
+                  type === 'moyaki' ? 0xFF0000 : 0x666666),
+                // Add forceDestroy method for fallback defenses
+                forceDestroy() {
+                  this.active = false;
+                  if (this.sprite && typeof this.sprite.destroy === 'function') this.sprite.destroy();
+                  if (this.label && typeof this.label.destroy === 'function') this.label.destroy();
+                },
+                destroy() {
+                  this.forceDestroy();
+                }
               };
               
               // Add defense type text
@@ -4150,6 +5044,37 @@ if (isBrowser) {
           }
         }
 
+        // Clear any orphaned wave indicator texts that might be stuck on screen
+        clearOrphanedWaveIndicators() {
+          try {
+            // Find all text objects that contain wave indicator patterns
+            const allChildren = this.children.list;
+            const orphanedIndicators = allChildren.filter(child => {
+              return child && 
+                     child.type === 'Text' && 
+                     child.text && 
+                     (child.text.includes('BOSS W') || 
+                      child.text.includes('BOSS') ||
+                      /^W\d+$/.test(child.text) || // Matches W1, W2, W3, W4, etc.
+                      /^BOSS W\d+$/.test(child.text)); // Matches BOSS W5, BOSS W10, etc.
+            });
+            
+            if (orphanedIndicators.length > 0) {
+              console.log(`Found ${orphanedIndicators.length} orphaned wave indicators, destroying them`);
+              orphanedIndicators.forEach(indicator => {
+                try {
+                  console.log(`Destroying orphaned wave indicator: "${indicator.text}"`);
+                  indicator.destroy();
+                } catch (error) {
+                  console.warn('Error destroying orphaned wave indicator:', error);
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Error clearing orphaned wave indicators:', error);
+          }
+        }
+
         // Display large wave start text animation in the center of the screen
         showWaveStartText(waveNumber) {
           try {
@@ -4262,6 +5187,8 @@ if (isBrowser) {
               return;
             }
             
+
+            
             // Process each crop
             Object.values(this.crops).forEach(crop => {
               if (!crop || !crop.isActive) return;
@@ -4321,6 +5248,7 @@ if (isBrowser) {
               // Use stored references
               if (this.toolbarButtons.keonImage) this.toolbarButtons.keonImage.visible = keonVisible;
               if (this.toolbarButtons.keonCostText) this.toolbarButtons.keonCostText.visible = keonVisible;
+              if (this.toolbarButtons.keonHover) this.toolbarButtons.keonHover.visible = keonVisible;
               
               // Show notification when first unlocked
               if (keonVisible && !this.keonUnlockNotified) {
@@ -4337,6 +5265,7 @@ if (isBrowser) {
               // Use stored references
               if (this.toolbarButtons.moyakiImage) this.toolbarButtons.moyakiImage.visible = moyakiVisible;
               if (this.toolbarButtons.moyakiCostText) this.toolbarButtons.moyakiCostText.visible = moyakiVisible;
+              if (this.toolbarButtons.moyakiHover) this.toolbarButtons.moyakiHover.visible = moyakiVisible;
               
               // Show notification when first unlocked
               if (moyakiVisible && !this.moyakiUnlockNotified) {
@@ -4539,12 +5468,20 @@ if (isBrowser) {
 
         // Add this method to handle enemies that reach the end of the path
         enemyReachedEnd(enemy) {
-          if (!enemy || !this.gameState) return;
+          if (!enemy || !this.gameState || !this.gameState.isActive) return;
+          
+          // Prevent multiple life losses from the same enemy
+          if (enemy.hasReachedEnd) {
+            return;
+          }
+          enemy.hasReachedEnd = true;
 
-          console.log(`Enemy ${enemy.id} reached the end of the path`);
+          console.log(`Enemy ${enemy.id} reached the farm - lives: ${this.gameState.lives} -> ${this.gameState.lives - 1}`);
 
           // Reduce lives
           this.gameState.lives--;
+          
+          // Update lives display
           if (typeof this.updateLivesText === 'function') {
             this.updateLivesText();
           }
@@ -4555,33 +5492,38 @@ if (isBrowser) {
           }
 
           // Add screen shake when a life is lost
-          this.cameras.main.shake(250, 0.008); // Longer duration, slightly higher intensity
+          this.cameras.main.shake(250, 0.008);
 
-          // Check for game over
-          if (this.gameState.lives <= 0) {
-            console.log("Game over! No lives remaining.");
-            if (typeof this.endGame === 'function') {
-              this.endGame(false);
-            } else {
-              // Basic game over implementation
-              this.gameState.isActive = false;
-              const gameOverText = this.add.text(400, 300, 'GAME OVER', {
-                fontSize: '48px',
-                fontFamily: 'Arial',
-                color: '#FF0000'
-              }).setOrigin(0.5);
-            }
+          // Hide health bar immediately before cleanup
+          if (typeof enemy.hideHealthBar === 'function') {
+            enemy.hideHealthBar();
           }
 
-          // Destroy the enemy - using the internal destroy method
+          // Remove enemy from enemies array immediately
+          const enemyIndex = this.enemies.indexOf(enemy);
+          if (enemyIndex > -1) {
+            this.enemies.splice(enemyIndex, 1);
+          }
+
+          // Destroy the enemy
           if (typeof enemy.destroy === 'function') {
             enemy.destroy();
           }
 
-          // Play enemy escaped sound - make it more alarming
+          // Play enemy escaped sound
           if (this.soundManager) {
-             // Use a more impactful sound - ensure this key exists
             this.soundManager.play('enemy_escaped_alarm', { volume: 0.8 });
+          }
+
+          // Check for game over AFTER enemy cleanup
+          if (this.gameState.lives <= 0) {
+            console.log("Game over! No lives remaining.");
+            // Delay game over slightly to allow visual feedback
+            this.time.delayedCall(500, () => {
+              if (typeof this.endGame === 'function') {
+                this.endGame(false);
+              }
+            });
           }
         }
 
@@ -4598,8 +5540,18 @@ if (isBrowser) {
             // Set game to inactive
             this.gameState.isActive = false;
 
-            // IMPORTANT: Immediately clean up all game objects
-            this.cleanupCurrentGame();
+            // Emit game end event
+            const onGameEvent = this.registry.get('onGameEvent');
+            if (typeof onGameEvent === 'function') {
+              if (victory) {
+                onGameEvent('gameWon', finalScore);
+              } else {
+                onGameEvent('gameOver', finalScore);
+              }
+            }
+
+            // IMPORTANT: Immediately clean up all game objects (full cleanup on game end)
+            this.cleanupCurrentGame(true);
 
             // Add screen shake on game end - more intense for game over
             this.cameras.main.shake(victory ? 400 : 600, victory ? 0.006 : 0.012);
@@ -4611,7 +5563,7 @@ if (isBrowser) {
             // Calculate final stats (Already captured above)
             // const coinsEarned = finalCoins; // Use captured value
 
-            // Add game over text
+            // Add game over text with dramatic entrance animation
             const resultText = victory ? 'Victory!' : 'Game Over';
             const gameOverText = this.add.text(400, 200, resultText, {
               fontFamily: 'Arial Black, Impact, sans-serif',
@@ -4626,9 +5578,29 @@ if (isBrowser) {
                 blur: 5
               }
             }).setOrigin(0.5);
-            gameOverText.setDepth(1001);
+            gameOverText.setDepth(2001);
+            
+            // Animate game over text with dramatic entrance
+            gameOverText.setScale(0);
+            gameOverText.setAlpha(0);
+            this.tweens.add({
+              targets: gameOverText,
+              scale: { from: 0, to: 1.2 },
+              alpha: { from: 0, to: 1 },
+              duration: 600,
+              ease: 'Back.easeOut',
+              onComplete: () => {
+                // Slight bounce effect
+                this.tweens.add({
+                  targets: gameOverText,
+                  scale: 1,
+                  duration: 200,
+                  ease: 'Power2'
+                });
+              }
+            });
 
-            // Show statistics
+            // Show statistics with staggered entrance animations
             const scoreText = this.add.text(400, 280, `Score: ${finalScore}`, {
               fontFamily: 'Arial',
               fontSize: '32px',
@@ -4636,7 +5608,9 @@ if (isBrowser) {
               stroke: '#000000',
               strokeThickness: 3
             }).setOrigin(0.5);
-            scoreText.setDepth(1001);
+            scoreText.setDepth(2001);
+            scoreText.setAlpha(0);
+            scoreText.setY(scoreText.y + 20);
 
             const wavesText = this.add.text(400, 330, `Waves: ${completedWaves}`, {
               fontFamily: 'Arial',
@@ -4645,7 +5619,9 @@ if (isBrowser) {
               stroke: '#000000',
               strokeThickness: 3
             }).setOrigin(0.5);
-            wavesText.setDepth(1001);
+            wavesText.setDepth(2001);
+            wavesText.setAlpha(0);
+            wavesText.setY(wavesText.y + 20);
 
             const coinsText = this.add.text(400, 380, `Coins: ${finalCoins}`, {
               fontFamily: 'Arial',
@@ -4654,25 +5630,136 @@ if (isBrowser) {
               stroke: '#000000',
               strokeThickness: 3
             }).setOrigin(0.5);
-            coinsText.setDepth(1001);
+            coinsText.setDepth(2001);
+            coinsText.setAlpha(0);
+            coinsText.setY(coinsText.y + 20);
+            
+            // Animate statistics with staggered entrance
+            this.tweens.add({
+              targets: scoreText,
+              alpha: 1,
+              y: scoreText.y - 20,
+              duration: 400,
+              ease: 'Power2',
+              delay: 800
+            });
+            
+            this.tweens.add({
+              targets: wavesText,
+              alpha: 1,
+              y: wavesText.y - 20,
+              duration: 400,
+              ease: 'Power2',
+              delay: 1000
+            });
+            
+            this.tweens.add({
+              targets: coinsText,
+              alpha: 1,
+              y: coinsText.y - 20,
+              duration: 400,
+              ease: 'Power2',
+              delay: 1200
+            });
 
-            // Create restart button with proper styling
+            // Create score submission button with proper styling and entrance animation
             const buttonWidth = 220;
             const buttonHeight = 60;
-            const restartButton = this.add.rectangle(400, 500, buttonWidth, buttonHeight, 0x4CAF50, 1);
-            restartButton.setStrokeStyle(4, 0x45A049);
-            restartButton.setDepth(1001);
+            const submitButton = this.add.rectangle(400, 450, buttonWidth, buttonHeight, 0x6B46C1, 1);
+            submitButton.setStrokeStyle(4, 0x553C9A);
+            submitButton.setDepth(2001);
+            submitButton.setAlpha(0);
+            submitButton.setScale(0.8);
 
-            const restartText = this.add.text(400, 500, 'Play Again', {
+            const submitText = this.add.text(400, 450, 'Submit Score', {
+              fontFamily: 'Arial',
+              fontSize: '24px',
+              color: '#FFFFFF',
+              stroke: '#000000',
+              strokeThickness: 1
+            }).setOrigin(0.5);
+            submitText.setDepth(2002);
+            submitText.setAlpha(0);
+            submitText.setScale(0.8);
+
+            // Create restart button with proper styling and entrance animation
+            const restartButton = this.add.rectangle(400, 530, buttonWidth, buttonHeight, 0x4CAF50, 1);
+            restartButton.setStrokeStyle(4, 0x45A049);
+            restartButton.setDepth(2001);
+            restartButton.setAlpha(0);
+            restartButton.setScale(0.8);
+
+            const restartText = this.add.text(400, 530, 'Play Again', {
               fontFamily: 'Arial',
               fontSize: '28px',
               color: '#FFFFFF',
               stroke: '#000000',
               strokeThickness: 1
             }).setOrigin(0.5);
-            restartText.setDepth(1002);
+            restartText.setDepth(2002);
+            restartText.setAlpha(0);
+            restartText.setScale(0.8);
+            
+            // Animate buttons with staggered entrance
+            this.tweens.add({
+              targets: [submitButton, submitText],
+              alpha: 1,
+              scale: 1,
+              duration: 300,
+              ease: 'Back.easeOut',
+              delay: 1500
+            });
+            
+            this.tweens.add({
+              targets: [restartButton, restartText],
+              alpha: 1,
+              scale: 1,
+              duration: 300,
+              ease: 'Back.easeOut',
+              delay: 1700
+            });
 
-            // Add hover effect
+            // Add submit button hover effect and interaction
+            submitButton.setInteractive({ useHandCursor: true })
+              .on('pointerover', () => {
+                if (!this.isSubmittingScore) {
+                  submitButton.fillColor = 0x553C9A;
+                  this.tweens.add({ targets: submitButton, scale: 1.05, duration: 100 });
+                  this.input.setDefaultCursor('pointer');
+                }
+              })
+              .on('pointerout', () => {
+                if (!this.isSubmittingScore) {
+                  submitButton.fillColor = 0x6B46C1;
+                  this.tweens.add({ targets: submitButton, scale: 1.0, duration: 100 });
+                  this.input.setDefaultCursor('default');
+                }
+              })
+              .on('pointerdown', () => {
+                // Prevent multiple submissions
+                if (this.isSubmittingScore) {
+                  return;
+                }
+
+                // Play click sound if available
+                if (this.soundManager) {
+                  this.soundManager.play('ui_click_confirm', { volume: 0.8 }); 
+                }
+
+                // Add quick scale down animation on click
+                this.tweens.add({
+                  targets: submitButton,
+                  scale: 0.95,
+                  duration: 80,
+                  yoyo: true,
+                  onComplete: () => {
+                    // Submit score via API and handle UI updates
+                    this.submitScore(finalScore, completedWaves, submitButton, submitText);
+                  }
+                });
+              });
+
+            // Add hover effect for restart button
             restartButton.setInteractive({ useHandCursor: true })
               .on('pointerover', () => {
                 restartButton.fillColor = 0x45A049;
@@ -4706,6 +5793,8 @@ if (isBrowser) {
                       scoreText.destroy();
                       wavesText.destroy();
                       coinsText.destroy();
+                      submitButton.destroy();
+                      submitText.destroy();
                       restartButton.destroy();
                       restartText.destroy();
 
@@ -4743,29 +5832,282 @@ if (isBrowser) {
           }
         }
 
-        // Add helper method to clean up game objects
-        cleanupCurrentGame() {
+        // Add method to submit score via API
+        // Add helper method to validate scene context
+        isSceneValid() {
           try {
-            console.log("Cleaning up current game...");
+            // Check if scene object exists and is properly initialized
+            if (!this || !this.scene) {
+              console.warn('Scene validation failed: scene object is null or undefined');
+              return false;
+            }
             
-            // Stop any active timers (spawning, wave completion, etc.)
-            this.time.removeAllEvents();
+            // Check if scene is active
+            if (!this.scene.isActive || typeof this.scene.isActive !== 'function' || !this.scene.isActive()) {
+              console.warn('Scene validation failed: scene is not active');
+              return false;
+            }
             
-            // Clean up all enemies
-            if (this.enemies && this.enemies.length) {
-              this.enemies.forEach(enemy => {
-                if (enemy && typeof enemy.destroy === 'function') {
+            // Check if add object exists and has required methods
+            if (!this.add || typeof this.add !== 'object') {
+              console.warn('Scene validation failed: add object is null or not an object');
+              return false;
+            }
+            
+            if (typeof this.add.text !== 'function') {
+              console.warn('Scene validation failed: add.text is not a function');
+              return false;
+            }
+            
+            // Check if tweens object exists and has required methods
+            if (!this.tweens || typeof this.tweens !== 'object') {
+              console.warn('Scene validation failed: tweens object is null or not an object');
+              return false;
+            }
+            
+            if (typeof this.tweens.add !== 'function') {
+              console.warn('Scene validation failed: tweens.add is not a function');
+              return false;
+            }
+            
+            // Additional checks for scene destruction
+            if (this.scene.sys && this.scene.sys.isDestroyed) {
+              console.warn('Scene validation failed: scene system is destroyed');
+              return false;
+            }
+            
+            return true;
+          } catch (error) {
+            console.error('Error in scene validation:', error);
+            return false;
+          }
+        }
+
+        async submitScore(score, waves, submitButton, submitText) {
+          // Prevent multiple submissions
+          if (this.isSubmittingScore) {
+            console.log('Score submission already in progress, ignoring duplicate request');
+            return;
+          }
+
+          // Validate scene before proceeding
+          if (!this.isSceneValid()) {
+            console.error('Scene is invalid, cannot submit score');
+            return;
+          }
+          
+          this.isSubmittingScore = true;
+          
+          // Disable the submit button immediately
+          if (submitButton && submitText) {
+            submitButton.fillColor = 0x666666; // Gray out the button
+            submitButton.disableInteractive();
+            submitText.setColor('#AAAAAA'); // Gray out the text
+            submitText.setText('Submitting...');
+          }
+          
+          try {
+            console.log(`Submitting score: Score=${score}, Waves=${waves}`);
+            
+            // Check if secure score submission function is available
+            if (typeof window !== 'undefined' && window.secureSubmitScore) {
+              // Show loading feedback to user - add null check for scene context
+              let feedbackText = null;
+              if (this.isSceneValid() && this.add && typeof this.add.text === 'function') {
+                try {
+                  feedbackText = this.add.text(400, 400, 'Submitting Score...', {
+                    fontFamily: 'Arial',
+                    fontSize: '24px',
+                    color: '#FFD700',
+                    stroke: '#000000',
+                    strokeThickness: 2
+                  }).setOrigin(0.5);
+                  feedbackText.setDepth(1003);
+                } catch (e) {
+                  console.warn('Could not create feedback text:', e);
+                }
+              }
+              
+              // Generate game state hash for integrity verification
+              const gameStateData = {
+                score: score,
+                waves: waves,
+                timestamp: Date.now(),
+                gameTime: this.gameTime || 0,
+                enemiesDefeated: this.enemiesDefeated || 0
+              };
+              
+              // Call the secure submission function
+              const transactionCount = 1; // Always 1 transaction per game session
+              const success = window.secureSubmitScore(score, transactionCount, gameStateData);
+              
+              // Remove loading text safely
+              if (feedbackText && typeof feedbackText.destroy === 'function') {
+                try {
+                  feedbackText.destroy();
+                } catch (e) {
+                  console.warn('Could not destroy feedback text:', e);
+                }
+              }
+              
+              if (success) {
+                // Update button to show success and hide it
+                if (submitButton && submitText) {
+                  submitText.setText('Score Submitted!');
+                  submitText.setColor('#00FF00');
+                  
+                  // Fade out the submit button after showing success
+                  if (this.isSceneValid()) {
+                    this.tweens.add({
+                      targets: [submitButton, submitText],
+                      alpha: 0,
+                      duration: 2000,
+                      onComplete: () => {
+                        if (submitButton && typeof submitButton.destroy === 'function') submitButton.destroy();
+                        if (submitText && typeof submitText.destroy === 'function') submitText.destroy();
+                      }
+                    });
+                  }
+                }
+                
+                // Show success feedback - add null check for scene context
+                if (this.isSceneValid() && this.add && typeof this.add.text === 'function') {
                   try {
-                    enemy.destroy();
+                    const successText = this.add.text(400, 450, 'Score submitted successfully!\nUse "Play Again" to start a new game\n(Click to dismiss)', {
+                      fontFamily: 'Arial',
+                      fontSize: '20px',
+                      color: '#00FF00',
+                      stroke: '#000000',
+                      strokeThickness: 2,
+                      align: 'center'
+                    }).setOrigin(0.5);
+                    successText.setDepth(1003);
+                    
+                    // Make success text clickable to dismiss
+                    successText.setInteractive({ useHandCursor: true })
+                      .on('pointerdown', () => {
+                        if (successText && typeof successText.destroy === 'function') {
+                          successText.destroy();
+                        }
+                      });
+                    
+                    // Store reference for cleanup during game restart
+                    this.successText = successText;
+                  } catch (e) {
+                    console.warn('Could not create success text:', e);
+                  }
+                }
+                
+              } else {
+                // Re-enable button on failure
+                if (submitButton && submitText) {
+                  submitButton.fillColor = 0x6B46C1;
+                  submitButton.setInteractive({ useHandCursor: true });
+                  submitText.setColor('#FFFFFF');
+                  submitText.setText('Submit Score');
+                }
+                throw new Error('Submission failed');
+              }
+            } else {
+              // Re-enable button if submission not available
+              if (submitButton && submitText) {
+                submitButton.fillColor = 0x6B46C1;
+                submitButton.setInteractive({ useHandCursor: true });
+                submitText.setColor('#FFFFFF');
+                submitText.setText('Submit Score');
+              }
+              throw new Error('Score submission not available');
+            }
+            
+          } catch (error) {
+            console.error('Error submitting score:', error);
+            
+            // Show error feedback - add null check for scene context
+            if (this.isSceneValid() && this.add && typeof this.add.text === 'function') {
+              try {
+                const errorText = this.add.text(400, 400, 'Score submission failed\nTry again or use "Play Again"', {
+                  fontFamily: 'Arial',
+                  fontSize: '20px',
+                  color: '#FF0000',
+                  stroke: '#000000',
+                  strokeThickness: 2,
+                  align: 'center'
+                }).setOrigin(0.5);
+                errorText.setDepth(1003);
+                
+                // Fade out the error text after 4 seconds
+                if (this.isSceneValid() && this.tweens && typeof this.tweens.add === 'function') {
+                  this.tweens.add({
+                    targets: errorText,
+                    alpha: 0,
+                    duration: 4000,
+                    onComplete: () => {
+                      if (errorText && typeof errorText.destroy === 'function') {
+                        errorText.destroy();
+                      }
+                    }
+                  });
+                }
+              } catch (e) {
+                console.warn('Could not create error text:', e);
+              }
+            }
+          } finally {
+            // Reset submission flag
+            this.isSubmittingScore = false;
+          }
+        }
+
+        // Add helper method to clean up game objects
+        cleanupCurrentGame(fullCleanup = false) {
+          try {
+            console.log("Cleaning up current game...", fullCleanup ? "(Full cleanup)" : "(Preserving crops)");
+            
+            // Reset update flags to prevent issues between sessions
+            this._isUpdating = false;
+            // Reset global isUpdating flag to prevent cross-session issues
+            isUpdating = false;
+            
+            // Stop enemy spawning and wave timers, but preserve crop timers unless full cleanup
+            if (fullCleanup) {
+              this.time.removeAllEvents();
+            } else {
+              // Only remove specific timers, preserve crop growth timers
+              if (this.spawnTimer) {
+                this.spawnTimer.remove();
+                this.spawnTimer = null;
+              }
+              if (this.waveTimer) {
+                this.waveTimer.remove();
+                this.waveTimer = null;
+              }
+            }
+            
+            // Clean up enemies - always clear them when game ends
+            if (this.enemies && this.enemies.length) {
+              console.log(`Cleaning up ${this.enemies.length} enemies`);
+              this.enemies.forEach(enemy => {
+                if (enemy) {
+                  try {
+                    // Hide health bar immediately before destroying
+                    if (typeof enemy.hideHealthBar === 'function') {
+                      enemy.hideHealthBar();
+                    }
+                    // Destroy the enemy
+                    if (typeof enemy.destroy === 'function') {
+                      enemy.destroy();
+                    }
                   } catch (e) { console.error("Error destroying enemy:", e); }
                 }
               });
               this.enemies = []; // Clear the array
-              console.log("Enemies cleaned up.");
+              console.log("All enemies cleaned up.");
+            } else {
+              this.enemies = []; // Ensure the array is initialized
             }
             
-            // Clean up all crops
-            if (this.crops) {
+            // Only clean up crops on full cleanup (game over), preserve them on restart
+            if (fullCleanup && this.crops) {
               Object.keys(this.crops).forEach(key => {
                 const crop = this.crops[key];
                 if (crop && typeof crop.destroy === 'function') {
@@ -4776,43 +6118,50 @@ if (isBrowser) {
               });
               this.crops = {}; // Clear the object
               console.log("Crops cleaned up.");
+            } else if (this.crops) {
+              console.log("Crops preserved for game restart.");
             }
             
-            // Clean up all defenses THOROUGHLY
+            // Clean up defenses - always clear them when game ends
             if (this.defenses && this.defenses.length) {
-              // --- Add log ---
-              console.log(`cleanupCurrentGame: Found ${this.defenses.length} defenses to clean up.`);
-              // --- End log ---
-              this.defenses.forEach((defense, index) => { // Add index for logging
+              console.log(`Cleaning up ${this.defenses.length} defenses`);
+              // Create a copy of the array to avoid issues with array modification during iteration
+              const defensesToClean = [...this.defenses];
+              defensesToClean.forEach((defense, index) => {
                 if (defense) {
-                  // --- Add log ---
-                  console.log(`cleanupCurrentGame: Attempting to destroy defense #${index} (Type: ${defense.type || 'unknown'})`);
-                  // --- End log ---
-                  // Call the defense's own destroy method if it exists
-                  if (typeof defense.destroy === 'function') {
+                  console.log(`Cleaning defense ${index}: type=${defense.type}, hasForceDestroy=${typeof defense.forceDestroy === 'function'}, hasDestroy=${typeof defense.destroy === 'function'}`);
+                  // Use forceDestroy to bypass wave lifecycle, fallback to destroy
+                  if (typeof defense.forceDestroy === 'function') {
+                    try {
+                      defense.forceDestroy();
+                      console.log(`Defense ${defense.type} force destroyed successfully`);
+                    } catch (e) { console.error("Error force destroying defense:", e); }
+                  } else if (typeof defense.destroy === 'function') {
                     try {
                       defense.destroy();
+                      console.log(`Defense ${defense.type} destroyed successfully`);
                     } catch (e) { console.error("Error destroying defense:", e); }
                   } else {
-                    // Manual cleanup if no destroy method (less ideal)
-                    if (defense.sprite && typeof defense.sprite.destroy === 'function') defense.sprite.destroy();
+                    // Manual cleanup if no destroy method
+                    console.log(`Manual cleanup for defense ${defense.type}`);
+                    if (defense.sprite && typeof defense.sprite.destroy === 'function') {
+                      defense.sprite.destroy();
+                      console.log(`Defense ${defense.type} sprite destroyed`);
+                    }
                     if (defense.rangeIndicator && typeof defense.rangeIndicator.destroy === 'function') defense.rangeIndicator.destroy();
-                    if (defense.manaText && typeof defense.manaText.destroy === 'function') defense.manaText.destroy(); // Explicitly destroy mana text
-                    if (defense.cooldownIndicator && typeof defense.cooldownIndicator.destroy === 'function') defense.cooldownIndicator.destroy(); // Explicitly destroy cooldown indicator
-                    // Add cleanup for other potential defense elements like labels if the fallback was used
-                    if (defense.label && typeof defense.label.destroy === 'function') defense.label.destroy();
+                    if (defense.manaText && typeof defense.manaText.destroy === 'function') defense.manaText.destroy();
+                    if (defense.cooldownIndicator && typeof defense.cooldownIndicator.destroy === 'function') defense.cooldownIndicator.destroy();
+                    if (defense.label && typeof defense.label.destroy === 'function') {
+                      defense.label.destroy();
+                      console.log(`Defense ${defense.type} label destroyed`);
+                    }
                   }
                 }
               });
-              this.defenses = []; // Force clear the array AFTER iterating and destroying
-              // --- Add log ---
-              console.log("cleanupCurrentGame: Defenses array cleared.");
-              // --- End log ---
+              this.defenses = [];
+              console.log("All defenses cleaned up.");
             } else {
-                 // --- Add log ---
-                 console.log("cleanupCurrentGame: No defenses found in the array to clean up.");
-                 // --- End log ---
-                 this.defenses = []; // Ensure the array is empty even if it was null/undefined initially
+              this.defenses = []; // Ensure the array is initialized
             }
             
             // Clean up projectiles if they exist as a separate group
@@ -4820,6 +6169,13 @@ if (isBrowser) {
               this.projectiles.destroy(true); // Destroy group and children
               this.projectiles = null; // Reset reference
               console.log("Projectiles cleaned up.");
+            }
+            
+            // Clean up global defense range indicator
+            if (this.defenseRangeIndicator && typeof this.defenseRangeIndicator.destroy === 'function') {
+              this.defenseRangeIndicator.destroy();
+              this.defenseRangeIndicator = null;
+              console.log("Global defense range indicator cleaned up.");
             }
             
             // Reset game state
@@ -4851,16 +6207,20 @@ if (isBrowser) {
             if (this.scoreText) this.scoreText.setText("Score: 0");
             if (this.farmCoinsText) this.farmCoinsText.setText(`Coins: ${this.gameState.farmCoins}`);
             if (this.waveText) this.waveText.setText("Wave: 1");
-            if (this.livesText) this.livesText.setText("Lives: 3");
-            if (this.nextWaveButton) {
-              this.nextWaveButton.button.visible = false;
-              this.nextWaveButton.text.visible = false;
-            }
+            // Lives text removed - no longer displayed
+            // Next Wave button cleanup removed - button no longer exists
             
             // Reset upgrade system UI if necessary
             if (this.upgradeSystem && typeof this.upgradeSystem.resetUI === 'function') {
               this.upgradeSystem.resetUI(); // Assuming resetUI hides/resets the panel
               this.upgradeSystem.setUIVisible(false); // Ensure it's hidden
+            }
+            
+            // Clean up success text if it exists
+            if (this.successText && typeof this.successText.destroy === 'function') {
+              this.successText.destroy();
+              this.successText = null;
+              console.log('Success text cleaned up.');
             }
             
             // Clear any lingering floating text or effects
@@ -5027,6 +6387,54 @@ if (isBrowser) {
             });
         }
 
+        // --- Defense Lifetime Management ---
+        checkDefenseExpirations(currentWave) {
+          if (!this.defenses || !Array.isArray(this.defenses)) {
+            return;
+          }
+          
+          console.log(`Checking defense expirations for wave ${currentWave}`);
+          
+          // Check each defense for expiration
+          const expiredDefenses = [];
+          
+          for (let i = 0; i < this.defenses.length; i++) {
+            const defense = this.defenses[i];
+            
+            if (defense && typeof defense.checkWaveExpiration === 'function') {
+              const isExpired = defense.checkWaveExpiration(currentWave);
+              
+              if (isExpired) {
+                console.log(`Defense ${defense.type} placed in wave ${defense.placementWave} exhausted at wave ${currentWave}`);
+                expiredDefenses.push(defense);
+                // Don't remove from array here - let Defense.destroy() handle it after animation
+              }
+            }
+          }
+          
+          if (expiredDefenses.length > 0) {
+            console.log(`${expiredDefenses.length} defenses exhausted`);
+            
+            // Show notification if defenses expired
+            this.showFloatingText(400, 100, `${expiredDefenses.length} defense(s) exhausted!`, 0xFF6600);
+          }
+        }
+        
+        // Method for defenses to remove themselves from the array after destruction
+        removeDefenseFromArray(defense) {
+          if (this.defenses && defense) {
+            const index = this.defenses.indexOf(defense);
+            if (index !== -1) {
+              this.defenses.splice(index, 1);
+              console.log(`Defense ${defense.type} removed from defenses array`);
+              console.log(`Remaining defenses: ${this.defenses.length}`);
+              this.defenses.forEach((def, i) => {
+                console.log(`  Defense ${i}: ${def.type || 'unknown'} at (${def.x || 'N/A'}, ${def.y || 'N/A'})`);
+              });
+            }
+          }
+        }
+
         // --- NEW: Create Flying Coin Effect --- 
         createFlyingCoinEffect(startX, startY, amount) {
             if (!this.textures.exists('coin') || !this.farmCoinsTargetPos) {
@@ -5088,6 +6496,705 @@ if (isBrowser) {
             this.updateFarmCoins(amount);
         }
         // --- End Flying Coin Effect ---
+        
+        // --- Skill Tree Methods ---
+        toggleSkillTree() {
+          this.skillTreeVisible = !this.skillTreeVisible;
+          
+          if (this.skillTreeVisible) {
+            this.showSkillTreeOverlay();
+          } else {
+            this.hideSkillTreeOverlay();
+          }
+        }
+
+        // Create skill tree background particles
+        createSkillTreeParticles() {
+          // Create floating background particles for the skill tree
+          for (let i = 0; i < 15; i++) {
+            const x = 60 + Math.random() * 680;
+            const y = 80 + Math.random() * 440;
+            
+            const particle = this.add.circle(x, y, 1 + Math.random() * 2, 0x3b82f6, 0.3 + Math.random() * 0.4);
+            particle.setDepth(7000);
+            this.skillTreeElements.push(particle);
+            
+            // Add floating animation
+            this.tweens.add({
+              targets: particle,
+              y: y - 20 - Math.random() * 30,
+              alpha: 0,
+              duration: 3000 + Math.random() * 2000,
+              delay: i * 100,
+              ease: 'Power2',
+              repeat: -1,
+              yoyo: false,
+              onRepeat: () => {
+                particle.y = 520 + Math.random() * 20;
+                particle.alpha = 0.3 + Math.random() * 0.4;
+              }
+            });
+          }
+        }
+
+        // Create corner decorations for the skill tree
+        createCornerDecorations() {
+          const corners = [
+            { x: 80, y: 80, rotation: 0 },
+            { x: 720, y: 80, rotation: Math.PI / 2 },
+            { x: 80, y: 520, rotation: -Math.PI / 2 },
+            { x: 720, y: 520, rotation: Math.PI }
+          ];
+          
+          corners.forEach((corner, index) => {
+            // Create ornate corner decoration
+            const decoration = this.add.graphics();
+            decoration.setDepth(7002);
+            decoration.lineStyle(3, 0x3b82f6, 0.8);
+            decoration.beginPath();
+            decoration.moveTo(0, 0);
+            decoration.lineTo(30, 0);
+            decoration.lineTo(30, 5);
+            decoration.lineTo(5, 5);
+            decoration.lineTo(5, 30);
+            decoration.lineTo(0, 30);
+            decoration.closePath();
+            decoration.strokePath();
+            
+            decoration.x = corner.x;
+            decoration.y = corner.y;
+            decoration.rotation = corner.rotation;
+            
+            this.skillTreeElements.push(decoration);
+            
+            // Add pulsing glow animation
+            this.tweens.add({
+              targets: decoration,
+              alpha: 0.4,
+              duration: 2000,
+              delay: index * 300,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+            });
+          });
+        }
+        
+        showSkillTreeOverlay() {
+          // Initialize skill tree elements array for proper cleanup
+          this.skillTreeElements = [];
+          
+          // Create full-screen dark overlay with subtle gradient
+          this.skillTreeOverlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.9);
+          this.skillTreeOverlay.setDepth(7000);
+          this.skillTreeOverlay.setInteractive();
+          this.skillTreeElements.push(this.skillTreeOverlay);
+          
+          // Add animated background particles
+          this.createSkillTreeParticles();
+          
+          // Main panel with modern glass morphism design
+          this.skillTreePanel = this.add.rectangle(400, 300, 700, 500, 0x0f172a, 0.85);
+          this.skillTreePanel.setDepth(7001);
+          this.skillTreePanel.setStrokeStyle(2, 0x334155, 0.8);
+          this.skillTreeElements.push(this.skillTreePanel);
+          
+          // Outer glow with animated pulse
+          this.skillTreeOuterGlow = this.add.rectangle(400, 300, 710, 510, 0x000000, 0);
+          this.skillTreeOuterGlow.setDepth(7000);
+          this.skillTreeOuterGlow.setStrokeStyle(3, 0x06b6d4, 0.6);
+          this.skillTreeElements.push(this.skillTreeOuterGlow);
+          
+          // Animated glow pulse
+          this.tweens.add({
+              targets: this.skillTreeOuterGlow,
+              alpha: 0.3,
+              duration: 2000,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+          });
+          
+          // Inner gradient panels for depth
+          this.skillTreeInnerPanel1 = this.add.rectangle(400, 300, 680, 480, 0x1e293b, 0.6);
+          this.skillTreeInnerPanel1.setDepth(7001);
+          this.skillTreeInnerPanel1.setStrokeStyle(1, 0x475569, 0.4);
+          this.skillTreeElements.push(this.skillTreeInnerPanel1);
+          
+          // Header section with gradient background
+          this.skillTreeHeader = this.add.rectangle(400, 120, 680, 80, 0x1e40af, 0.3);
+          this.skillTreeHeader.setDepth(7001);
+          this.skillTreeHeader.setStrokeStyle(1, 0x3b82f6, 0.6);
+          this.skillTreeElements.push(this.skillTreeHeader);
+          
+          // Modern title with cyberpunk styling
+          this.skillTreeTitle = this.add.text(400, 105, 'SKILL NEXUS', {
+              fontFamily: 'Arial Black',
+              fontSize: '32px',
+              color: '#00f5ff',
+              fontStyle: 'bold',
+              stroke: '#0c4a6e',
+              strokeThickness: 2,
+              shadow: {
+                  offsetX: 0,
+                  offsetY: 0,
+                  color: '#00f5ff',
+                  blur: 15,
+                  fill: false
+              }
+          }).setOrigin(0.5).setDepth(7002);
+          this.skillTreeElements.push(this.skillTreeTitle);
+          
+          // Animated title glow
+          this.tweens.add({
+              targets: this.skillTreeTitle,
+              alpha: 0.8,
+              duration: 1500,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+          });
+          
+          // Subtitle with modern styling
+          this.skillTreeSubtitle = this.add.text(400, 135, 'ENHANCE YOUR DEFENDERS', {
+              fontFamily: 'Arial',
+              fontSize: '16px',
+              color: '#94a3b8',
+              fontStyle: 'normal',
+              letterSpacing: '2px'
+          }).setOrigin(0.5).setDepth(7002);
+          this.skillTreeElements.push(this.skillTreeSubtitle);
+          
+          // Modern close button with hover effects
+          this.skillTreeCloseBtn = this.add.rectangle(650, 80, 40, 40, 0xdc2626, 0.9);
+          this.skillTreeCloseBtn.setDepth(7002);
+          this.skillTreeCloseBtn.setStrokeStyle(2, 0xef4444);
+          this.skillTreeCloseBtn.setInteractive({ useHandCursor: true });
+          this.skillTreeElements.push(this.skillTreeCloseBtn);
+          
+          // Close button glow
+          this.skillTreeCloseBtnGlow = this.add.rectangle(650, 80, 50, 50, 0x000000, 0);
+          this.skillTreeCloseBtnGlow.setDepth(7001);
+          this.skillTreeCloseBtnGlow.setStrokeStyle(2, 0xef4444, 0.5);
+          this.skillTreeElements.push(this.skillTreeCloseBtnGlow);
+          
+          this.skillTreeCloseBtnText = this.add.text(650, 80, '✕', {
+              fontFamily: 'Arial Black',
+              fontSize: '20px',
+              color: '#ffffff'
+          }).setOrigin(0.5).setDepth(7003);
+          this.skillTreeElements.push(this.skillTreeCloseBtnText);
+          
+          // Close button hover effects
+          this.skillTreeCloseBtn.on('pointerover', () => {
+              this.skillTreeCloseBtn.setFillStyle(0xef4444);
+              this.skillTreeCloseBtnGlow.setStrokeStyle(3, 0xfca5a5, 0.8);
+              this.tweens.add({
+                  targets: this.skillTreeCloseBtn,
+                  scaleX: 1.1,
+                  scaleY: 1.1,
+                  duration: 200,
+                  ease: 'Back.easeOut'
+              });
+          });
+          
+          this.skillTreeCloseBtn.on('pointerout', () => {
+              this.skillTreeCloseBtn.setFillStyle(0xdc2626);
+              this.skillTreeCloseBtnGlow.setStrokeStyle(2, 0xef4444, 0.5);
+              this.tweens.add({
+                  targets: this.skillTreeCloseBtn,
+                  scaleX: 1,
+                  scaleY: 1,
+                  duration: 200,
+                  ease: 'Back.easeOut'
+              });
+          });
+          
+          this.skillTreeCloseBtn.on('pointerdown', () => {
+              this.toggleSkillTree();
+          });
+          
+          // Progress panel with modern design
+          this.progressPanel = this.add.rectangle(400, 180, 650, 60, 0x0f172a, 0.8);
+          this.progressPanel.setDepth(7001);
+          this.progressPanel.setStrokeStyle(1, 0x334155, 0.6);
+          this.skillTreeElements.push(this.progressPanel);
+          
+          // Progress panel glow
+          this.progressPanelGlow = this.add.rectangle(400, 180, 660, 70, 0x000000, 0);
+          this.progressPanelGlow.setDepth(7000);
+          this.progressPanelGlow.setStrokeStyle(2, 0x0ea5e9, 0.3);
+          this.skillTreeElements.push(this.progressPanelGlow);
+          
+          // Get skill tree manager and display progress
+          const skillTreeManager = window.skillTreeManager;
+          if (skillTreeManager) {
+              const progressData = skillTreeManager.getProgressData();
+              
+              // Score display with modern styling
+              const scoreIcon = this.add.text(150, 165, '⭐', {
+                  fontSize: '20px',
+                  color: '#fbbf24'
+              }).setDepth(7002);
+              this.skillTreeElements.push(scoreIcon);
+              
+              // Safe score display with null checks - use current game score instead of skill tree total
+              const currentScore = this.gameState?.score || 0;
+              const scoreText = this.add.text(180, 165, `${currentScore.toLocaleString()}`, {
+                  fontFamily: 'Arial Black',
+                  fontSize: '18px',
+                  color: '#fbbf24',
+                  fontStyle: 'bold'
+              }).setDepth(7002);
+              this.skillTreeElements.push(scoreText);
+              
+              const scoreLabel = this.add.text(180, 185, 'CURRENT SCORE', {
+                  fontFamily: 'Arial',
+                  fontSize: '10px',
+                  color: '#64748b',
+                  letterSpacing: '1px'
+              }).setDepth(7002);
+              this.skillTreeElements.push(scoreLabel);
+              
+              // Enemies defeated display
+              const enemyIcon = this.add.text(450, 165, '💀', {
+                  fontSize: '20px',
+                  color: '#ef4444'
+              }).setDepth(7002);
+              this.skillTreeElements.push(enemyIcon);
+              
+              // Safe enemies defeated display with null checks
+              const enemiesDefeated = (progressData && typeof progressData.enemiesDefeated === 'number') ? progressData.enemiesDefeated : 0;
+              const enemiesText = this.add.text(480, 165, `${enemiesDefeated.toLocaleString()}`, {
+                  fontFamily: 'Arial Black',
+                  fontSize: '18px',
+                  color: '#ef4444',
+                  fontStyle: 'bold'
+              }).setDepth(7002);
+              this.skillTreeElements.push(enemiesText);
+              
+              const enemiesLabel = this.add.text(480, 185, 'ENEMIES DEFEATED', {
+                  fontFamily: 'Arial',
+                  fontSize: '10px',
+                  color: '#64748b',
+                  letterSpacing: '1px'
+              }).setDepth(7002);
+              this.skillTreeElements.push(enemiesLabel);
+              
+              this.displayDefenderSkills(skillTreeManager);
+          }
+        }
+        
+        displayDefenderSkills(skillTreeManager) {
+          const defenders = ['CHOG', 'MOLANDAK', 'MOYAKI', 'KEON'];
+          const startY = 190;
+          const spacing = 95;
+          
+          defenders.forEach((defenderType, index) => {
+            const y = startY + (index * spacing);
+            
+            // Enhanced defender section background with gradient effect
+            const defenderBg = this.add.rectangle(400, y, 680, 85, 0x0f172a, 0.9);
+            defenderBg.setDepth(7001);
+            defenderBg.setStrokeStyle(2, 0x1e293b);
+            this.skillTreeElements.push(defenderBg);
+            
+            // Add defender section glow
+            const defenderGlow = this.add.rectangle(400, y, 690, 95, 0x000000, 0);
+            defenderGlow.setDepth(7000);
+            defenderGlow.setStrokeStyle(3, this.getDefenderColor(defenderType), 0.3);
+            this.skillTreeElements.push(defenderGlow);
+            
+            // Enhanced defender icon with animated background
+            const defenderIconBg = this.add.rectangle(130, y, 60, 60, this.getDefenderColor(defenderType), 0.8);
+            defenderIconBg.setDepth(7002);
+            defenderIconBg.setStrokeStyle(3, this.getDefenderColor(defenderType));
+            this.skillTreeElements.push(defenderIconBg);
+            
+            // Add subtle rotation animation to icon background
+            this.tweens.add({
+              targets: defenderIconBg,
+              rotation: 0.1,
+              duration: 3000,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+            });
+            
+            // Defender type emoji/icon with enhanced styling - SMALLER SIZE
+            const defenderEmoji = this.getDefenderEmoji(defenderType);
+            const defenderEmojiText = this.add.text(130, y, defenderEmoji, {
+              fontSize: '24px'
+            }).setOrigin(0.5).setDepth(7003);
+            this.skillTreeElements.push(defenderEmojiText);
+            
+            // Add floating animation to emoji
+            this.tweens.add({
+              targets: defenderEmojiText,
+              y: y - 2,
+              duration: 2000,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut'
+            });
+            
+            // Enhanced defender name with epic styling - SMALLER SIZE
+            const defenderNameText = this.add.text(160, y - 10, defenderType, {
+              fontFamily: 'Arial Black',
+              fontSize: '16px',
+              color: '#f1f5f9',
+              fontStyle: 'bold',
+              stroke: '#000000',
+              strokeThickness: 1,
+              shadow: {
+                offsetX: 1,
+                offsetY: 1,
+                color: '#000000',
+                blur: 3,
+                fill: true
+              }
+            }).setOrigin(0, 0.5).setDepth(7002);
+            this.skillTreeElements.push(defenderNameText);
+            
+            // Enhanced defender class label with color coding - SMALLER SIZE
+            const defenderClass = this.add.text(160, y + 5, this.getDefenderClass(defenderType), {
+              fontFamily: 'Arial Bold',
+              fontSize: '11px',
+              color: this.getDefenderColor(defenderType),
+              fontStyle: 'italic',
+              letterSpacing: '0.3px'
+            }).setOrigin(0, 0.5).setDepth(7002);
+            this.skillTreeElements.push(defenderClass);
+            
+            // Add defender mastery level indicator - SMALLER SIZE
+            const masteryLevel = skillTreeManager.getDefenderMasteryLevel ? skillTreeManager.getDefenderMasteryLevel(defenderType) : 1;
+            const masteryText = this.add.text(160, y + 15, `Mastery Level ${masteryLevel}`, {
+              fontFamily: 'Arial',
+              fontSize: '9px',
+              color: '#64748b',
+              fontStyle: 'italic'
+            }).setOrigin(0, 0.5).setDepth(7002);
+            this.skillTreeElements.push(masteryText);
+            
+            // Get skills for this defender
+            const skills = skillTreeManager.getDefenderSkills(defenderType);
+            console.log(`[SKILL DEBUG] Getting skills for ${defenderType}:`, skills);
+            console.log(`[SKILL DEBUG] SkillTreeManager available defenders:`, skillTreeManager.getAllDefenders());
+            
+            if (skills && skills.tiers) {
+                console.log(`[SKILL DEBUG] ${defenderType} has tiers:`, Object.keys(skills.tiers));
+              let skillIndex = 0;
+              Object.values(skills.tiers).forEach(tier => {
+                tier.skills.forEach((skill) => {
+                  const skillX = 280 + (skillIndex * 80); // SMALLER SPACING
+                  const isUnlocked = skillTreeManager.isSkillUnlocked(defenderType, skill.id);
+                  const canUnlock = skillTreeManager.canUnlockSkill(defenderType, skill.id);
+                  
+                  // Enhanced skill node with hexagonal design and multiple layers - SMALLER SIZE
+                  const skillBgOuter = this.add.rectangle(skillX, y, 70, 45, 0x000000, 0);
+                  skillBgOuter.setDepth(7001);
+                  skillBgOuter.setStrokeStyle(2, 
+                    isUnlocked ? 0x10b981 : (canUnlock ? 0x3b82f6 : 0x374151), 0.6);
+                  this.skillTreeElements.push(skillBgOuter);
+                  
+                  const skillBg = this.add.rectangle(skillX, y, 65, 40, 
+                    isUnlocked ? 0x065f46 : (canUnlock ? 0x1e40af : 0x1f2937), 0.9);
+                  skillBg.setDepth(7002);
+                  skillBg.setStrokeStyle(1, 
+                    isUnlocked ? 0x10b981 : (canUnlock ? 0x3b82f6 : 0x4b5563));
+                  this.skillTreeElements.push(skillBg);
+                  
+                  // Enhanced skill status indicator with glow - SMALLER SIZE
+                  const statusIndicator = this.add.circle(skillX + 25, y - 15, 4, 
+                    isUnlocked ? 0x10b981 : (canUnlock ? 0x3b82f6 : 0x6b7280));
+                  statusIndicator.setDepth(7003);
+                  this.skillTreeElements.push(statusIndicator);
+                  
+                  // Add pulsing glow to unlocked skills - SMALLER SIZE
+                  if (isUnlocked) {
+                    const statusGlow = this.add.circle(skillX + 25, y - 15, 6, 0x10b981, 0.3);
+                    statusGlow.setDepth(7002);
+                    this.skillTreeElements.push(statusGlow);
+                    
+                    this.tweens.add({
+                      targets: statusGlow,
+                      scaleX: 1.5,
+                      scaleY: 1.5,
+                      alpha: 0,
+                      duration: 1500,
+                      repeat: -1,
+                      ease: 'Power2'
+                    });
+                  }
+                  
+                  // Enhanced skill name with better typography - SMALLER SIZE
+                  const skillText = this.add.text(skillX, y - 8, skill.name, {
+                    fontFamily: 'Arial Bold',
+                    fontSize: '9px',
+                    color: isUnlocked ? '#ffffff' : (canUnlock ? '#e2e8f0' : '#9ca3af'),
+                    align: 'center',
+                    wordWrap: { width: 60 },
+                    stroke: '#000000',
+                    strokeThickness: 1
+                  }).setOrigin(0.5).setDepth(7003);
+                  this.skillTreeElements.push(skillText);
+                  
+                  // Enhanced cost display with modern styling - SMALLER SIZE
+                  const costText = this.add.text(skillX, y + 10, `${skill.scoreRequired || 100} ⭐`, {
+                    fontFamily: 'Arial Bold',
+                    fontSize: '8px',
+                    color: isUnlocked ? '#6ee7b7' : (canUnlock ? '#93c5fd' : '#9ca3af'),
+                    align: 'center',
+                    stroke: '#000000',
+                    strokeThickness: 1
+                  }).setOrigin(0.5).setDepth(7003);
+                  this.skillTreeElements.push(costText);
+                  
+                  // Make skill interactive with enhanced effects
+                  if (!isUnlocked) {
+                    skillBg.setInteractive({ useHandCursor: true });
+                    
+                    skillBg.on('pointerdown', () => {
+                      if (canUnlock) {
+                        skillTreeManager.unlockSkill(defenderType, skill.id);
+                        this.hideSkillTreeOverlay();
+                        this.showSkillTreeOverlay(); // Refresh the display
+                        if (this.soundManager) {
+                          this.soundManager.play('upgrade');
+                        }
+                      } else {
+                        // Show insufficient resources feedback
+                        this.showInsufficientResourcesFeedback(skillX, y);
+                      }
+                    });
+                    
+                    // Enhanced hover effects with animations
+                    skillBg.on('pointerover', () => {
+                      if (canUnlock) {
+                        skillBg.setFillStyle(0x2563eb);
+                        skillBgOuter.setStrokeStyle(4, 0x3b82f6, 0.8);
+                        this.tweens.add({
+                          targets: [skillBg, skillBgOuter],
+                          scaleX: 1.05,
+                          scaleY: 1.05,
+                          duration: 200,
+                          ease: 'Back.easeOut'
+                        });
+                      }
+                      this.showSkillTooltip(skill, skillX, y - 50);
+                    });
+                    
+                    skillBg.on('pointerout', () => {
+                      skillBg.setFillStyle(canUnlock ? 0x1e40af : 0x1f2937);
+                      skillBgOuter.setStrokeStyle(3, canUnlock ? 0x3b82f6 : 0x374151, 0.6);
+                      this.tweens.add({
+                        targets: [skillBg, skillBgOuter],
+                        scaleX: 1,
+                        scaleY: 1,
+                        duration: 200,
+                        ease: 'Back.easeOut'
+                      });
+                      this.hideSkillTooltip();
+                    });
+                  } else {
+                    // Add epic glow effect for unlocked skills
+                    const glowEffect = this.add.rectangle(skillX, y, 105, 65, 0x10b981, 0.15);
+                    glowEffect.setDepth(7001);
+                    this.skillTreeElements.push(glowEffect);
+                    
+                    // Add particle effect for unlocked skills
+                    this.createSkillParticles(skillX, y);
+                  }
+                  
+                  skillIndex++;
+                });
+              });
+            }
+          });
+        }
+        
+        // Helper method to create progress decorations
+        createProgressDecorations() {
+          // Add animated corner decorations
+          const corners = [
+            { x: 120, y: 320 },
+            { x: 680, y: 320 },
+            { x: 120, y: 380 },
+            { x: 680, y: 380 }
+          ];
+          
+          corners.forEach((corner, index) => {
+            const decoration = this.add.rectangle(corner.x, corner.y, 8, 8, 0x3b82f6, 0.8);
+            decoration.setDepth(7003);
+            decoration.setRotation(Math.PI / 4);
+            this.skillTreeElements.push(decoration);
+            
+            // Add rotation animation with delay
+            this.tweens.add({
+              targets: decoration,
+              rotation: decoration.rotation + Math.PI * 2,
+              duration: 4000,
+              delay: index * 500,
+              repeat: -1,
+              ease: 'Linear'
+            });
+          });
+        }
+        
+        // Helper method to create skill particles
+        createSkillParticles(x, y) {
+          // Create subtle particle effect for unlocked skills
+          for (let i = 0; i < 3; i++) {
+            const particle = this.add.circle(
+              x + (Math.random() - 0.5) * 20,
+              y + (Math.random() - 0.5) * 20,
+              2,
+              0x10b981,
+              0.6
+            );
+            particle.setDepth(7004);
+            this.skillTreeElements.push(particle);
+            
+            this.tweens.add({
+              targets: particle,
+              y: y - 30,
+              alpha: 0,
+              scaleX: 0.5,
+              scaleY: 0.5,
+              duration: 2000 + Math.random() * 1000,
+              delay: i * 200,
+              ease: 'Power2',
+              onComplete: () => {
+                if (particle && particle.destroy) {
+                  particle.destroy();
+                }
+              }
+            });
+          }
+        }
+        
+        getDefenderEmoji(defenderType) {
+          const emojis = {
+            'CHOG': '🌪️',
+            'MOLANDAK': '❄️',
+            'MOYAKI': '🔥',
+            'KEON': '⚡'
+          };
+          return emojis[defenderType] || '🛡️';
+        }
+        
+        getDefenderColor(defenderType) {
+          const colors = {
+            'CHOG': 0x10b981,      // Emerald for wind
+            'MOLANDAK': 0x3b82f6,  // Blue for ice
+            'MOYAKI': 0xef4444,    // Red for fire
+            'KEON': 0xf59e0b       // Amber for lightning
+          };
+          return colors[defenderType] || 0x6b7280;
+        }
+        
+        getDefenderClass(defenderType) {
+          const classes = {
+            'CHOG': 'Wind Master',
+            'MOLANDAK': 'Ice Guardian',
+            'MOYAKI': 'Fire Warrior',
+            'KEON': 'Lightning Champion'
+          };
+          return classes[defenderType] || 'Defender';
+        }
+        
+        showInsufficientResourcesFeedback(x, y) {
+          const feedback = this.add.text(x, y - 30, 'Insufficient Score!', {
+            fontFamily: 'Arial Bold',
+            fontSize: '12px',
+            color: '#ef4444',
+            backgroundColor: '#1f2937',
+            padding: { x: 8, y: 4 }
+          }).setOrigin(0.5).setDepth(7004);
+          this.skillTreeElements.push(feedback);
+          
+          // Fade out after 2 seconds
+          this.tweens.add({
+            targets: feedback,
+            alpha: 0,
+            duration: 2000,
+            onComplete: () => {
+              if (feedback && feedback.destroy) {
+                feedback.destroy();
+              }
+            }
+          });
+        }
+        
+        showSkillTooltip(skill, x, y) {
+          this.hideSkillTooltip(); // Remove any existing tooltip
+          
+          this.skillTooltip = this.add.rectangle(x + 100, y, 200, 80, 0x000000, 0.9);
+          this.skillTooltip.setDepth(7003);
+          this.skillTooltip.setStrokeStyle(1, 0xFFFFFF);
+          
+          this.skillTooltipText = this.add.text(x + 100, y - 20, skill.description, {
+            fontFamily: 'Arial',
+            fontSize: '10px',
+            color: '#FFFFFF',
+            wordWrap: { width: 180 }
+          }).setOrigin(0.5).setDepth(7004);
+          
+          this.skillRequirementText = this.add.text(x + 100, y + 15, `Requires: ${skill.scoreRequired} score, ${skill.enemiesRequired} enemies`, {
+            fontFamily: 'Arial',
+            fontSize: '10px',
+            color: '#FFD700',
+            wordWrap: { width: 180 }
+          }).setOrigin(0.5).setDepth(7004);
+        }
+        
+        hideSkillTooltip() {
+          if (this.skillTooltip) {
+            this.skillTooltip.destroy();
+            this.skillTooltip = null;
+          }
+          if (this.skillTooltipText) {
+            this.skillTooltipText.destroy();
+            this.skillTooltipText = null;
+          }
+          if (this.skillRequirementText) {
+            this.skillRequirementText.destroy();
+            this.skillRequirementText = null;
+          }
+        }
+        
+        hideSkillTreeOverlay() {
+          // Clean up all tracked skill tree elements
+          if (this.skillTreeElements) {
+            this.skillTreeElements.forEach(element => {
+              if (element && element.destroy) {
+                element.destroy();
+              }
+            });
+            this.skillTreeElements = [];
+          }
+          
+          // Clean up individual references
+          this.skillTreeOverlay = null;
+          this.skillTreePanel = null;
+          this.skillTreeTitle = null;
+          this.skillTreeCloseBtn = null;
+          
+          // Clean up any tooltips
+          this.hideSkillTooltip();
+          
+          // Final cleanup - remove any remaining elements with skill tree depth
+          this.children.list.forEach(child => {
+            if (child.depth >= 7000 && child.depth < 8000) {
+              try {
+                child.destroy();
+              } catch (e) {
+                // Element already destroyed, ignore
+              }
+            }
+          });
+        }
+        // --- End Skill Tree Methods ---
       }
       
       // Replace the placeholder with the real implementation
@@ -5106,4 +7213,4 @@ if (isBrowser) {
 } // End of if (isBrowser) block
 
 // Export using ES modules
-export { GameScene }; 
+export { GameScene };

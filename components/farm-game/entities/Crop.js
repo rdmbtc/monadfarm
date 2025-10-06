@@ -37,6 +37,13 @@ export default class Crop extends Phaser.GameObjects.Container {
       }
     });
     
+    // Add hover tooltip functionality
+    this.on('pointerover', () => this.showTooltip());
+    this.on('pointerout', () => this.hideTooltip());
+    
+    // Initialize tooltip
+    this.tooltip = null;
+    
     // Start growth
     this.startGrowth();
     
@@ -46,13 +53,13 @@ export default class Crop extends Phaser.GameObjects.Container {
     // Apply any existing upgrades
     this.applyUpgrades();
     
-    console.log(`Created ${this.cropType} crop at (${x}, ${y})`);
+    // Crop created
   }
   
   createSprites() {
-    // Use tree textures for crops instead of plant sprites
-    const treeTypes = ['Fruit_tree3', 'Moss_tree3'];
-    const treeType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
+    // Choose random tree type for variety
+    const treeVariants = ['tree', 'fruitTree'];
+    this.treeType = treeVariants[Math.floor(Math.random() * treeVariants.length)];
     
     // Create shadow sprite
     this.shadowSprite = this.scene.add.image(0, 8, 'shadow1');
@@ -60,9 +67,10 @@ export default class Crop extends Phaser.GameObjects.Container {
     this.shadowSprite.setAlpha(0.4);
     this.add(this.shadowSprite);
     
-    // Create plant sprite using tree textures
-    this.plantSprite = this.scene.add.image(0, 0, treeType);
-    this.plantSprite.setScale(0.4); // Trees are larger, so use smaller scale
+    // Create plant sprite starting with smallest tree (Tree3)
+    const initialTexture = this.treeType === 'fruitTree' ? 'fruitTree2' : 'tree3';
+    this.plantSprite = this.scene.add.image(0, 0, initialTexture);
+    this.plantSprite.setScale(0.2); // Start very small
     this.add(this.plantSprite);
     
     // Add a small indicator that the plant is harvestable (initially hidden)
@@ -108,8 +116,6 @@ export default class Crop extends Phaser.GameObjects.Container {
       callbackScope: this,
       loop: true
     });
-
-    console.log(`Started growth for ${this.cropType} crop with delay ${growthDelay}ms`);
   }
   
   grow() {
@@ -120,8 +126,6 @@ export default class Crop extends Phaser.GameObjects.Container {
     // Increment growth based on growth speed and multiplier
     const effectiveGrowthSpeed = this.growthRate * this.growthMultiplier;
     this.growthProgress += effectiveGrowthSpeed;
-
-    console.log(`Crop growing: ${this.growthProgress.toFixed(1)}/${this.maxGrowth} (${this.growthState})`);
 
     // Cap growth
     if (this.growthProgress >= this.maxGrowth) {
@@ -134,8 +138,6 @@ export default class Crop extends Phaser.GameObjects.Container {
         this.growthTimer.destroy();
         this.growthTimer = null;
       }
-
-      console.log(`Crop fully grown and ready for harvest!`);
     } else if (this.growthProgress >= this.maxGrowth / 2 && this.growthState === 'seedling') {
       this.setGrowthState('growing');
     }
@@ -145,17 +147,26 @@ export default class Crop extends Phaser.GameObjects.Container {
     // Update state
     this.growthState = state;
     
-    // Update visual appearance
+    // Update visual appearance with texture and scale changes
     if (state === 'seedling') {
-      this.plantSprite.setScale(0.3);
+      // Start with smallest tree (Tree3 or fruitTree2)
+      const texture = this.treeType === 'fruitTree' ? 'fruitTree2' : 'tree3';
+      this.plantSprite.setTexture(texture);
+      this.plantSprite.setScale(0.2); // Very small
       this.isHarvestable = false;
       this.harvestIndicator.setVisible(false);
     } else if (state === 'growing') {
-      this.plantSprite.setScale(0.5);
+      // Medium tree (Tree2 or fruitTree1)
+      const texture = this.treeType === 'fruitTree' ? 'fruitTree1' : 'tree2';
+      this.plantSprite.setTexture(texture);
+      this.plantSprite.setScale(0.4); // Medium size
       this.isHarvestable = false;
       this.harvestIndicator.setVisible(false);
     } else if (state === 'mature') {
-      this.plantSprite.setScale(0.7);
+      // Largest tree (Tree1 or fruitTree1 - using tree1 for final stage)
+      const texture = this.treeType === 'fruitTree' ? 'fruitTree1' : 'tree1';
+      this.plantSprite.setTexture(texture);
+      this.plantSprite.setScale(0.6); // Full grown size
       this.isHarvestable = true;
       this.harvestIndicator.setVisible(true);
       
@@ -217,11 +228,8 @@ export default class Crop extends Phaser.GameObjects.Container {
   
   harvest() {
     if (!this.isActive || !this.isHarvestable) {
-      console.log(`Harvest failed: isActive=${this.isActive}, isHarvestable=${this.isHarvestable}`);
       return 0;
     }
-
-    console.log(`🌾 HARVESTING ${this.cropType} crop at ${this.x}, ${this.y}, generating coins`);
 
     // Play harvest sound
     if (this.scene.soundManager) {
@@ -231,7 +239,7 @@ export default class Crop extends Phaser.GameObjects.Container {
     // Reset growth
     this.growthProgress = 0;
     this.isHarvestable = false;
-    this.setGrowthState('seedling');
+    this.setGrowthState('seedling'); // This will reset texture and scale
 
     // Restart growth cycle
     this.startGrowth();
@@ -239,26 +247,31 @@ export default class Crop extends Phaser.GameObjects.Container {
     // Calculate yield
     const yieldAmount = this.calculateYield();
 
-    // Generate coins
-    if (typeof this.scene.updateFarmCoins === 'function') {
-      console.log(`💰 Giving ${yieldAmount} coins to player!`);
+    // Generate coins with flying coin animation
+    if (this.scene.createFlyingCoinEffect) {
+      // Use the flying coin effect for better visual feedback
+      this.scene.createFlyingCoinEffect(this.x, this.y, yieldAmount);
+    } else if (this.scene.updateFarmCoins) {
+      // Fallback to direct coin update if flying effect not available
       this.scene.updateFarmCoins(yieldAmount);
-
-      // Show floating coins with animation
-      this.scene.showFloatingText(this.x, this.y, `+${yieldAmount} coins`, 0xFFFF00);
-
-      // Show harvest notification message
-      this.showHarvestNotification(yieldAmount);
-
-      // Add visual effect when harvesting
-      this.scene.tweens.add({
-        targets: this,
-        y: this.y - 10,
-        duration: 100,
-        yoyo: true,
-        ease: 'Power1'
-      });
+      
+      // Show floating text as backup visual feedback
+      if (this.scene.showFloatingText) {
+        this.scene.showFloatingText(this.x, this.y, `+${yieldAmount} coins`, 0xFFFF00);
+      }
     }
+
+    // Show harvest notification message
+    this.showHarvestNotification(yieldAmount);
+
+    // Add visual effect when harvesting
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y - 10,
+      duration: 100,
+      yoyo: true,
+      ease: 'Power1'
+    });
 
     return yieldAmount;
   }
@@ -329,7 +342,7 @@ export default class Crop extends Phaser.GameObjects.Container {
     // Base yield with some randomness, modified by yield multiplier
     const baseYield = this.value + Math.random() * 3; // Increased random bonus
     const finalYield = Math.floor(baseYield * this.yieldMultiplier);
-    console.log(`Calculating yield: base=${this.value}, random bonus=${(baseYield - this.value).toFixed(2)}, multiplier=${this.yieldMultiplier}, final=${finalYield}`);
+    // Yield calculated
     return finalYield;
   }
   
@@ -378,10 +391,7 @@ export default class Crop extends Phaser.GameObjects.Container {
       }
     }
 
-    // Debug: Log crop state periodically
-    if (this.scene.time.now % 2000 < 16) { // Every ~2 seconds
-      console.log(`Crop ${this.cropType}: growth=${this.growthProgress.toFixed(1)}/${this.maxGrowth}, state=${this.growthState}, harvestable=${this.isHarvestable}, growing=${this.isGrowing}`);
-    }
+    // Update crop state (removed debug logging)
   }
   
   adjustForWave() {
@@ -395,6 +405,9 @@ export default class Crop extends Phaser.GameObjects.Container {
   }
   
   destroy() {
+    // Hide tooltip before destroying
+    this.hideTooltip();
+    
     // Clean up timers
     if (this.growthTimer) {
       this.growthTimer.remove();
@@ -416,11 +429,14 @@ export default class Crop extends Phaser.GameObjects.Container {
   applyUpgrades() {
     // If upgrade system exists, apply current upgrades
     if (this.scene.upgradeSystem) {
+      const yieldUpgrade = this.scene.upgradeSystem.getUpgradeValue('cropYield');
+      const growthUpgrade = this.scene.upgradeSystem.getUpgradeValue('cropGrowth');
+      
       // Apply crop yield upgrade
-      this.updateYield(this.scene.upgradeSystem.getUpgradeValue('cropYield'));
+      this.updateYield(yieldUpgrade);
       
       // Apply growth rate upgrade
-      this.updateGrowthRate(this.scene.upgradeSystem.getUpgradeValue('cropGrowth'));
+      this.updateGrowthRate(growthUpgrade);
     }
   }
   
@@ -431,21 +447,23 @@ export default class Crop extends Phaser.GameObjects.Container {
       
       // Show visual feedback
       if (this.plantSprite) {
+        const currentScale = this.plantSprite.scaleX;
         this.scene.tweens.add({
           targets: this.plantSprite,
-          scaleX: 1.2,
-          scaleY: 1.2,
+          scaleX: currentScale * 1.2,
+          scaleY: currentScale * 1.2,
           duration: 200,
           yoyo: true,
           onComplete: () => {
             if (this.plantSprite) {
-              this.plantSprite.setScale(1 + (this.growthProgress / this.maxGrowth) * 0.5);
+              // Restore to current growth state scale
+              this.plantSprite.setScale(currentScale);
             }
           }
         });
       }
       
-      console.log(`Crop yield multiplier updated to ${multiplier.toFixed(2)}`);
+      // Yield multiplier updated
     }
   }
   
@@ -456,7 +474,9 @@ export default class Crop extends Phaser.GameObjects.Container {
       
       // Update the growth timer if it exists
       if (this.growthTimer) {
-        this.growthTimer.remove();
+        this.growthTimer.destroy();
+        this.growthTimer = null;
+        this.isGrowing = false;
         this.startGrowth(); // Restart with new delay
       }
       
@@ -470,8 +490,55 @@ export default class Crop extends Phaser.GameObjects.Container {
           repeat: 3
         });
       }
-      
-      console.log(`Crop growth multiplier updated to ${multiplier.toFixed(2)}`);
     }
   }
-} 
+  
+  showTooltip() {
+    if (this.tooltip) return; // Already showing
+    
+    // Calculate expected yield
+    const expectedYield = this.calculateYield();
+    
+    // Create tooltip background
+    const tooltipBg = this.scene.add.rectangle(this.x, this.y - 80, 160, 80, 0x000000, 0.8);
+    tooltipBg.setStrokeStyle(2, 0x00FF00);
+    tooltipBg.setDepth(1000);
+    
+    // Create tooltip text
+    const tooltipText = this.scene.add.text(this.x, this.y - 80, 
+      `${this.cropType.toUpperCase()}\n` +
+      `State: ${this.growthState}\n` +
+      `Growth: ${Math.floor(this.growthProgress)}%\n` +
+      `Expected Yield: ${expectedYield} coins\n` +
+      `Health: ${Math.floor(this.health)}/${this.maxHealth}`,
+      {
+        fontSize: '12px',
+        fill: '#FFFFFF',
+        align: 'center',
+        fontFamily: 'Arial'
+      }
+    );
+    tooltipText.setOrigin(0.5);
+    tooltipText.setDepth(1001);
+    
+    // Store tooltip elements
+    this.tooltip = {
+      background: tooltipBg,
+      text: tooltipText
+    };
+  }
+  
+  hideTooltip() {
+    if (!this.tooltip) return;
+    
+    // Destroy tooltip elements
+    if (this.tooltip.background) {
+      this.tooltip.background.destroy();
+    }
+    if (this.tooltip.text) {
+      this.tooltip.text.destroy();
+    }
+    
+    this.tooltip = null;
+  }
+}

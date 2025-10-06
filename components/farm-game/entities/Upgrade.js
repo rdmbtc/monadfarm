@@ -121,11 +121,11 @@ export default class Upgrade {
     // Increase level
     this.levels[type]++;
     
-    // Apply upgrade effects
+    // Apply upgrade effects immediately
     this.applyUpgradeEffects(type);
     
-    // Update UI
-    this.updateUI();
+    // Update UI without delay
+    this.updateUIInstant();
     
     console.log(`Upgraded ${type} to level ${this.levels[type]}`);
     
@@ -161,7 +161,7 @@ export default class Upgrade {
       case 'moyakiPower':
         // Update all existing defenses of this type
         if (this.scene.defenses) {
-          this.scene.defenses.forEach(defense => {f
+          this.scene.defenses.forEach(defense => {
             if (defense && defense.type === type.replace('Power', '')) {
               if (typeof defense.updatePower === 'function') {
                 defense.updatePower(value);
@@ -230,8 +230,8 @@ export default class Upgrade {
     // Unlock defense
     this.unlockedDefenses[type] = true;
     
-    // Update UI
-    this.updateUI();
+    // Update UI without delay
+    this.updateUIInstant();
     
     console.log(`Unlocked ${type} defense`);
     
@@ -464,6 +464,67 @@ export default class Upgrade {
     });
   }
   
+  // Instant UI update without full recreation (prevents lag)
+  updateUIInstant() {
+    if (!this.uiElements.panel) return;
+    
+    // Update upgrade buttons instantly
+    Object.keys(this.levels).forEach(type => {
+      const level = this.levels[type];
+      const maxLevel = this.maxLevels[type];
+      const cost = this.getUpgradeCost(type);
+      
+      // Update text instantly
+      if (this.uiElements[`${type}Text`]) {
+        this.uiElements[`${type}Text`].setText(`${this.formatUpgradeName(type)} (${level}/${maxLevel})`);
+      }
+      
+      // Update cost instantly
+      if (this.uiElements[`${type}CostText`]) {
+        if (level < maxLevel) {
+          this.uiElements[`${type}CostText`].setText(`Cost: ${cost} coins`);
+          this.uiElements[`${type}CostText`].setColor(this.canUpgrade(type) ? '#FFFF00' : '#FF5555');
+        } else {
+          this.uiElements[`${type}CostText`].setText('MAXED');
+          this.uiElements[`${type}CostText`].setColor('#00FF00');
+        }
+      }
+      
+      // Update button tint instantly
+      if (this.uiElements[`${type}Button`]) {
+        if (level < maxLevel) {
+          this.uiElements[`${type}Button`].fillColor = this.canUpgrade(type) ? 0x555555 : 0x553333;
+        } else {
+          this.uiElements[`${type}Button`].fillColor = 0x335533;
+        }
+      }
+    });
+    
+    // Handle unlocked defenses by hiding their buttons instantly
+    Object.keys(this.unlockRequirements).forEach(type => {
+      if (this.isDefenseUnlocked(type)) {
+        // Hide unlock button elements instantly instead of destroying
+        if (this.uiElements[`${type}UnlockButton`]) {
+          this.uiElements[`${type}UnlockButton`].visible = false;
+        }
+        if (this.uiElements[`${type}UnlockText`]) {
+          this.uiElements[`${type}UnlockText`].visible = false;
+        }
+        if (this.uiElements[`${type}UnlockReqText`]) {
+          this.uiElements[`${type}UnlockReqText`].visible = false;
+        }
+      } else if (this.uiElements[`${type}UnlockButton`]) {
+        // Update unlock button tint instantly
+        this.uiElements[`${type}UnlockButton`].fillColor = this.canUnlockDefense(type) ? 0x553366 : 0x442244;
+        
+        // Update requirement text color instantly
+        if (this.uiElements[`${type}UnlockReqText`]) {
+          this.uiElements[`${type}UnlockReqText`].setColor(this.canUnlockDefense(type) ? '#FFAA00' : '#FF5555');
+        }
+      }
+    });
+  }
+  
   // Remove unlock button once a defense is unlocked
   removeDefenseUnlockButton(type) {
     if (this.uiElements[`${type}UnlockButton`]) {
@@ -481,9 +542,8 @@ export default class Upgrade {
       delete this.uiElements[`${type}UnlockReqText`];
     }
     
-    // Recreate UI to reorganize
-    this.createUI();
-    this.setUIVisible(true);
+    // Update UI without full recreation to avoid lag
+    this.updateUIInstant();
   }
   
   // Set UI visibility
@@ -517,4 +577,4 @@ export default class Upgrade {
   destroy() {
     this.destroyUI();
   }
-} 
+}
